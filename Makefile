@@ -334,7 +334,7 @@ ASC_AUTH = -authenticationKeyPath "$(ARTSCRIBE_ASC_KEY_PATH)" \
 	   -authenticationKeyID "$(ARTSCRIBE_ASC_KEY_ID)" \
 	   -authenticationKeyIssuerID "$(ARTSCRIBE_ASC_ISSUER_ID)"
 
-.PHONY: archive upload asc-check
+.PHONY: archive upload asc-check asc-status asc-wait asc-prepare
 
 # Fails early and by name rather than letting xcodebuild report something
 # oblique forty seconds in.
@@ -345,6 +345,30 @@ asc-check:
 	done
 	@test -f "$(ARTSCRIBE_ASC_KEY_PATH)" || { \
 	  echo "no key file at ARTSCRIBE_ASC_KEY_PATH"; exit 2; }
+
+# The rest of the way to a reviewable version, after `make upload` — and not one
+# step past it: nothing here submits for review or releases. See
+# App/app-store-connect.py for what each does.
+#
+#   make asc-status    the version records and the latest builds
+#   make asc-wait      until *this checkout's* build is VALID; exit 2 after 15
+#                      minutes. The proof an upload arrived — `make upload`'s own
+#                      exit code is not (it has idled for hours and exited 0).
+#   make asc-prepare   creates the $(VERSION) record if missing, attaches this
+#                      build, sets What's New from $(NOTES), carries the
+#                      promotional text forward. Idempotent.
+NOTES ?= docs/release-notes/$(VERSION).txt
+
+asc-status: asc-check
+	@python3 App/app-store-connect.py status
+
+asc-wait: asc-check
+	@python3 App/app-store-connect.py wait-build $(ARTSCRIBE_BUILD_NUMBER)
+
+asc-prepare: asc-check
+	@test -f "$(NOTES)" || { echo "no release notes at $(NOTES) — write them first"; exit 2; }
+	@python3 App/app-store-connect.py prepare-version $(VERSION) $(ARTSCRIBE_BUILD_NUMBER) \
+	    --whats-new "$(NOTES)"
 
 archive: asc-check
 	xcodegen generate

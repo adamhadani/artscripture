@@ -1,0 +1,3 @@
+Open videos. MP4, MOV and M4V files now open directly. Artscripture uses the soundtrack, so a lesson filmed on your phone or a clip you saved loops and slows down like any other track.
+
+Fixed: some AAC audio, including many Instagram and YouTube soundtracks, played at half speed and an octave low. It now plays at its real speed and pitch.

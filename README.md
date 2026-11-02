@@ -508,7 +508,16 @@ export ARTSCRIBE_ASC_KEY_PATH="$HOME/.private_keys/AuthKey_XXXXXXXXXX.p8"
 make asc-check   # are the credentials present? fails by name, not obliquely
 make archive     # → .build/xcode-archive/Artscripture.xcarchive
 make upload      # exports a signed .ipa and sends it to App Store Connect
+make asc-wait    # until App Store Connect lists this build as VALID (15 min deadline)
+make asc-prepare # version record + this build + docs/release-notes/<version>.txt
 ```
+
+A release is those, in that order, after bumping `MARKETING_VERSION` in `project.yml` and
+writing `docs/release-notes/<version>.txt`. **`asc-prepare` stops short of review on
+purpose**: it creates the version record if needed, attaches the build, sets "What's New",
+and carries the promotional text forward — which a new version record does *not* copy,
+unlike the description, keywords, URLs and screenshots — and then reads everything back.
+Submitting stays a click in App Store Connect. `make asc-status` shows where things stand.
 
 **No certificate is created by hand, and none should be.** `-allowProvisioningUpdates` with the
 API key mints the Apple Distribution certificate *and* the App Store provisioning profile on
