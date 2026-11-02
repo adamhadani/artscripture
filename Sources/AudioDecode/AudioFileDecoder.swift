@@ -25,13 +25,24 @@ public enum AudioFileDecoder {
     /// allocation to prove the decoder grows storage rather than truncating,
     /// without needing a pathological fixture whose container metadata
     /// understates its real length. Not part of the public API.
+    ///
+    /// `labelOverride` likewise replaces the rate and channel count read from the
+    /// file, so a test can hand the decoder a *wrong* label and prove the decoded
+    /// buffers are checked against it — the wiring of `verifyDecodedLayout`, which
+    /// no test of that function alone can see.
     static func decode(
         url: URL,
         progress: (@Sendable (Double) -> Void)?,
-        initialCapacityHint: Int?
+        initialCapacityHint: Int?,
+        labelOverride: (sampleRate: Double, channels: Int)? = nil
     ) async throws -> DecodedAudio {
         let asset = AVURLAsset(url: url)
-        let (track, format) = try await loadTrackAndFormat(asset: asset)
+        let (track, described) = try await loadTrackAndFormat(asset: asset)
+        let format =
+            labelOverride.map {
+                StreamFormat(
+                    duration: described.duration, sampleRate: $0.sampleRate, channels: $0.channels)
+            } ?? described
         let reader = try makeReader(asset: asset, track: track, format: format)
 
         let estimatedFrames =
@@ -41,8 +52,8 @@ public enum AudioFileDecoder {
             channels: format.channels, capacityFrames: max(estimatedFrames, 1))
 
         let written = try await readAllSamples(
-            using: reader, into: storage,
-            channels: format.channels, estimatedFrames: estimatedFrames, progress: progress)
+            using: reader, into: storage, format: format,
+            estimatedFrames: estimatedFrames, progress: progress)
 
         guard written > 0 else { throw DecodeError.unsupportedFormat("Decoded zero frames.") }
         progress?(1.0)
@@ -79,11 +90,7 @@ public enum AudioFileDecoder {
             throw DecodeError.unreadable(error.localizedDescription)
         }
 
-        guard
-            let asbd = formatDescriptions.first.flatMap({
-                CMAudioFormatDescriptionGetStreamBasicDescription($0)?.pointee
-            })
-        else {
+        guard let asbd = formatDescriptions.first.flatMap(decodedFormat(of:)) else {
             throw DecodeError.unsupportedFormat("No stream description available.")
         }
 
@@ -95,6 +102,25 @@ public enum AudioFileDecoder {
         }
         let format = StreamFormat(duration: duration, sampleRate: sampleRate, channels: channels)
         return (track, format)
+    }
+
+    /// The format the decoder will *output* — which is not, for every codec, the
+    /// first one the file describes.
+    ///
+    /// HE-AAC is a core AAC stream at half the sample rate plus SBR, which
+    /// rebuilds the top octave on decode; v2 adds parametric stereo, so its core
+    /// is also mono. `CMAudioFormatDescriptionGetStreamBasicDescription` describes
+    /// that core — 22050 Hz, one channel for v2 — while `AVAssetReader` outputs
+    /// the full 44100 Hz stereo. Labelling the output with the core's numbers
+    /// played it at half speed an octave low (v2: a quarter speed, stereo read as
+    /// mono), and nothing failed. The richest decodable layer is the one the
+    /// decoder produces, and for every single-layer format it *is* the stream
+    /// description, so those are unchanged. See `HEAACDecodeTests`.
+    static func decodedFormat(
+        of description: CMAudioFormatDescription
+    ) -> AudioStreamBasicDescription? {
+        CMAudioFormatDescriptionGetRichestDecodableFormat(description)?.pointee.mASBD
+            ?? CMAudioFormatDescriptionGetStreamBasicDescription(description)?.pointee
     }
 
     private static func makeReader(
@@ -131,10 +157,11 @@ public enum AudioFileDecoder {
     private static func readAllSamples(
         using reader: (reader: AVAssetReader, output: AVAssetReaderTrackOutput),
         into storage: AudioStorage,
-        channels: Int,
+        format: StreamFormat,
         estimatedFrames: Int,
         progress: (@Sendable (Double) -> Void)?
     ) async throws -> Int {
+        let channels = format.channels
         var written = 0
         var emptyBufferCount = 0
         let scratch = SampleScratch()
@@ -151,6 +178,13 @@ public enum AudioFileDecoder {
                 // discarded.
                 emptyBufferCount += 1
                 continue
+            }
+
+            let decoded = CMSampleBufferGetFormatDescription(sample).flatMap {
+                CMAudioFormatDescriptionGetStreamBasicDescription($0)?.pointee
+            }
+            if let decoded {
+                try verifyDecodedLayout(decoded, sampleRate: format.sampleRate, channels: channels)
             }
 
             let byteCount = try copyBytes(from: block, into: scratch)
@@ -192,6 +226,26 @@ public enum AudioFileDecoder {
                 "Skipped \(emptyBufferCount) empty sample buffer(s) with no audio payload.")
         }
         return written
+    }
+
+    /// Refuses a decoded buffer whose rate or channel count disagrees with the
+    /// label the samples are about to be stored under.
+    ///
+    /// `decodedFormat(of:)` is the fix for HE-AAC; this is the guard for the next
+    /// codec with the same trap. Every number here is otherwise taken on trust
+    /// from the file, and a wrong rate does not crash or corrupt anything — it
+    /// plays, at the wrong speed and pitch, with nothing to say so. Refusing the
+    /// file by name is the better failure.
+    static func verifyDecodedLayout(
+        _ decoded: AudioStreamBasicDescription, sampleRate: Double, channels: Int
+    ) throws {
+        guard decoded.mSampleRate == sampleRate, Int(decoded.mChannelsPerFrame) == channels
+        else {
+            throw DecodeError.unsupportedFormat(
+                "The decoder produced \(decoded.mSampleRate) Hz with "
+                    + "\(decoded.mChannelsPerFrame) channel(s), where the file describes "
+                    + "\(sampleRate) Hz with \(channels).")
+        }
     }
 
     /// Computes how many complete `frameSize`-byte frames are present in
