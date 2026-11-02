@@ -54,6 +54,9 @@ make acceptance AUDIO=<audio> [ARGS='--only loop']
 make archive     # → .build/xcode-archive/Artscripture.xcarchive
 make upload      # exports a signed .ipa and sends it to App Store Connect
 make asc-check   # just says whether the credentials are present
+make asc-wait    # until ASC lists this build VALID — the only proof an upload landed
+make asc-prepare # version record + build + What's New (docs/release-notes/<v>.txt);
+                 # never submits. App/app-store-connect.py; `status` for a summary
 
 swift run -c release ArtscribeAcceptance --list
 swift run -c release ArtscribeAcceptance --acceptance <audio> [--bad-file <f>] [--out <dir>] \
