@@ -132,7 +132,16 @@ let package = Package(
             // The bundled sample track. `.copy` rather than `.process`: it is
             // already the exact bytes to ship, and `.process` would let the
             // toolchain re-encode audio it decided it knew better about.
-            resources: [.copy("Resources/GoldbergVariatio4.m4a")],
+            //
+            // `Licences` is the full text behind every row of the About panel's
+            // licence list — on every platform, which is the point: the
+            // iPhone/iPad build had no licence text in it at all, and MIT's one
+            // condition is that its notice travels with the binary. Copies of
+            // `LICENSE` and `LICENSES/`, held identical by `LicenceTextTests`.
+            resources: [
+                .copy("Resources/GoldbergVariatio4.m4a"),
+                .copy("Resources/Licences")
+            ],
             swiftSettings: sharedSwiftSettings
         ),
         .testTarget(

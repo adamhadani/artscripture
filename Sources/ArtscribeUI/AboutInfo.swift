@@ -125,16 +125,24 @@ public enum AboutInfo {
             AboutLicence(
                 component: "Artscripture",
                 terms: "Apache-2.0",
-                detail: "This application's own source."),
+                detail: "This application's own source.",
+                textResource: "Apache-2.0",
+                preface: "Artscripture\nCopyright 2026 Adam Ever-Hadani\n\n"
+                    + "Licensed under the Apache License, Version 2.0."),
+            // No preface for either Signalsmith library: the MIT text carries the
+            // copyright line itself, and that line is half of what MIT requires to
+            // travel with the binary.
             AboutLicence(
                 component: "Signalsmith Stretch",
                 terms: "MIT",
-                detail: "The time stretcher. Vendored as source and compiled into every build."),
+                detail: "The time stretcher. Vendored as source and compiled into every build.",
+                textResource: "MIT-signalsmith-stretch"),
             AboutLicence(
                 component: "Signalsmith Linear",
                 terms: "MIT",
-                detail: "The FFT and STFT it is built on — a second library, not part of the first."
-            ),
+                detail:
+                    "The FFT and STFT it is built on — a second library, not part of the first.",
+                textResource: "MIT-signalsmith-linear"),
             // Every build, both platforms. Listed with the code because it is
             // shipped the same way the code is: inside the binary.
             //
@@ -147,7 +155,11 @@ public enum AboutInfo {
             AboutLicence(
                 component: SampleTrack.title,
                 terms: "CC0 / public domain",
-                detail: SampleTrack.credit)
+                detail: SampleTrack.credit,
+                textResource: "CC0-1.0",
+                preface: "Johann Sebastian Bach, Goldberg Variations BWV 988, Variatio 4.\n"
+                    + "Performed by Kimiko Ishizaka for The Open Goldberg Variations, 2012,\n"
+                    + "and dedicated to the public domain under CC0 1.0 Universal.")
         ]
         // macOS only, and the same statement `Package.swift` makes with
         // `.when(platforms: [.macOS])`: Homebrew builds Rubber Band as a macOS
@@ -159,7 +171,24 @@ public enum AboutInfo {
             AboutLicence(
                 component: "Rubber Band Library",
                 terms: "GPL-2.0-or-later",
-                detail: "The stretcher on macOS. Not present in the iPadOS build."))
+                detail: "The stretcher on macOS. Not present in the iPadOS build.",
+                // The text shown is **version 3**, not Rubber Band's own COPYING
+                // (version 2): this build is the combined work, and the combined
+                // work is distributed under v3 — Apache-2.0 is compatible with v3
+                // and not with v2 (`docs/LICENSING.md`). The preface says so, and
+                // says where the source is, because the GPL wants the recipient
+                // told rather than left to find out.
+                textResource: "GPL-3.0",
+                preface: "Rubber Band Library\n"
+                    + "Copyright Particular Programs Ltd, trading as Breakfast Quay.\n"
+                    + "Licensed under the GNU General Public License, version 2\n"
+                    + "or (at your option) any later version.\n\n"
+                    + "This macOS build of Artscripture embeds it, and so is\n"
+                    + "distributed as a whole under version 3 of the GPL, whose\n"
+                    + "text follows. The complete corresponding source, which is\n"
+                    + "Artscripture's and the exact Rubber Band and libsamplerate\n"
+                    + "releases it was built from, is published with each release\n"
+                    + "at https://github.com/adamhadani/artscripture/releases"))
         // **Found by reading `embed-dependencies.sh` rather than by reading the
         // licensing documents**, which is why it is written down here. The
         // bundle embeds *two* Homebrew dylibs, not one — `librubberband` links
@@ -174,7 +203,8 @@ public enum AboutInfo {
             AboutLicence(
                 component: "libsamplerate",
                 terms: "BSD-2-Clause",
-                detail: "Resampling, linked by Rubber Band and embedded alongside it."))
+                detail: "Resampling, linked by Rubber Band and embedded alongside it.",
+                textResource: "BSD-2-Clause-libsamplerate"))
         return list
     }
 
@@ -207,13 +237,45 @@ public struct AboutLicence: Identifiable, Hashable, Sendable {
     public let component: String
     public let terms: String
     public let detail: String
+    /// The licence text bundled in `Resources/Licences`, without `.txt`.
+    ///
+    /// **The text has to ship, not just the name.** MIT's one condition is that
+    /// "the above copyright notice and this permission notice shall be included
+    /// in all copies", and a row reading "Signalsmith Stretch — MIT" includes
+    /// neither; the GPL likewise wants recipients given the licence itself. Each
+    /// file is a byte-for-byte copy of the one in `LICENSE` or `LICENSES/`, and
+    /// `LicenceTextTests` fails if they drift.
+    public let textResource: String
+    /// Said before the licence text, where the text alone does not say it: whose
+    /// copyright, and — for Rubber Band — which terms this *build* carries and
+    /// where its source is. `nil` when the licence text already names its holder.
+    public let preface: String?
 
     public var id: String { component }
 
-    public init(component: String, terms: String, detail: String) {
+    public init(
+        component: String, terms: String, detail: String, textResource: String,
+        preface: String? = nil
+    ) {
         self.component = component
         self.terms = terms
         self.detail = detail
+        self.textResource = textResource
+        self.preface = preface
+    }
+
+    /// What the reader sees on opening the row: the preface, then the licence.
+    /// `nil` only if the text is missing from the bundle, which a test forbids.
+    public var fullText: String? {
+        guard let body = Self.bundledText(named: textResource) else { return nil }
+        guard let preface else { return body }
+        return preface + "\n\n" + body
+    }
+
+    /// A licence file exactly as bundled.
+    static func bundledText(named name: String) -> String? {
+        Bundle.module.url(forResource: name, withExtension: "txt", subdirectory: "Licences")
+            .flatMap { try? String(contentsOf: $0, encoding: .utf8) }
     }
 }
 

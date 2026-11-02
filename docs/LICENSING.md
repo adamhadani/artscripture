@@ -112,8 +112,9 @@ the free backend holds pitch to the same order of accuracy.
 
 - `LICENSE` — the project's own terms.
 - `LICENSES/` — the full text of every third-party licence that can end up in a build:
-  `GPL-3.0.txt`, `MIT-signalsmith-stretch.txt`, `MIT-signalsmith-linear.txt`. Note that
-  Signalsmith is **two** MIT libraries from two repositories, not one.
+  `GPL-3.0.txt`, `MIT-signalsmith-stretch.txt`, `MIT-signalsmith-linear.txt`,
+  `BSD-2-Clause-libsamplerate.txt`, `CC0-1.0.txt`. Note that Signalsmith is **two** MIT
+  libraries from two repositories, not one.
 - `NOTICE` — what is linked, under what, and **in which builds**. (Named `NOTICE` rather than
   `THIRD-PARTY.md` as this section once proposed, because that is the file Apache-2.0 itself
   gives a meaning to.) The per-build column is the part that is easy to omit and is exactly the
@@ -126,6 +127,27 @@ the free backend holds pitch to the same order of accuracy.
 `App/embed-dependencies.sh` already copies licence files into the bundle's `Resources`, which
 is the GPL's "you must give the recipient the licence" obligation being met — keep that working
 for whichever libraries a given build actually contains.
+
+## What each build actually ships (audited 2026-11-02, for 1.1)
+
+An audit before the first Mac release since 0.3.0 found three gaps, all closed in 1.1:
+
+| Obligation | Was | Now |
+|---|---|---|
+| MIT: the copyright *and permission notice* travel with the binary (Signalsmith ×2, every build) | the About panel said "MIT"; the iPhone/iPad bundle carried no licence text at all, the Mac bundle no Signalsmith one | every row of **About ▸ Open-source licences** opens its full text, bundled in `ArtscribeUI`'s resources on every platform; the Mac bundle also carries them in `Contents/Resources` |
+| GPL: the recipient gets the licence the binary is under | the Mac bundle carried Rubber Band's COPYING (v2) and our Apache text, but not **v3** — the terms of the combined work | `LICENSE-GPL-3.0.txt` in `Contents/Resources`, and Rubber Band's row opens it, with a preface saying why it is v3 |
+| GPL §6: Corresponding Source offered from the same place as the binary | the release page offered Artscripture's source only, and called Artscripture "GPLv3" | `release.yml` attaches the exact Rubber Band and libsamplerate source releases the bottle was built from, plus their Homebrew formulae, and states the terms correctly |
+
+`LicenceTextTests` holds the first two: every row on every platform opens a text containing
+what its licence requires (MIT's copyright line and permission notice; GPL **version 3**),
+no iPhone/iPad row opens the GPL, and every bundled copy is byte-identical to its original
+in `LICENSE`/`LICENSES/`. `embed-dependencies.sh` fails the Mac build if any licence file is
+missing from `Contents/Resources`.
+
+What was checked and is fine: the App Store build links no Rubber Band (no third-party dylib
+at all, only system frameworks); Developer ID distribution outside the App Store is what the
+Developer Program allows, and the release workflow notarises and Gatekeeper-assesses it; the
+sample track is CC0 and needs nothing.
 
 ## Sources
 

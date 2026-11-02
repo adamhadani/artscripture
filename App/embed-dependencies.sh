@@ -16,8 +16,10 @@
 # Nothing else is vendored: everything remaining in `otool -L` is either a
 # system framework or /usr/lib, and the check at the bottom fails the build if
 # that ever stops being true. Rubber Band is GPL-2.0-or-later and libsamplerate
-# is BSD-2-Clause, both compatible with Artscripture's GPL-3.0-or-later, and their
-# licence texts are copied into Resources alongside ours.
+# is BSD-2-Clause. Artscripture's own source is Apache-2.0, which is compatible
+# with GPLv3 and not v2 — so the bundle this produces, being the combined work, is
+# distributed under GPL-3.0, and every licence it is subject to is copied into
+# Resources (see the end of this script, and docs/LICENSING.md).
 #
 # Run by the Xcode post-build phase, so it works from `make app` and from a
 # build started inside Xcode alike. Uses only $BUILT_PRODUCTS_DIR and friends.
@@ -70,8 +72,38 @@ for target in "$executable" "$frameworks"/*.dylib; do
     done
 done
 
-# Artscripture is GPL-3.0-or-later; a distributed binary carries its licence.
+# Every licence the bundle is subject to, at the top of Resources where someone
+# looking for them will look. The Homebrew COPYING files above are the libraries'
+# own; these are the rest:
+#
+# - LICENSE.txt: Artscripture's own source, Apache-2.0.
+# - LICENSE-GPL-3.0.txt: **the terms of this bundle as a whole.** It embeds
+#   Rubber Band, so it is a combined work, and the combination is GPLv3 — the
+#   text a recipient must be given. Rubber Band's own COPYING is version 2.
+# - LICENSE-signalsmith-*.txt: MIT, compiled into every build. MIT's one
+#   condition is that its notice travels with the binary, and until this was
+#   added it did not.
+# - NOTICE.txt: who wrote what, under what, in which builds.
+#
+# The same texts are also inside Artscribe_ArtscribeUI.bundle, which is where the
+# About panel reads them from; these copies are for the Finder, not the app.
 cp -f "$repo_root/LICENSE" "$resources/LICENSE.txt"
+cp -f "$repo_root/LICENSES/GPL-3.0.txt" "$resources/LICENSE-GPL-3.0.txt"
+cp -f "$repo_root/LICENSES/MIT-signalsmith-stretch.txt" "$resources/LICENSE-signalsmith-stretch.txt"
+cp -f "$repo_root/LICENSES/MIT-signalsmith-linear.txt" "$resources/LICENSE-signalsmith-linear.txt"
+cp -f "$repo_root/NOTICE" "$resources/NOTICE.txt"
+
+# A missing licence is not something to discover from a download. The Homebrew
+# copies above are `|| true` — a formula without a COPYING must not fail a local
+# build — so it is this check, not the copy, that makes their absence fatal.
+for licence in LICENSE.txt LICENSE-GPL-3.0.txt LICENSE-signalsmith-stretch.txt \
+    LICENSE-signalsmith-linear.txt NOTICE.txt LICENSE-rubberband.txt \
+    LICENSE-libsamplerate.txt; do
+    if [ ! -s "$resources/$licence" ]; then
+        echo "error: $licence is missing from $resources" >&2
+        exit 1
+    fi
+done
 
 # Sign the vendored libraries — install_name_tool invalidates any signature they
 # arrived with — then the bundle. Inner code first, outermost last, which is the

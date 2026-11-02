@@ -31,6 +31,11 @@ public struct AboutWindow: View {
     /// go looking for. The disclosure stays so the panel can be made small
     /// again, but it starts showing what it owes.
     @State private var showingLicences = true
+    /// The row whose full text is open, if any. A sheet over this panel on both
+    /// platforms: over the About window on the Mac, over the About sheet on iPad
+    /// and iPhone — a sheet presented *from inside* a sheet, which is allowed,
+    /// unlike two raised side by side from the document (see `welcomeAgain`).
+    @State private var readingLicence: AboutLicence?
 
     /// Wide enough for the tagline on one line and for the longest licence row,
     /// short enough that the panel still reads as a panel. Hoisted out of the
@@ -144,6 +149,10 @@ public struct AboutWindow: View {
         .background(palette.background.color())
         .environment(\.palette, palette)
         .preferredColorScheme(theme.colorScheme)
+        .sheet(item: $readingLicence) { licence in
+            LicenceTextSheet(licence: licence, palette: palette)
+                .preferredColorScheme(theme.colorScheme)
+        }
         #if os(macOS)
         .background(WindowReader(onWindow: configure))
         #endif
@@ -190,7 +199,9 @@ public struct AboutWindow: View {
 
     // MARK: - Licences
 
-    /// The GPL and MIT attributions, behind a disclosure.
+    /// The GPL and MIT attributions, behind a disclosure — and each row opens its
+    /// licence in full, because the name of a licence is not the notice it
+    /// requires (see `AboutLicence.textResource`).
     ///
     /// The list is `AboutInfo.licences`, which asks the *platform* rather than a
     /// `#if` — so the iPadOS build's claim to contain no GPL code is something a
@@ -219,9 +230,11 @@ public struct AboutWindow: View {
             .accessibilityHint(showingLicences ? "Hides the list" : "Shows the list")
 
             if showingLicences {
-                VStack(alignment: .leading, spacing: Metrics.lg) {
+                // No spacing: each row pads itself, so the gap between two rows
+                // is part of a row's tap target rather than a dead strip.
+                VStack(alignment: .leading, spacing: 0) {
                     ForEach(AboutInfo.licences) { licence in
-                        AboutLicenceRow(licence: licence)
+                        AboutLicenceRow(licence: licence) { readingLicence = licence }
                     }
                 }
             }
@@ -282,31 +295,6 @@ private struct AboutLinkButton: View {
         } else {
             Text(link.title).foregroundStyle(palette.dimmed.color())
         }
-    }
-}
-
-/// One licence: the component, its terms, and why it is in this build.
-private struct AboutLicenceRow: View {
-    let licence: AboutLicence
-    @Environment(\.palette) private var palette
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: Metrics.xxs) {
-            HStack(alignment: .firstTextBaseline, spacing: Metrics.md) {
-                Text(licence.component)
-                    .font(Typography.readoutEmphasis)
-                    .foregroundStyle(palette.text.color())
-                Text(licence.terms)
-                    .font(Typography.readoutSmall)
-                    .foregroundStyle(palette.accent.color())
-            }
-            Text(licence.detail)
-                .font(Typography.readoutSmall)
-                .foregroundStyle(palette.dimmed.color())
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
     }
 }
 
