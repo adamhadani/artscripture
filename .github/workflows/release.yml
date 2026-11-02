@@ -54,6 +54,28 @@ jobs:
       - name: Install dependencies
         run: brew install rubberband xcodegen
 
+      # **The GPL travels with the binary, and so does its source.** The bundle
+      # embeds Homebrew's builds of Rubber Band (GPL-2.0-or-later) and
+      # libsamplerate, which makes the download a GPLv3 combined work, and GPLv3
+      # section 6 asks whoever distributes the object code to offer the
+      # Corresponding Source from the same place. Artscripture's own is GitHub's
+      # "Source code" archive of this tag. This attaches the other two: the exact
+      # upstream release each bottle was built from — Homebrew patches neither,
+      # and `brew fetch` verifies the checksum — and the formula that built it,
+      # which is the "scripts used to control compilation" the GPL also counts.
+      # Collected *after* `brew install`, so it is the source of the version that
+      # was actually embedded, not of whatever is newest.
+      - name: Collect the source of the embedded libraries
+        run: |
+          mkdir -p dist-source
+          for formula in rubberband libsamplerate; do
+            brew fetch --build-from-source --formula "$formula"
+            tarball=$(brew --cache --build-from-source --formula "$formula")
+            cp "$tarball" "dist-source/$(basename "$tarball" | sed 's/^[0-9a-f]*--//')"
+            brew cat --formula "$formula" > "dist-source/$formula.homebrew-formula.rb"
+          done
+          ls -la dist-source
+
       # A tag that disagrees with the bundle's version produces an archive
       # nobody can reason about later. Caught before anything is built.
       - name: Check the tag matches MARKETING_VERSION
@@ -151,7 +173,9 @@ jobs:
         uses: softprops/action-gh-release@v3
         if: startsWith(github.ref, 'refs/tags/v')
         with:
-          files: dist/*.zip
+          files: |
+            dist/*.zip
+            dist-source/*
           generate_release_notes: true
           # Said out loud on the release page rather than left for the user to
           # discover when the app refuses to open.
@@ -163,5 +187,16 @@ jobs:
             `xattr -d com.apple.quarantine Artscripture.app`. A notarised build
             opens normally.
 
-            Artscripture is GPLv3. It links Rubber Band (GPLv2-or-later) and
-            libsamplerate, whose licences travel inside the bundle.
+            **Licensing.** Artscripture's own source is Apache-2.0. This macOS
+            build embeds Rubber Band (GPL-2.0-or-later), so the app as downloaded
+            here is a combined work distributed under the **GPL, version 3**. It
+            also contains libsamplerate (BSD-2-Clause) and Signalsmith Stretch and
+            Linear (MIT). Every licence is inside the bundle, in
+            `Artscripture.app/Contents/Resources`, and readable in the app under
+            **About ▸ Open-source licences**.
+
+            **Source.** The complete corresponding source for this build is
+            attached here: Artscripture's is the *Source code* archive of this
+            tag, and the `rubberband-*` and `libsamplerate-*` archives are the
+            exact upstream releases this build embeds, with the Homebrew formulae
+            that compiled them.
