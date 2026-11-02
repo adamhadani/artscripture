@@ -4,6 +4,7 @@
 #include <complex>
 #include <vector>
 #include <cmath>
+#include <cstring>
 
 #if defined(__FAST_MATH__) && (__apple_build_version__ >= 16000000) && (__apple_build_version__ <= 16000099) && !defined(SIGNALSMITH_IGNORE_BROKEN_APPLECLANG)
 #	error Apple Clang 16.0.0 generates incorrect SIMD for ARM. If you HAVE to use this version of Clang, turn off -ffast-math.
@@ -1071,7 +1072,7 @@ struct RealFFT {
 						};
 					}
 				} else if (!canUseTime) {
-					std::memcpy(tmpTime.data(), time, sizeof(Complex)*hSize);
+					std::memcpy(static_cast<void *>(tmpTime.data()), static_cast<const void *>(time), sizeof(Complex)*hSize);
 				}
 			} else if (step < complexFft.steps()) {
 				complexFft.fft(step, canUseTime ? (const Complex *)time : tmpTime.data(), tmpFreq.data());
@@ -1281,7 +1282,7 @@ struct RealFFT {
 						time[2*i + 1] = t.imag()*twist.real() - t.real()*twist.imag();
 					}
 				} else if (!canUseTime) {
-					std::memcpy(time, tmpTime.data(), sizeof(Complex)*hSize);
+					std::memcpy(static_cast<void *>(time), static_cast<const void *>(tmpTime.data()), sizeof(Complex)*hSize);
 				}
 			}
 		}
@@ -1375,6 +1376,11 @@ using ModifiedRealFFT = RealFFT<Sample, splitComputation, true>;
 #	include "./platform/fft-accelerate.h"
 #elif defined(SIGNALSMITH_USE_IPP)
 #	include "./platform/fft-ipp.h"
+#elif defined(SIGNALSMITH_USE_CMSISDSP)
+#	include "./platform/fft-cmsisdsp.h"
+#elif defined(SIGNALSMITH_USE_XSIMD)
+//	This is the same as the basic one
+#	include "./platform/fft-linear.h"
 #endif
 
 #endif // include guard
