@@ -31,8 +31,28 @@ public enum AudioFileTypes {
         return extensions
     }()
 
+    /// Video files, opened for their soundtrack.
+    ///
+    /// An `.mp4` with a picture in it is `public.mpeg-4`, which conforms to
+    /// `public.movie` and not to `public.audio` — so until these were named, the
+    /// panel greyed out a file the decoder reads perfectly well. The decoder asks
+    /// AVFoundation for audio tracks only; the picture is never decoded or kept.
+    ///
+    /// **Named one by one, never `.movie`.** AVI, MKV and WebM conform to
+    /// `.movie` too, and AVFoundation opens none of them, so the broad type would
+    /// offer files that then fail to open. These three are what AVFoundation
+    /// reads natively on macOS and iOS alike, each proved by a fixture in
+    /// `VideoSoundtrackTests` on both. `CFBundleDocumentTypes` in both
+    /// `Info.plist`s must list the same identifiers, and a test holds them to it.
+    public static let videoContainers: [UTType] = {
+        var types: [UTType] = [.mpeg4Movie, .quickTimeMovie]  // .mp4, .mov
+        // .m4v: declared by the system on both platforms, but with no constant.
+        if let m4v = UTType("com.apple.m4v-video") { types.append(m4v) }
+        return types
+    }()
+
     public static var supported: [UTType] {
-        var types: [UTType] = [.audio, .mpeg4Audio, .mp3, .wav, .aiff]
+        var types: [UTType] = [.audio, .mpeg4Audio, .mp3, .wav, .aiff] + videoContainers
         for ext in extraExtensions {
             guard let type = UTType(filenameExtension: ext) else { continue }
             guard !types.contains(type) else { continue }
@@ -58,7 +78,7 @@ public enum AudioFileTypes {
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
         panel.canChooseFiles = true
-        panel.message = "Choose an audio file to transcribe."
+        panel.message = "Choose an audio or video file to transcribe."
         panel.prompt = "Open"
         guard panel.runModal() == .OK else { return nil }
         return panel.url

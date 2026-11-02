@@ -75,3 +75,33 @@ ffmpeg -y -loglevel error \
   -map "[aout]" -sample_fmt s16 -c:a flac sine_stereo_distinct.flac
 
 ls -la
+
+# --- Video containers: the soundtrack of a movie file. ---
+# The same 2s 440 Hz tone under a 16x16 black H.264 picture at 2 fps, so each
+# file is a genuine video -- a decoder that ignored track types would trip on
+# the picture track -- while the picture itself costs a few hundred bytes.
+# Three containers because the file picker and the document types name three
+# UTTypes (public.mpeg-4, com.apple.quicktime-movie, com.apple.m4v-video), and
+# each is a separate claim that this platform decodes it.
+video="color=c=black:s=16x16:r=2:d=2"
+for name in sine_video.mp4 sine_video.mov sine_video.m4v; do
+  ffmpeg -y -loglevel error -f lavfi -i "$video" -i _master16.wav \
+    -map 0:v -map 1:a -c:v libx264 -pix_fmt yuv420p -c:a aac -b:a 96k \
+    -shortest "$name"
+done
+
+# A video with no sound at all, for the "no audio track" error.
+ffmpeg -y -loglevel error -f lavfi -i "$video" \
+  -c:v libx264 -pix_fmt yuv420p silent_video.mp4
+
+# Two soundtracks, and the *second* is the one that plays: 440 Hz first but
+# disabled, 660 Hz second and marked default. ffmpeg's mov muxer turns the
+# default disposition into the track header's enabled flag, which is what
+# AVFoundation reports as `isEnabled` -- the alternate-language case, where the
+# first track in the file is not the one a player would choose.
+ffmpeg -y -loglevel error -f lavfi -i "color=c=black:s=16x16:r=2:d=1" \
+  -f lavfi -i "sine=frequency=440:duration=1:sample_rate=44100" \
+  -f lavfi -i "sine=frequency=660:duration=1:sample_rate=44100" \
+  -map 0:v -map 1:a -map 2:a -c:v libx264 -pix_fmt yuv420p -c:a aac -b:a 64k \
+  -af "volume=15dB" -disposition:a:0 0 -disposition:a:1 default \
+  two_soundtracks.mov
