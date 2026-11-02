@@ -66,6 +66,6 @@ repos:
   # entering history at all — once it is in a public repo's history it must be
   # treated as compromised and rotated, not merely removed.
   - repo: https://github.com/gitleaks/gitleaks
-    rev: v8.28.0
+    rev: v8.30.1
     hooks:
       - id: gitleaks
