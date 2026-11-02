@@ -3,7 +3,7 @@ source "https://rubygems.org"
 # Pinned rather than floating: the site is built by a workflow that nobody
 # watches, and a Jekyll major bump that changes Sass or Kramdown behaviour
 # should be a commit somebody made on purpose, not a surprise on a Tuesday.
-gem "jekyll", "~> 4.3.4"
+gem "jekyll", "~> 4.4.1"
 
 # `jekyll serve` needs it on Ruby 3+, where WEBrick left the standard library.
 # Kept in the default group so `bundle exec jekyll serve` works from a clean
