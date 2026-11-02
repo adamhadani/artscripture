@@ -32,6 +32,21 @@ ffmpeg -y -loglevel error -i _master16.wav -c:a libopus sine.opus
 ffmpeg -y -loglevel error -i _master16.wav -ac 2 -c:a vorbis -strict -2 sine.ogg
 afconvert -f m4af -d aac _master16.wav sine.m4a
 
+# --- HE-AAC: the format whose first description lies about its sample rate. ---
+# HE-AAC carries a core AAC stream at *half* the sample rate plus a layer (SBR)
+# that rebuilds the top octave; v2 adds parametric stereo, so its core is mono.
+# `CMAudioFormatDescriptionGetStreamBasicDescription` describes that core --
+# 22050 Hz, and one channel for v2 -- while the decoder outputs 44100 Hz stereo.
+# Labelling the output with the core's numbers played it at half speed an octave
+# down (v2: a quarter speed, channels interleaved into one). Instagram and YouTube
+# soundtracks are commonly HE-AAC, which is how a real video found this.
+# The video is that case end to end: the same HE-AAC stream copied, untouched,
+# under a picture track.
+afconvert -f m4af -d aach -b 48000 _master16.wav sine_he_aac.m4a
+afconvert -f m4af -d aacp -b 32000 _master16.wav sine_he_aac_v2.m4a
+ffmpeg -y -loglevel error -f lavfi -i "color=c=black:s=16x16:r=2:d=2" -i sine_he_aac.m4a \
+  -map 0:v -map 1:a -c:v libx264 -pix_fmt yuv420p -c:a copy -shortest sine_he_aac_video.mp4
+
 # --- Short raw PCM fixture, committed directly for the WAV-decode test. ---
 # 0.4s keeps a 16-bit stereo WAV at ~69 KB.
 ffmpeg -y -loglevel error -f lavfi \

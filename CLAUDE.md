@@ -601,6 +601,19 @@ be. See `docs/LICENSING.md`.
 Decoded natively by macOS — no ffmpeg, no bundled codecs: MP3, AAC, M4A/MP4, ALAC, FLAC
 (incl. 24-bit), WAV, AIFF, CAF, Ogg Vorbis, Opus.
 
+**HE-AAC's first format description describes half the stream.** HE-AAC is a core AAC layer
+at *half* the sample rate plus SBR, which rebuilds the top octave on decode; v2 adds
+parametric stereo, so its core is mono too. `CMAudioFormatDescriptionGetStreamBasicDescription`
+reports that core — 22050 Hz, one channel for v2 — while `AVAssetReader` outputs 44100 Hz
+stereo. The decoder used to label its samples with the core's numbers, and the file opened,
+drew, and played at **half speed an octave low** (v2: a quarter speed, stereo read as mono),
+with nothing failing. Found with an Instagram video in 2026-11; every HE-AAC `.m4a` in 1.0
+did the same. The rule: **the rate and channel count come from
+`CMAudioFormatDescriptionGetRichestDecodableFormat`** — the layer the decoder produces — and
+every decoded buffer is checked against them (`verifyDecodedLayout`), so the next codec with
+this shape fails by name rather than playing wrong. `HEAACDecodeTests` covers both, with the
+pitch measured at the labelled rate, which is how a listener hears it.
+
 **That list is a macOS fact, not an Apple-platform one. iOS does not decode Ogg Vorbis.**
 Measured 2026-07-30 on an iPad simulator: `decodesEveryNativeFormat` passes for every format
 above except `sine.ogg`, which fails `.unreadable("Operation Stopped")`. So
