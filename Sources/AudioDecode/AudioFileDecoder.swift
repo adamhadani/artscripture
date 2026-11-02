@@ -70,6 +70,26 @@ public enum AudioFileDecoder {
         let channels: Int
     }
 
+    /// The audio track a player would choose: the first one marked *enabled*.
+    ///
+    /// An audio file has one track and it is enabled, so for every format this
+    /// app opened before video this is the first track, as it always was. A movie
+    /// can carry several — another language, a commentary — and marks the default
+    /// as enabled, which need not be the first in the file (`two_soundtracks.mov`
+    /// is exactly that case). Taking `tracks.first` there transcribes the wrong
+    /// soundtrack with nothing to say so.
+    ///
+    /// Falls back to the first track when none reports enabled, or when the flag
+    /// cannot be loaded: a flag that will not load is no reason to refuse a file,
+    /// and anything genuinely wrong with the track fails, by name, at the format
+    /// description load that follows.
+    private static func preferredSoundtrack(of tracks: [AVAssetTrack]) async -> AVAssetTrack? {
+        for track in tracks where (try? await track.load(.isEnabled)) == true {
+            return track
+        }
+        return tracks.first
+    }
+
     private static func loadTrackAndFormat(asset: AVURLAsset) async throws -> (
         track: AVAssetTrack, format: StreamFormat
     ) {
@@ -81,7 +101,9 @@ public enum AudioFileDecoder {
         } catch {
             throw DecodeError.unreadable(error.localizedDescription)
         }
-        guard let track = tracks.first else { throw DecodeError.noAudioTrack }
+        guard let track = await preferredSoundtrack(of: tracks) else {
+            throw DecodeError.noAudioTrack
+        }
 
         let formatDescriptions: [CMFormatDescription]
         do {

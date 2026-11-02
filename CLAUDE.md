@@ -623,6 +623,22 @@ would hide a difference a user would meet as "this file just will not open". `AV
 configured for Float32; the default path can return Int16 and silently discard 8 bits of a
 24-bit source.
 
+**Video files open for their soundtrack: MP4, MOV, M4V, on macOS and iOS alike.** The
+decoder never had a problem with them — it asks for `.audio` tracks only — and the picker
+was the whole gate: an `.mp4` with a picture is `public.mpeg-4`, which conforms to
+`public.movie` and **not** to `public.audio`, so it sat greyed out in a panel whose
+allowed types were audio. Three things to keep:
+
+- **`AudioFileTypes.videoContainers` names the three types one by one. Never add
+  `.movie`.** AVI, MKV and WebM conform to it and AVFoundation opens none of them.
+  `thePickerDoesNotOfferEveryMovie` fails if someone does.
+- **The picker and `CFBundleDocumentTypes` are two lists that must agree**, in both
+  `Info.plist`s — Finder's Open With and iOS's Open In read the plist, not the picker.
+  `everyVideoContainerIsADocumentType` reads both plists and fails on any drift.
+- **The decoder takes the first *enabled* audio track, not the first.** A movie with a
+  second language or a commentary marks its default as enabled, and it need not come first
+  in the file; `two_soundtracks.mov` is built so that `tracks.first` reads the wrong tone.
+
 ## Test media
 
 Integration tests read `$ARTSCRIBE_TEST_MEDIA_DIR` and **skip cleanly when unset**, so CI is

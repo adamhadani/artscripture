@@ -703,6 +703,12 @@ looping in **Loop**, the transport, speed, volume and output device in **Playbac
 Everything is decoded natively by macOS — no ffmpeg, no bundled codecs:
 MP3, AAC, M4A/MP4, ALAC, FLAC (including 24-bit), WAV, AIFF, CAF, **Ogg Vorbis**, and **Opus**.
 
+**Video files open for their soundtrack** — MP4, MOV and M4V, on every platform. The audio
+track is decoded and the picture is ignored, so a lesson filmed on a phone or a concert clip
+loops and slows down like any other track. When a movie carries more than one soundtrack, the
+one it marks as the default is used. MKV, WebM and AVI are not offered: Apple's frameworks do
+not read them.
+
 ## Building
 
 Requires macOS 26+, Xcode 26+ (Swift 6.3), and Apple Silicon.
