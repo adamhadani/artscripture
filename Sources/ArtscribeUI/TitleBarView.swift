@@ -90,6 +90,20 @@ struct TitleBarView: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
 
+            // The session-fallback banner, put away (`ViewerModel+FallbackNotice`).
+            // Still on screen, because the condition it describes still holds.
+            if model.showsFallbackBadge {
+                Button(action: model.expandFallbackNotice) {
+                    Image(systemName: "externaldrive.badge.exclamationmark")
+                        .font(.system(size: metrics.glyph * 0.8))
+                        .foregroundStyle(palette.emphasis.color())
+                        .hitRegion(target: metrics.target, drawn: metrics.chromeHeight)
+                }
+                .buttonStyle(.plain)
+                .help("This track's session is stored in Application Support. Show why.")
+                .accessibilityLabel("Session stored away from the track. Show details")
+            }
+
             // The read-only sidecar fallback used to be indicated here, then in
             // the inspector's chrome. It is now an inline banner beside the
             // decode and device notices — see `SessionFallbackBanner`.
@@ -216,9 +230,10 @@ struct ErrorBannerView: View {
 /// points being silently lost because a directory was read-only, and this is
 /// the "not silently" half.
 ///
-/// Two things it is not, both deliberate. It is not **dismissible**: the four
-/// banners above it announce events, and this announces a *condition* — dismiss
-/// it and nothing on screen would say where your session went. And it is not
+/// Two things it is not, both deliberate. It does not **vanish** when dismissed:
+/// the four banners above it announce events, and this announces a *condition*,
+/// so Dismiss collapses it to a badge by the file name (1.2), which brings it
+/// back — something on screen always says where your session went. And it is not
 /// the `danger` red: nothing failed, the fallback worked. `emphasis` is this
 /// palette's "you should know about this" colour, and it is the same amber the
 /// status bar uses for a speed that is not 100%.
@@ -232,7 +247,7 @@ struct SessionFallbackBanner: View {
     @Environment(\.palette) private var palette
 
     var body: some View {
-        if model.isSessionStoredAwayFromTheTrack {
+        if model.showsFallbackBanner {
             HStack(alignment: .top, spacing: Metrics.lg) {
                 Image(systemName: "externaldrive.badge.exclamationmark")
                     .foregroundStyle(palette.emphasis.color())
@@ -242,6 +257,12 @@ struct SessionFallbackBanner: View {
                     .foregroundStyle(palette.text.color())
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: Metrics.md)
+                // Collapses to the title bar's badge rather than vanishing: the
+                // condition holds, so something has to keep saying so.
+                Button("Dismiss", action: model.collapseFallbackNotice)
+                    .buttonStyle(.plain)
+                    .font(Typography.readoutSmall)
+                    .foregroundStyle(palette.dimmed.color())
             }
             .padding(.horizontal, Metrics.gutter)
             .padding(.vertical, Metrics.lg)

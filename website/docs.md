@@ -308,7 +308,8 @@ overwrote the other's loop points.
 
 If the folder cannot be written to — a read-only volume, say — the session goes
 to `~/Library/Application Support/Artscripture/Sessions/` instead, and the app tells
-you so rather than failing quietly.
+you so rather than failing quietly. **Dismiss** puts that notice away to a small drive
+badge beside the file name, remembered for the track; tap the badge to read it again.
 
 Every field is optional, so a hand-edited or truncated file is repaired field by
 field with a named explanation rather than being thrown away. You are invited to

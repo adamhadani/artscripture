@@ -115,7 +115,11 @@ public final class ViewerModel {
     /// Where this track's session is stored, or `nil` when it has never been
     /// saved. `.applicationSupport` is the read-only-volume fallback and is
     /// always surfaced.
-    public internal(set) var sessionLocation: SessionLocation?
+    public internal(set) var sessionLocation: SessionLocation? {
+        didSet { refreshFallbackNotice() }
+    }
+    /// The fallback banner was put away to a badge (`ViewerModel+FallbackNotice`).
+    public internal(set) var fallbackNoticeCollapsed = false
 
     /// Why the sidecar could not be written, when the filesystem said. Shown in
     /// the standing banner, which is the only place the fallback is announced.
