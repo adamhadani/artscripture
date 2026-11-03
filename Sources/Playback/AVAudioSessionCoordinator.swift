@@ -45,8 +45,14 @@ public final class AVAudioSessionCoordinator: AudioSessionCoordinator {
         observe()
     }
 
+    /// Always asks, never answers from `isActive`. The system deactivates us
+    /// without a call to `deactivate()` — another app claiming the session does
+    /// exactly that — so the flag can only say what *we* last did, not what is
+    /// true now. A guard on it turned "claim the session back" into a no-op
+    /// after switching to Spotify and back (2026-11). `setActive(true)` on a
+    /// session that is already ours is cheap, and `AudioOutput` only reaches
+    /// this when its engine actually needs starting.
     public func activate() throws {
-        guard !isActive else { return }
         try session.setActive(true)
         isActive = true
     }
@@ -86,7 +92,14 @@ public final class AVAudioSessionCoordinator: AudioSessionCoordinator {
             forName: name, object: session, queue: .main
         ) { [weak self] notification in
             guard let event = translate(notification.userInfo) else { return }
-            MainActor.assumeIsolated { self?.onEvent?(event) }
+            MainActor.assumeIsolated {
+                // The system has taken the session from us. Recorded before
+                // anyone is told, so a `deactivate()` during the handling does
+                // not hand back — and notify others about — a session that is
+                // no longer ours to give.
+                if event == .interruptionBegan { self?.isActive = false }
+                self?.onEvent?(event)
+            }
         }
         observers.append(observer)
     }

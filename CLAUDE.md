@@ -474,6 +474,14 @@ call cannot arrive. Two rules there are worth knowing before touching it:
   ending with `shouldResume` started a track nobody had pressed play on, and every unplugged
   headphone raised a "playback paused" banner over silence. `TransportLink.isPlaying` asks the
   model instead.
+- **But the graph stops on every interruption, paused or not** — iOS has already stopped the
+  engine and taken the session by the time it tells us. Until 2026-11 an interruption that
+  arrived while *paused* left `isRunning` set and the coordinator's `isActive` set, so the next
+  `start()` returned at its guard and play did nothing: "the audio render thread never
+  reported playing", after any switch to Spotify and back. `start()` now asks
+  `avEngine.isRunning`, and `activate()` always calls `setActive(true)`. Reproduced on a
+  simulator by a hook that does what iOS does (stop the engine, deactivate, post the real
+  notification): the simulator never interrupts one app's session for another's.
 
 **A callback that is declared, invoked, documented and tested can still be connected to
 nothing, and no test of either end will say so.** `AudioOutput.onInterrupted` and

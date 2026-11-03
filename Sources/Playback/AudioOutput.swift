@@ -156,7 +156,9 @@ public final class AudioOutput: AudioOutputDeviceSink {
     // MARK: - Transport
 
     public func start() throws {
-        guard !isRunning else { return }
+        // The engine, not just the flag: iOS stops it behind our back, and a stale
+        // flag made this a no-op — "the render thread never reported playing".
+        guard !(isRunning && avEngine.isRunning) else { return }
         // Before `prepare()`: on iOS the session's activation is what decides the
         // hardware sample rate and buffer size the engine then negotiates
         // against, so preparing first would negotiate against the old route.
@@ -327,7 +329,10 @@ public final class AudioOutput: AudioOutputDeviceSink {
         // The *end* of an interruption cannot ask at all: the transport was
         // brought into line when it began, so by now it correctly reads paused.
         // What was true at the start is what has to be consulted at the end.
-        if case .interruptionBegan = event { wasPlayingWhenInterrupted = transport.isPlaying() }
+        if case .interruptionBegan = event {
+            wasPlayingWhenInterrupted = transport.isPlaying()
+            noteStoppedBySystem()  // paused or not, the *graph* has stopped
+        }
         let wasPlaying: Bool
         if case .interruptionEnded = event {
             wasPlaying = wasPlayingWhenInterrupted
@@ -355,6 +360,14 @@ public final class AudioOutput: AudioOutputDeviceSink {
         case .reconfigure:
             handleConfigurationChange()
         }
+    }
+
+    /// Brings the flag into line with an engine the platform has stopped. No
+    /// `deactivate()`: the session is already another app's, and the coordinator
+    /// records losing it, so the next `start()` claims it afresh.
+    private func noteStoppedBySystem() {
+        avEngine.stop()
+        isRunning = false
     }
 
     /// Spec §8: never degrade silently. Playback has stopped on its own, so the
