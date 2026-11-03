@@ -14,6 +14,7 @@ baseurl: /artscripture
 repo_url: https://github.com/adamhadani/artscripture
 download_url: https://github.com/adamhadani/artscripture/releases/latest
 releases_url: https://github.com/adamhadani/artscripture/releases
+app_store_url: https://apps.apple.com/app/artscripture/id6796959423
 issues_url: https://github.com/adamhadani/artscripture/issues
 new_issue_url: https://github.com/adamhadani/artscripture/issues/new
 license_url: https://github.com/adamhadani/artscripture/blob/main/LICENSE

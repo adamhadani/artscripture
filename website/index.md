@@ -3,22 +3,23 @@ layout: home
 permalink: /
 title: Artscripture
 description: >-
-  A keyboard-first music transcription tool for macOS and iPadOS. Load a track,
-  select a passage, loop it seamlessly, and slow it down without changing pitch.
+  A keyboard-first music transcription tool for Mac, iPhone and iPad. Load a track,
+  mark a passage, loop it seamlessly, and slow it down without changing pitch.
 ---
 
 <section class="hero">
   {% include mark.svg %}
   <h1>Artscripture</h1>
-  <p class="tagline">A keyboard-first music transcription tool for macOS and iPadOS.</p>
+  <p class="tagline">A keyboard-first music transcription tool for Mac, iPhone and iPad.</p>
   <p class="pitch">
     When you transcribe, your hands are on an instrument — not on a mouse. Load a
-    track, select a passage, loop it seamlessly, and slow it down without
+    track, mark a passage, loop it seamlessly, and slow it down without
     changing pitch. Every operation has a key.
   </p>
   <p class="actions">
     <a class="button" href="{{ site.download_url }}">Download for macOS</a>
-    <span class="aside">macOS 26 · Apple Silicon · iPadOS coming · free and open source</span>
+    <a class="button" href="{{ site.app_store_url }}">iPhone and iPad: App Store</a>
+    <span class="aside">macOS 26 on Apple Silicon · iOS and iPadOS 26 · free and open source</span>
   </p>
 </section>
 
@@ -147,8 +148,9 @@ description: >-
   <h2>Decoded natively, nothing bundled</h2>
   <p>
     MP3, AAC, M4A/MP4, ALAC, FLAC (including 24-bit), WAV, AIFF, CAF, Ogg Vorbis
-    and Opus — all decoded by the operating system. No ffmpeg, no bundled codecs.
-    <em>Ogg Vorbis is macOS only; iPadOS cannot decode it.</em>
+    and Opus — and the soundtrack of MP4, MOV and M4V videos — all decoded by the
+    operating system. No ffmpeg, no bundled codecs.
+    <em>Ogg Vorbis is macOS only; iPhone and iPad cannot decode it.</em>
   </p>
 </div>
 
@@ -165,7 +167,7 @@ description: >-
 
 <div class="feature">
   <p class="eyebrow">Getting it</p>
-  <h2>Download, or build it yourself</h2>
+  <h2>Download it, or build it yourself</h2>
   <p>
     Signed, notarised builds are on the
     <a href="{{ site.releases_url }}">releases page</a>: unzip and drag
@@ -173,9 +175,10 @@ description: >-
     <strong>macOS 26 on Apple Silicon</strong>.
   </p>
   <p>
-    <strong>iPadOS is in preparation for the App Store</strong> and is not
-    published yet. It builds and runs from the same tree today — the whole
-    source is on <a href="{{ site.repo_url }}">GitHub</a> under Apache-2.0.
+    <strong>iPhone and iPad:</strong> free on the
+    <a href="{{ site.app_store_url }}">App Store</a>, for iOS and iPadOS 26. Both
+    are built from the same tree — the whole source is on
+    <a href="{{ site.repo_url }}">GitHub</a> under Apache-2.0.
   </p>
   <p class="actions">
     <a class="button" href="{{ site.download_url }}">Download for macOS</a>

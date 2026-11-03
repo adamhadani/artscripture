@@ -34,7 +34,7 @@ mandatory; a short report is much better than no report.
   nothing" is worth more than "looping is broken".
 - **The Artscripture version.** Artscripture ▸ About Artscripture, or the name of the
   release you downloaded.
-- **Your macOS or iPadOS version, and your Mac or iPad model.**
+- **Your macOS, iOS or iPadOS version, and your Mac, iPhone or iPad model.**
 - **The audio file's format and roughly its length** — 24-bit FLAC, seventy
   minutes, that sort of thing. Several past bugs only appeared on
   album-length files or on one particular container.
@@ -64,19 +64,19 @@ is still useful.
 ### What audio formats does Artscripture open?
 
 MP3, AAC, M4A/MP4, ALAC, FLAC (including 24-bit), WAV, AIFF, CAF, Ogg Vorbis and
-Opus. Everything is decoded by the operating system's own frameworks — there is
+Opus, and the soundtrack of MP4, MOV and M4V videos. Everything is decoded by the operating system's own frameworks — there is
 no bundled ffmpeg and there are no bundled codecs.
 
-**Ogg Vorbis is macOS only.** iPadOS cannot decode it, so it is not offered in
-the iPad file picker rather than being offered and then failing to open. Opus is
+**Ogg Vorbis is macOS only.** iOS and iPadOS cannot decode it, so it is not offered in
+the iPhone and iPad file picker rather than being offered and then failing to open. Opus is
 a different codec and works on both.
 
 ### What do I need to run it?
 
 **macOS 26 on Apple Silicon.** Homebrew ships arm64-only libraries and Artscripture
 has never been an Intel product, so the released bundle is `arm64` rather than
-universal. The iPadOS target requires iPadOS 26 and is built from source rather
-than distributed as a download.
+universal. On iPhone and iPad it is on the [App Store]({{ site.app_store_url }}),
+for iOS and iPadOS 26.
 
 ### macOS says the app "cannot be opened"
 

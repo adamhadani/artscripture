@@ -59,6 +59,8 @@ struct WaveformLanesView: View {
         /// the frames: the hairline needs no title, and copying 13 strings into
         /// this snapshot on every redraw would be waste.
         let trackMarks: [FrameIndex]
+        /// Sizes the loop's grip tabs, so the drawn tab matches what grabs.
+        let reach: HandleReach
     }
 
     var body: some View {
@@ -77,7 +79,8 @@ struct WaveformLanesView: View {
             playhead: model.playhead,
             loop: model.loop,
             isPlaying: model.isPlaying,
-            trackMarks: model.showsTrackMarks ? model.markers.starts : [])
+            trackMarks: model.showsTrackMarks ? model.markers.starts : [],
+            reach: model.prefs.handleReach)
 
         ZStack(alignment: .topLeading) {
             palette.panel.color()
@@ -289,6 +292,26 @@ struct WaveformLanesView: View {
         for x in [startX, endX] where x >= -2 && x <= size.width + 2 {
             context.fill(
                 Path(CGRect(x: x - 1, y: 0, width: 2, height: size.height)), with: .color(colour))
+        }
+        drawGrips(in: &context, size: size, edges: [startX, endX], state: state)
+    }
+
+    /// The grip tab on each edge (`LoopGrip`): says "drag me" the way a Mac
+    /// trim handle does, at the same opacity as the posts it sits on.
+    private func drawGrips(
+        in context: inout GraphicsContext, size: CGSize, edges: [Double], state: OverlayState
+    ) {
+        let opacity = state.loop.isEnabled ? 1.0 : Palette.loopDisabledOpacity
+        for x in edges {
+            let tab = LoopGrip.tab(atX: x, laneHeight: size.height, reach: state.reach)
+            guard tab.maxX >= 0, tab.minX <= size.width, tab.height > 0 else { continue }
+            context.fill(
+                Path(roundedRect: tab, cornerRadius: LoopGrip.cornerRadius(of: tab)),
+                with: .color(palette.loop.color(opacity: opacity)))
+            for line in LoopGrip.gripLines(in: tab) {
+                context.fill(
+                    Path(line), with: .color(palette.background.color(opacity: 0.85 * opacity)))
+            }
         }
     }
 

@@ -395,7 +395,10 @@ modifier pressed or released halfway through can never silently convert a range 
 zoom or the reverse.
 
 **Pointer affordances.** None of the drags above is visible, and an affordance nobody can
-see is not one, so the cursor names what the region under it can do. Three shapes, and no
+see is not one. Each loop edge carries a **grip tab** — a small rounded tab with two grip
+lines at mid-height, sized from the same reach that grabs it (`LoopGrip`; added for 1.2,
+because a finger has no hover cursor) — and on the Mac the cursor names what the region
+under it can do. Three shapes, and no
 more — a cursor that changed everywhere would stop meaning anything:
 
 | Region | Cursor | What it says |

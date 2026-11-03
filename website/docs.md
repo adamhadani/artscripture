@@ -48,8 +48,8 @@ to arrange and no modes to be in. The working loop is:
 
 That is the whole product. Everything below is detail on one of those six steps.
 
-**Requirements.** macOS 26 on Apple Silicon for the released build. The iPadOS
-target requires iPadOS 26 and is built from source.
+**Requirements.** macOS 26 on Apple Silicon for the Mac download; iOS or iPadOS 26
+for the [App Store]({{ site.app_store_url }}) app on iPhone and iPad.
 
 ## Opening a track
 
@@ -61,16 +61,17 @@ Three routes in:
   recent, each named by file *and* folder so two rips of the same track are told
   apart.
 
-Recents survive a relaunch on both platforms. On iPad that list is the only
+Recents survive a relaunch on every platform. On iPhone and iPad that list is the only
 route to recents, since there is no menu bar to hang Open Recent from.
 
 ### Formats
 
 MP3, AAC, M4A/MP4, ALAC, FLAC (including 24-bit), WAV, AIFF, CAF, Ogg Vorbis and
 Opus — all decoded by the operating system. There is no bundled ffmpeg and there
-are no bundled codecs.
+are no bundled codecs. **Video files open for their soundtrack:** MP4, MOV and M4V,
+so a lesson filmed on your phone loops and slows down like any other track.
 
-**Ogg Vorbis is macOS only.** iPadOS cannot decode it, so the iPad file picker
+**Ogg Vorbis is macOS only.** iOS and iPadOS cannot decode it, so their file picker
 does not offer it rather than offering a file it would then refuse to open. Opus
 is a different codec and works on both.
 
@@ -109,8 +110,8 @@ say the same thing.
 Drag across the waveform lanes to mark a passage — **that passage is the loop**.
 Press <kbd>D</kbd> or the **Loop** button to repeat it, and again to stop. A drag
 while looping replaces the loop with the new passage, which carries on looping.
-Drag a loop edge to adjust it; on iPhone and iPad an edge takes hold from a
-fingertip's width away. Shift-drag extends the passage. A click places the
+Drag a loop edge — its grip tab marks it — to adjust it; on iPhone and iPad an
+edge takes hold from a fingertip's width away. Shift-drag extends the passage. A click places the
 playhead and leaves the passage alone; a double-click places it and plays from
 there.
 
@@ -200,7 +201,7 @@ peak against a reference tone:
 
 Studio is the default and earns it. The R2 "Fast" row is why the engine is not a
 user-facing choice — it exists for low-CPU scrubbing and is not a pitch
-reference. iPadOS uses Signalsmith Stretch, which measures in the same class as
+reference. iPhone and iPad use Signalsmith Stretch, which measures in the same class as
 R3; Rubber Band has no iOS build.
 
 ## Volume
@@ -211,7 +212,7 @@ R3; Rubber Band has no iOS build.
 | <kbd>⇧↑</kbd> <kbd>⇧↓</kbd> | …in finer steps |
 | <kbd>M</kbd> | Mute |
 
-The output device is chosen from the **Playback** menu on macOS. On iPadOS
+The output device is chosen from the **Playback** menu on macOS. On iPhone and iPad
 routing belongs to the system, via Control Centre.
 
 ## Navigating and zooming

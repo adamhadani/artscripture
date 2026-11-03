@@ -12,10 +12,10 @@ description: >-
   makes no network requests. Everything stays on your device.
 ---
 
-<p class="updated">Last updated: 31 July 2026</p>
+<p class="updated">Last updated: 3 November 2026</p>
 
-This policy covers the Artscripture application for macOS and iPadOS, and this
-website.
+This policy covers the Artscripture application for macOS, iOS and iPadOS, and
+this website.
 
 ## The short version
 
@@ -52,7 +52,7 @@ transmitted from it.
 ### Preferences
 
 Stored in the system preferences store (`UserDefaults`), the standard place a
-Mac or iPad app keeps its settings:
+Mac, iPhone or iPad app keeps its settings:
 
 - Your chosen theme (system, light or dark).
 - Playback preferences: the preroll amount and whether preroll is on.
@@ -69,7 +69,7 @@ Artscripture keeps a list of the **eight** most recently opened files so they ca
 be reopened from the resting screen or the Open Recent menu. This list is a set
 of file paths, stored in the same local preferences store.
 
-On iPadOS, a *security-scoped bookmark* is stored alongside each path. This is a
+On iPhone and iPad, a *security-scoped bookmark* is stored alongside each path. This is a
 system-provided token that lets the app reopen a file you already chose after a
 relaunch — a file picked out of the Files app lives outside the application's
 container, and its plain path stops being readable. The bookmark is created by
@@ -113,7 +113,7 @@ editable and deletable with any text editor or file manager.
 
 Artscripture links two audio libraries — [Rubber
 Band](https://breakfastquay.com/rubberband/) on macOS and [Signalsmith
-Stretch](https://github.com/Signalsmith-Audio/signalsmith-stretch) on iPadOS —
+Stretch](https://github.com/Signalsmith-Audio/signalsmith-stretch) on iPhone and iPad —
 which perform time-stretching arithmetic on audio in memory. They are
 open-source signal-processing code with no network capability, no analytics and
 no data collection. They are not services and have no servers.
