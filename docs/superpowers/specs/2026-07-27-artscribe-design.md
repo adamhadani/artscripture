@@ -373,7 +373,8 @@ zoom is the only one that anchors on the playhead.
 | Double-click | Lanes | Place the playhead there **and play from it** — never re-routed to a selection or loop start (`⌘A` remains Select All) |
 | **⌥ left-drag, vertically** | **Lanes** | **Zoom, smooth and continuous, anchored at the drag's start** |
 | **Left-drag, vertically** | **Time ruler** | **The same zoom, with no modifier — Ableton's and Melodyne's ruler convention** |
-| Click / drag | Overview strip | Centre the viewport there |
+| Click / tap | Overview strip | **Move the playhead there**, and centre the viewport on it when it was off-screen. Reported from an iPhone by someone who kept trying it |
+| Drag | Overview strip | Carry the viewport: a drag that starts on the lens moves it without a jump, one that starts outside jumps there first. Never moves the playhead |
 | Pinch | Anywhere | Zoom |
 | Wheel (coarse deltas) | Anywhere | Zoom |
 | Two-finger scroll (precise deltas) | Anywhere | Pan |

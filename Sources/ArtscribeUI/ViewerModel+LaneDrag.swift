@@ -177,6 +177,27 @@ extension ViewerModel {
         scroll(byPoints: Int(delta.rounded()))
     }
 
+    /// The end of a gesture on the overview strip. A tap seeks; a drag has
+    /// already carried the view and does nothing more.
+    ///
+    /// The strip used to move only the *view*, so pointing at a bar on the
+    /// whole-file overview put the window there and left the playhead behind —
+    /// reported from an iPhone by someone who kept trying it. The view has
+    /// already been centred by the gesture's first event when the tap landed
+    /// outside the lens (`OverviewScrub`), so the playhead arrives on screen.
+    ///
+    /// A drag deliberately does not seek: carrying the view to look somewhere
+    /// else must not move what you are listening to. Same slop as a lane click,
+    /// so a fingertip's wobble is still a tap.
+    public func overviewReleased(startPixel: Double, endPixel: Double, stripWidth: Double) {
+        guard hasTrack, stripWidth > 0,
+            abs(endPixel - startPixel) < Self.clickSlopPoints
+        else { return }
+        seek(
+            to: PixelMapping.overviewFrame(
+                atPixel: endPixel, totalFrames: totalFrames, width: stripWidth))
+    }
+
     private var panStep: Int {
         Swift.max(1, Int((Double(lanePointWidth) * Self.panFraction).rounded()))
     }
