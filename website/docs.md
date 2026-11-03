@@ -109,8 +109,8 @@ say the same thing.
 Drag across the waveform lanes to mark a passage — **that passage is the loop**.
 Press <kbd>D</kbd> or the **Loop** button to repeat it, and again to stop. A drag
 while looping replaces the loop with the new passage, which carries on looping.
-Drag a loop edge to adjust it; on iPhone and iPad an edge takes hold from a
-fingertip's width away. Shift-drag extends the passage. A click places the
+Drag a loop edge — its grip tab marks it — to adjust it; on iPhone and iPad an
+edge takes hold from a fingertip's width away. Shift-drag extends the passage. A click places the
 playhead and leaves the passage alone; a double-click places it and plays from
 there.
 
