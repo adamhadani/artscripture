@@ -158,6 +158,13 @@ public enum TransportControl: String, CaseIterable, Sendable, Hashable {
         }
     }
 
+    /// What a long press (or a right-click) on the button offers — the iOS
+    /// place for a secondary action. Only Loop has one: **Clear Loop**, because
+    /// an iPhone has no menu bar and until 2026-11 no other way to remove a loop.
+    public var contextActions: [ActionID] {
+        self == .loop ? [.loopClear] : []
+    }
+
     /// Whether the button should draw as engaged. Only the loop has one: play and
     /// pause are one button whose glyph already says which it is, and the rest are
     /// momentary.
@@ -171,6 +178,14 @@ public enum TransportControl: String, CaseIterable, Sendable, Hashable {
 }
 
 extension ViewerModel {
+
+    /// A transport button's context-menu item (`TransportControl.contextActions`).
+    public func performContextAction(_ id: ActionID) {
+        switch id {
+        case .loopClear: clearLoop()
+        default: break
+        }
+    }
 
     /// What the transport bar draws from.
     public var transportState: TransportState {

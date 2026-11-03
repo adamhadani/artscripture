@@ -309,4 +309,17 @@ struct TransportControlTests {
             ])
         #expect(TransportControl.groups[3] == [.slower, .faster])
     }
+
+    // MARK: - Clearing on touch
+
+    /// An iPhone has no menu bar, and until 2026-11 its `⋯` menu had no loop
+    /// items, so a loop could never be removed there. A long-press on the Loop
+    /// button is the iOS place for that secondary action.
+    @Test("the loop button offers Clear Loop on a long press, and no other button offers anything")
+    func theLoopButtonOffersClearLoop() {
+        #expect(TransportControl.loop.contextActions == [.loopClear])
+        for control in TransportControl.allCases where control != .loop {
+            #expect(control.contextActions.isEmpty, "\(control) offers a context menu")
+        }
+    }
 }

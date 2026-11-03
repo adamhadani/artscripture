@@ -176,6 +176,14 @@ struct TransportBarView: View {
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
+        .contextMenu {
+            ForEach(control.contextActions, id: \.self) { id in
+                Button(ActionCatalog.entry(id).title, role: .destructive) {
+                    model.performContextAction(id)
+                }
+                .disabled(state.loopIsEmpty)
+            }
+        }
         .help(control.tooltip(in: state))
         .accessibilityLabel(control.title(in: state))
         // Where this control landed, so the acceptance harness can click the
