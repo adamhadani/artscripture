@@ -671,8 +671,8 @@ moment you have arrived at the passage, at tempo, in the loop — which is what 
 exercise was for. The window says *Ramp complete — holding 100%* so it is not a silent
 ending.
 
-A ramp needs a loop. With none set, the window says so and names the keys that fix it (`A`
-and `S`, or `G` from a selection) rather than offering a Start button that would do nothing.
+A ramp needs a loop. With none set, the window says so and says how to make one (drag across
+the waveform, or `A` and `S`) rather than offering a Start button that would do nothing.
 Starting a ramp switches looping on for you if the region is set but disabled.
 
 Like the shortcut window it is a separate window rather than a panel, and for a sharper
@@ -705,7 +705,7 @@ It is generated from the same `ActionCatalog` the menus and the keyboard are bui
 it cannot fall out of step with what the keys actually do — see `Sources/ArtscribeUI/
 ActionCatalog.swift`, and `ActionCatalogTests` for the test that enforces it.
 
-Every shortcut above also appears beside its item in the menus — selection in **Edit**,
+Every shortcut above also appears beside its item in the menus — Select All in **Edit**,
 looping in **Loop**, the transport, speed, volume and output device in **Playback**.
 
 ## Formats
