@@ -9,7 +9,7 @@ standfirst: >-
   from.
 description: >-
   Artscripture documentation: getting started, keyboard shortcuts, loading files,
-  looping and selection, speed and pitch, practice mode, and session files.
+  marking a passage and looping, speed and pitch, practice mode, and session files.
 ---
 
 <nav class="toc" aria-label="Contents">
@@ -18,7 +18,7 @@ description: >-
     <li><a href="#getting-started">Getting started</a></li>
     <li><a href="#opening-a-track">Opening a track</a></li>
     <li><a href="#transport-and-preroll">Transport and preroll</a></li>
-    <li><a href="#selection">Selection</a></li>
+    <li><a href="#marking-a-passage">Marking a passage</a></li>
     <li><a href="#looping">Looping</a></li>
     <li><a href="#speed-and-pitch">Speed and pitch</a></li>
     <li><a href="#volume">Volume</a></li>
@@ -79,7 +79,7 @@ is a different codec and works on both.
 | Key | Action |
 |---|---|
 | <kbd>Space</kbd> | Play / pause — a resume rolls back by the preroll |
-| <kbd>⇧Space</kbd> | Play from start — of the selection, else of an active loop, else of the file |
+| <kbd>⇧Space</kbd> | Play from start — of the marked passage (looping or not), else of the file |
 | <kbd>H</kbd> | Preroll on / off |
 
 **Preroll.** You stop on a note; to hear it in context you have to start slightly
@@ -104,22 +104,26 @@ transport-bar button, both of which show the current state.
 <kbd>Space</kbd> is play/pause and a separate Stop key would be a third way to
 say the same thing.
 
-## Selection
+## Marking a passage
 
-Drag in the waveform lanes to select. Shift-drag extends. Click places the
-playhead; double-click places it and plays from there.
+Drag across the waveform lanes to mark a passage — **that passage is the loop**.
+Press <kbd>D</kbd> or the **Loop** button to repeat it, and again to stop. A drag
+while looping replaces the loop with the new passage, which carries on looping.
+Drag a loop edge to adjust it; on iPhone and iPad an edge takes hold from a
+fingertip's width away. Shift-drag extends the passage. A click places the
+playhead and leaves the passage alone; a double-click places it and plays from
+there.
 
 | Key | Action |
 |---|---|
-| <kbd>⌘A</kbd> | Select all |
-| <kbd>Esc</kbd> | Clear the selection |
-| <kbd>⇧←</kbd> <kbd>⇧→</kbd> | Extend the selection left / right |
-| <kbd>C</kbd> <kbd>V</kbd> | Move the whole selection left / right (250 ms) |
+| <kbd>⌘A</kbd> | The whole file becomes the passage |
+| <kbd>Esc</kbd> | Clear the loop |
+| <kbd>⇧←</kbd> <kbd>⇧→</kbd> | Extend the passage left / right — or start one at the playhead |
+| <kbd>C</kbd> <kbd>V</kbd> | Move the whole loop left / right (250 ms); <kbd>⇧C</kbd> <kbd>⇧V</kbd> too |
 | <kbd>⌥C</kbd> <kbd>⌥V</kbd> | Move it further (2 s) |
-| <kbd>G</kbd> | Turn the selection into the loop |
 
-Both move amounts are configurable in Settings, and the same amounts govern
-moving the loop.
+Both move amounts are configurable in Settings. On iPhone and iPad, **Clear Loop**
+is in the <kbd>⋯</kbd> menu and on a long press of the Loop button.
 
 ## Looping
 
@@ -137,11 +141,10 @@ every wrap is exactly zero.
 | <kbd>S</kbd> | Set loop out at the playhead |
 | <kbd>D</kbd> | Loop on / off |
 | <kbd>F</kbd> | Restart the loop |
-| <kbd>G</kbd> | Selection → loop |
 
 A loop region that exists but is switched off is still drawn, visibly inert —
-having set it is worth remembering. **Clear Loop** is in the **Loop** menu and
-has no key.
+having set it is worth remembering. **Clear Loop** is <kbd>Esc</kbd>, and in the
+**Loop** menu.
 
 ### Moving the loop
 
@@ -219,7 +222,7 @@ routing belongs to the system, via Control Centre.
 | <kbd>⇧Z</kbd> <kbd>⇧X</kbd> | Nudge finely (50 ms) |
 | <kbd>⌥Z</kbd> <kbd>⌥X</kbd> | Rewind / skip (10 s) — <kbd>⌥←</kbd> <kbd>⌥→</kbd> do the same |
 | <kbd>R</kbd> <kbd>E</kbd> | Zoom in / out, anchored on the playhead |
-| <kbd>⌘9</kbd> | Zoom to the selection — falls back to the loop when nothing is selected |
+| <kbd>⌘9</kbd> | Zoom to the loop |
 | <kbd>⌘0</kbd> | Fit the whole file |
 
 All three nudge amounts are configurable in **Settings ▸ Playback**.
@@ -316,7 +319,7 @@ read and edit these files.
 
 - **Preroll** — the resume rollback, in seconds with fractions; 0 turns it off.
 - **Navigation amounts** — the fine, normal and coarse nudge steps.
-- **Selection and loop movement** — the gentle and aggressive move steps.
+- **Loop movement** — the gentle and aggressive move steps.
 - **Zoom** — invert the drag and scroll direction.
 - **Theme** — system, light or dark. *System* follows the appearance macOS is set
   to and changes with it.
@@ -351,8 +354,8 @@ from, so it cannot fall out of step with what the keys actually do.
 
 ## Every shortcut
 
-Seventy-one actions. Every shortcut also appears beside its item in the menus —
-selection in **Edit**, looping in **Loop**, transport, speed, pitch, volume and
+Sixty-five actions. Every shortcut also appears beside its item in the menus —
+Select All in **Edit**, looping in **Loop**, transport, speed, pitch, volume and
 output device in **Playback**.
 
 <div class="table-scroll" markdown="1">
@@ -391,8 +394,9 @@ output device in **Playback**.
 | <kbd>S</kbd> | Set loop out | Loop |
 | <kbd>D</kbd> | Loop on / off | Loop |
 | <kbd>F</kbd> | Restart loop | Loop |
-| <kbd>G</kbd> | Selection → loop | Loop |
-| — | Clear loop | Loop |
+| <kbd>Esc</kbd> | Clear loop | Loop |
+| <kbd>⇧←</kbd> | Extend loop left | Loop |
+| <kbd>⇧→</kbd> | Extend loop right | Loop |
 | <kbd>⇧A</kbd> | Move loop in left | Loop |
 | <kbd>⇧S</kbd> | Move loop in right | Loop |
 | <kbd>⌥⇧A</kbd> | Move loop in left (far) | Loop |
@@ -401,22 +405,15 @@ output device in **Playback**.
 | <kbd>⇧F</kbd> | Move loop out right | Loop |
 | <kbd>⌥⇧D</kbd> | Move loop out left (far) | Loop |
 | <kbd>⌥⇧F</kbd> | Move loop out right (far) | Loop |
-| <kbd>⇧C</kbd> | Move loop left | Loop |
-| <kbd>⇧V</kbd> | Move loop right | Loop |
-| <kbd>⌥⇧C</kbd> | Move loop left (far) | Loop |
-| <kbd>⌥⇧V</kbd> | Move loop right (far) | Loop |
+| <kbd>C</kbd> or <kbd>⇧C</kbd> | Move loop left | Loop |
+| <kbd>V</kbd> or <kbd>⇧V</kbd> | Move loop right | Loop |
+| <kbd>⌥C</kbd> or <kbd>⌥⇧C</kbd> | Move loop left (far) | Loop |
+| <kbd>⌥V</kbd> or <kbd>⌥⇧V</kbd> | Move loop right (far) | Loop |
 | <kbd>⌥P</kbd> | Speed ramp on / off | Loop |
-| <kbd>⌘A</kbd> | Select all | Edit |
-| <kbd>Esc</kbd> | Clear selection | Edit |
-| <kbd>⇧←</kbd> | Extend selection left | Edit |
-| <kbd>⇧→</kbd> | Extend selection right | Edit |
-| <kbd>C</kbd> | Move selection left | Edit |
-| <kbd>V</kbd> | Move selection right | Edit |
-| <kbd>⌥C</kbd> | Move selection left (far) | Edit |
-| <kbd>⌥V</kbd> | Move selection right (far) | Edit |
+| <kbd>⌘A</kbd> | Select all (the whole file becomes the loop's passage) | Edit |
 | <kbd>⌘X</kbd> <kbd>⌘C</kbd> <kbd>⌘V</kbd> | Cut / copy / paste — in text fields | Edit |
 | <kbd>⌘0</kbd> | Fit whole file | View |
-| <kbd>⌘9</kbd> | Zoom to selection | View |
+| <kbd>⌘9</kbd> | Zoom to loop | View |
 | <kbd>R</kbd> | Zoom in | View |
 | <kbd>E</kbd> | Zoom out | View |
 | — | Scroll left / right | View |

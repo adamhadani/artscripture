@@ -80,9 +80,9 @@ description: >-
 
 <div class="feature">
   <p class="eyebrow">Keyboard-first</p>
-  <h2>Seventy-one actions, all under your hands</h2>
+  <h2>Sixty-five actions, all under your hands</h2>
   <p>
-    Transport, selection, looping, zoom, speed, pitch and volume are all keys —
+    Transport, looping, zoom, speed, pitch and volume are all keys —
     clustered so the whole transport sits under the left hand. Press
     <kbd>⌘/</kbd> for a separate window with the entire keymap drawn on a
     keyboard beside a searchable list. It <strong>follows the modifiers you
