@@ -282,11 +282,10 @@ struct WaveformLanesView: View {
             context.fill(
                 Path(CGRect(x: left, y: y, width: width, height: bar)), with: .color(colour))
         }
-        if state.loop.isEnabled {
-            context.fill(
-                Path(CGRect(x: left, y: 0, width: width, height: size.height)),
-                with: .color(palette.loop.color(opacity: 0.07)))
-        }
+        let wash = state.loop.isEnabled ? Palette.loopWashOpacity : Palette.loopWashDisabledOpacity
+        context.fill(
+            Path(CGRect(x: left, y: 0, width: width, height: size.height)),
+            with: .color(palette.loop.color(opacity: wash)))
         for x in [startX, endX] where x >= -2 && x <= size.width + 2 {
             context.fill(
                 Path(CGRect(x: x - 1, y: 0, width: 2, height: size.height)), with: .color(colour))

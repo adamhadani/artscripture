@@ -91,11 +91,6 @@ public struct Palette: Equatable, Sendable {
     /// Not the accent teal, which is spoken for by the playhead and the playing
     /// position and would make an altered speed look like a transport state.
     public var emphasis: RGB { selection }
-
-    /// How strongly the selection wash tints the lane. The light theme needs a
-    /// little more: the same alpha of a dark amber over near-white reads fainter
-    /// than a bright amber over near-black.
-    public let selectionFillOpacity: Double
     /// How far the overview strip fades what is outside the lens.
     public let veilOpacity: Double
 
@@ -115,7 +110,6 @@ public struct Palette: Equatable, Sendable {
         marker: RGB(0xE0_86C8),
         rule: RGB(0x2A_2D34),
         laneRule: RGB(0x13_1417),
-        selectionFillOpacity: 0.13,
         veilOpacity: 0.62)
 
     /// Studio paper: a cool neutral chrome with a near-white lane, and inks deep
@@ -136,7 +130,6 @@ public struct Palette: Equatable, Sendable {
         marker: RGB(0x9B_2C7A),
         rule: RGB(0xC9_CDD5),
         laneRule: RGB(0xC9_CDD5),
-        selectionFillOpacity: 0.16,
         veilOpacity: 0.72)
 
     public static func of(_ appearance: Appearance) -> Palette {
@@ -145,15 +138,18 @@ public struct Palette: Equatable, Sendable {
 
     // MARK: - Theme-independent geometry
 
-    static let selectionEdgeWidth: Double = 2
-
     /// Height of the bar drawn along the top and bottom of the lanes to mark the
-    /// loop region. A bar, not a full-height wash: the selection already owns
-    /// the full height, and two overlapping washes are unreadable.
+    /// loop region — and the loop body's grab band, which is why it is a bar.
     static let loopBarHeight: Double = 4
-    /// A loop region that exists but is switched off is still shown, because
-    /// having set it is worth remembering — just visibly inert.
-    static let loopDisabledOpacity: Double = 0.3
+    /// The range with looping off: the passage you just dragged out, one press
+    /// of Loop away from repeating. It was 0.3 while a separate selection did
+    /// the job of showing a fresh drag; as the only range it has to be plainly
+    /// visible (the 2026-11 screenshots: at 0.3 a new range's far edge all but
+    /// vanished), while still reading as *not* looping beside the full ink.
+    static let loopDisabledOpacity: Double = 0.6
+    /// The full-height wash inside the range: stronger while looping.
+    static let loopWashOpacity: Double = 0.07
+    static let loopWashDisabledOpacity: Double = 0.04
 }
 
 extension EnvironmentValues {
