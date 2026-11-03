@@ -212,9 +212,57 @@ struct AudioOutputInterruptionTests {
         #expect(transport.interruptions == 0)
         #expect(transport.resumes == 0)
         #expect(!transport.isPlaying)
-        // And the graph is left alone: there was nothing to stop, so stopping it
-        // would only have cost the next press of Space its instant start.
+        // And the graph is *not* reported as still running. This line used to
+        // assert the opposite — "there was nothing to stop" — which described a
+        // state iOS never leaves us in: an interruption has already stopped the
+        // engine and deactivated the session by the time we are told. Believing
+        // otherwise is the 2026-11 bug below.
+        #expect(!output.isRunning)
+    }
+
+    /// **The 2026-11 bug, reported from an iPhone.** Open a track, leave it
+    /// paused, switch to another app and play music there, come back, press
+    /// play: "Playback did not start: the audio render thread never reported
+    /// playing."
+    ///
+    /// The interruption arrived while the transport was paused, so the policy
+    /// rightly had nothing to pause and nothing to announce — and the graph's
+    /// own flag was left reading *running* over an engine iOS had already
+    /// stopped. The next `start()` saw the flag, returned at its guard, and
+    /// never re-claimed the session or restarted the engine.
+    @Test("an interruption while paused leaves a graph that the next play restarts")
+    func interruptionWhilePausedIsRestartedByTheNextStart() throws {
+        let transport = FakeTransport()
+        let (output, session) = try makeOutput(transport: transport)
+        try started(output)
+        #expect(session.activateCount == 1)
+
+        session.send(.interruptionBegan)
+        try output.start()
+
+        // The session was claimed again — another app holds it now — and the
+        // engine is genuinely running, not merely flagged as such.
+        #expect(session.activateCount == 2)
         #expect(output.isRunning)
+        #expect(output.avEngine.isRunning)
+    }
+
+    /// The same failure with no notification at all. iOS stops an engine on
+    /// paths that do not all announce themselves to a backgrounded app, and a
+    /// cached flag that disagrees with the engine is a play button that does
+    /// nothing. `start()` asks the engine, not its own memory of it.
+    @Test("start restarts an engine that stopped without telling us")
+    func startDoesNotTrustAStaleFlag() throws {
+        let (output, session) = try makeOutput(transport: FakeTransport())
+        try started(output)
+
+        // What the system does to us behind our back.
+        output.avEngine.stop()
+        try output.start()
+
+        #expect(output.avEngine.isRunning)
+        #expect(output.isRunning)
+        #expect(session.activateCount == 2)
     }
 
     /// The remembered flag is consumed, not left set. Otherwise a stray second
