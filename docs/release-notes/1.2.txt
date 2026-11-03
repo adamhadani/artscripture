@@ -1,0 +1,5 @@
+Looping in one step. Drag across the waveform to mark a passage, then tap Loop — that is the whole of it. Drag a new passage while looping and it loops straight away. Loop edges are easier to catch with a finger, and a tap only moves the playhead, so a loop you set is never cleared by accident. On iPhone and iPad, Clear Loop is in the ⋯ menu and on a long press of the Loop button.
+
+Tap the overview strip at the top to jump the playhead there.
+
+Fixed: after switching to another music app and back, pressing play could fail with "Playback did not start". It now plays.
