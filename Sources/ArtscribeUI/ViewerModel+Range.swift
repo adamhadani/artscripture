@@ -33,13 +33,21 @@ extension ViewerModel {
         loopIsStaged = true
     }
 
-    /// Hands a staged loop to the engine. A no-op when nothing is staged.
+    /// Hands a staged loop to the engine, through `applyLoop` — still the
+    /// app's one `.setLoop` path; its guard lets an unchanged-but-staged loop
+    /// through. A no-op when nothing is staged.
+    ///
+    /// **And if looping is on, playback goes to the new passage.** The engine
+    /// only captures a loop when playback *arrives* at it, so a passage dragged
+    /// out behind the playhead while looping would otherwise play on to the end
+    /// of the track — on touch, where a press never seeks, every time. One
+    /// deliberate seek on lift, as Transcribe! and Anytune do; never a reset at
+    /// the loop boundary, which is the thing CLAUDE.md forbids.
     func commitStagedLoop() {
         guard loopIsStaged else { return }
-        loopIsStaged = false
-        wrapTracker.reset()
-        session?.push(.setLoop(loop.range, loop.isEnabled))
-        markSessionEdited()
+        applyLoop(loop)
+        guard loop.isActive, !loop.range.contains(playhead) else { return }
+        seek(to: loop.range.start)
     }
 
     // MARK: - Moving the loop

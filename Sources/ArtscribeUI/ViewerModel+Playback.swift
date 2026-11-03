@@ -225,6 +225,9 @@ extension ViewerModel {
 
     /// Internal, not private: a nudge follows the playhead through this as well.
     func autoScroll() {
+        // Never under a finger: a page flip mid-drag would map the same finger
+        // position into a new viewport, a page away from where it is.
+        guard laneDragMode == nil else { return }
         guard let start = AutoScroll.pageStart(playhead: playhead, viewport: viewport, loop: loop)
         else { return }
         let delta = Double(start - viewport.startFrame) / viewport.framesPerPixel
@@ -327,8 +330,12 @@ extension ViewerModel {
         applyLoop(LoopEditing.settingOut(at: playhead, in: loop, totalFrames: totalFrames))
     }
 
+    /// Mirrors the menu's `.trackLoopToggle` enablement, which a key handled by
+    /// `onKeyPress` never consults: with no range and looping off there is
+    /// nothing to switch on, and switching it on would make the next drag
+    /// loop at once without anyone having asked.
     public func toggleLoop() {
-        guard hasTrack else { return }
+        guard hasTrack, !(loop.range.isEmpty && !loop.isEnabled) else { return }
         var next = loop
         next.isEnabled.toggle()
         applyLoop(next)
@@ -368,6 +375,7 @@ extension ViewerModel {
         wrapTracker.reset()
         // Takes effect on the next pass, not this one: the engine wraps at the
         // boundary it is fed, and never resets the stretcher there (spec §5.1).
+        loopPushes += 1
         session?.push(.setLoop(loop.range, loop.isEnabled))
         markSessionEdited()
     }

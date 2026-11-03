@@ -176,14 +176,12 @@ struct TransportBarView: View {
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
-        .contextMenu {
-            ForEach(control.contextActions, id: \.self) { id in
-                Button(ActionCatalog.entry(id).title, role: .destructive) {
-                    model.performContextAction(id)
-                }
-                .disabled(state.loopIsEmpty)
+        .modifier(
+            ContextActions(control: control, disabled: state.loopIsEmpty) { id in
+                model.performContextAction(id)
+                restoreFocus()
             }
-        }
+        )
         .help(control.tooltip(in: state))
         .accessibilityLabel(control.title(in: state))
         // Where this control landed, so the acceptance harness can click the
@@ -270,6 +268,28 @@ struct TransportBarView: View {
                 .frame(
                     width: readouts == .floor ? pitchLabelFloor : pitchLabelWidth,
                     alignment: .leading)
+        }
+    }
+}
+
+/// A transport button's long-press menu — attached only to a button that has
+/// one (`TransportControl.contextActions`), so a long press on the others does
+/// what it always did.
+private struct ContextActions: ViewModifier {
+    let control: TransportControl
+    let disabled: Bool
+    let perform: (ActionID) -> Void
+
+    func body(content: Content) -> some View {
+        if control.contextActions.isEmpty {
+            content
+        } else {
+            content.contextMenu {
+                ForEach(control.contextActions, id: \.self) { id in
+                    Button(ActionCatalog.entry(id).title, role: .destructive) { perform(id) }
+                        .disabled(disabled)
+                }
+            }
         }
     }
 }

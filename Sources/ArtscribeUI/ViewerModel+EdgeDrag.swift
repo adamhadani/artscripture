@@ -1,7 +1,13 @@
 import ArtscribeKit
 import CoreGraphics
 
-/// The loop and selection edges, dragged (Task 23).
+/// The loop's edges and body, dragged (Task 23).
+///
+/// **An edge moves by how far the pointer moved, and only once it has moved past
+/// the click slop** (2026-11). It used to jump to wherever the pointer was —
+/// harmless inside a pointer's 9 pt reach, but a finger's is 22, and every tap
+/// near a loop moved its edge, pushed it and saved it. Below the slop it is not
+/// a drag at all, and on touch it is a tap (`LaneDragPolicy.edgeTapIsAClick`).
 ///
 /// The arithmetic is all in `TimelineHandles`, which is pure and tested on its
 /// own; what lives here is the state machine — latching what was grabbed at
@@ -34,6 +40,12 @@ extension ViewerModel {
         /// the pointer took hold.
         let originalRange: FrameRange
         let grabOffset: FrameIndex
+        /// The frame under the pointer when it went down. An edge moves by the
+        /// pointer's travel from here, not to the pointer.
+        let grabbedFrame: FrameIndex
+        /// Whether the gesture has travelled past the click slop. Until then
+        /// nothing moves, and lifting there is a tap, not an edit.
+        public internal(set) var hasMoved = false
         /// The frame the guide and the readout show: the moving edge, or the
         /// region's new start for a body drag.
         public internal(set) var currentFrame: FrameIndex
@@ -70,13 +82,21 @@ extension ViewerModel {
         var drag =
             liveEdgeDrag(handle: handle, startPixel: startPixel)
             ?? beganEdgeDrag(handle: handle, atPixel: startPixel)
+        guard drag.hasMoved || abs(currentPixel - startPixel) >= Self.clickSlopPoints else {
+            edgeDrag = drag
+            return
+        }
+        drag.hasMoved = true
         let pointer = PixelMapping.frame(atPixel: currentPixel, in: viewport)
+        let travel = pointer - drag.grabbedFrame
         switch handle {
         case .loopStart, .loopEnd:
+            let edge = handle == .loopStart ? drag.originalRange.start : drag.originalRange.end
+            let moved = Swift.max(0, Swift.min(edge + travel, totalFrames))
             let range = TimelineHandles.resized(
-                anchor: drag.anchorFrame ?? pointer, to: pointer, totalFrames: totalFrames)
+                anchor: drag.anchorFrame ?? moved, to: moved, totalFrames: totalFrames)
             applyLoop(LoopRegion(range: range, isEnabled: loop.isEnabled))
-            drag.currentFrame = pointer
+            drag.currentFrame = moved
         case .loopBody:
             let range = TimelineHandles.moved(
                 drag.originalRange, toStart: pointer - drag.grabOffset, totalFrames: totalFrames)
@@ -112,6 +132,7 @@ extension ViewerModel {
             anchorFrame: TimelineHandles.anchor(for: handle, loop: loop),
             originalRange: region,
             grabOffset: grabbed - region.start,
+            grabbedFrame: grabbed,
             currentFrame: handle == .loopBody ? region.start : grabbed)
     }
 }

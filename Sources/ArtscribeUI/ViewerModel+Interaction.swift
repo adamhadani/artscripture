@@ -170,6 +170,9 @@ extension ViewerModel {
         guard abs(currentPixel - startPixel) >= Self.clickSlopPoints, let anchor = rangeAnchor
         else { return }
         let head = PixelMapping.frame(atPixel: currentPixel, in: viewport)
+        // Deep in, a few points can still be less than a frame; an empty range
+        // committed on lift would clear the loop rather than make a new one.
+        guard head != anchor else { return }
         let low = Swift.min(anchor, head)
         stageLoop(
             LoopRegion(

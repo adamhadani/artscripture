@@ -22,6 +22,23 @@
 /// `make check` instead of one per platform build.
 public enum LaneDragPolicy {
 
+    /// Whether a press on a loop handle that never moves is a **tap** — seek
+    /// there, and a double tap plays — rather than a grab that did nothing.
+    ///
+    /// **With a finger, yes.** A finger's reach is 22 pt either side of an edge
+    /// (`ControlMetrics.handleReach`), so over a short loop almost every tap
+    /// lands on a handle; treating those as grabs swallowed the tap.
+    ///
+    /// **With a pointer, no**, as Task 23 decided: its reach is 9 pt, the
+    /// cursor has already turned into the resize arrows to say "this is an
+    /// edge", and a click there is someone aiming at the edge.
+    public static func edgeTapIsAClick(on surface: EmptyStatePrompt.Surface) -> Bool {
+        switch surface {
+        case .desktop: return false
+        case .tabletWithDrop, .phone: return true
+        }
+    }
+
     public static func seeksOnPress(on surface: EmptyStatePrompt.Surface) -> Bool {
         switch surface {
         case .desktop: return true

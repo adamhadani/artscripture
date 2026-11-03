@@ -6,7 +6,7 @@ import Waveform
 
 @testable import ArtscribeUI
 
-/// Task 23 at the model level: the loop and selection edges dragged through the
+/// Task 23 at the model level: the loop's edges dragged through the
 /// same door the real `DragGesture` uses, `laneDragChanged`/`laneDragEnded`.
 ///
 /// The half worth guarding hardest is not that an edge moves — it is that
@@ -45,7 +45,6 @@ struct ViewerModelEdgeDragTests {
             range: FrameRange(start: frame(200), count: frame(400)), isEnabled: true)
     }
 
-    /// A selection from 700 pt to 900 pt, clear of the loop above.
     /// One gesture, walked the way `DragGesture` walks it: an `onChanged` per
     /// step with a stable `startLocation`, then an `onEnded`.
     private func drag(

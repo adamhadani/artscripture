@@ -35,7 +35,6 @@ struct TimelineHandleTests {
             isEnabled: enabled)
     }
 
-    /// A selection from 700 pt to 900 pt — clear of the loop above.
     private func handle(
         atPoint x: Double,
         y: Double = laneHeight / 2,

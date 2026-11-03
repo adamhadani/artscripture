@@ -9,7 +9,7 @@ import Waveform
 /// Everything the viewer window shows, and every action it can perform.
 ///
 /// The view layer reads this and calls its methods; it never mutates `Viewport`
-/// or `Selection` directly, so there is exactly one place where a state change
+/// or the loop directly, so there is exactly one place where a state change
 /// can invalidate the cached waveform bitmap.
 @MainActor
 @Observable
@@ -288,7 +288,7 @@ public final class ViewerModel {
     /// identifies one gesture across its events. `@ObservationIgnored` for the
     /// same reason as `zoomDrag`: nothing draws from it.
     @ObservationIgnored var laneDragStart: CGPoint?
-    /// The loop or selection handle being dragged, if one is (Task 23).
+    /// The loop handle being dragged, if one is (Task 23).
     ///
     /// Observed, unlike `zoomDrag` and `laneDragStart`: the guide line and the
     /// live time readout are drawn from it, so it has to invalidate. See
@@ -308,15 +308,13 @@ public final class ViewerModel {
     /// range drag *also moves it* on a pointer.
     @ObservationIgnored var loopBeforeLaneDrag: LoopRegion?
 
-    /// The edge of the range that holds still while the other one moves: where
-    /// a drag began, or the edge a `⇧`-arrow is extending away from. `nil`
-    /// when nothing has set one, and then the range's start is assumed.
+    /// The edge that holds still while the other moves (a drag's start, or what
+    /// a `⇧`-arrow extends from). `nil` means the range's start.
     @ObservationIgnored var rangeAnchor: FrameIndex?
-
-    /// The loop as drawn has moved on from the loop the engine was last told
-    /// about — a range being dragged out, committed when the finger lifts. See
-    /// `stageLoop`.
+    /// The drawn loop is ahead of the engine's — a drag not yet lifted (`stageLoop`).
     @ObservationIgnored var loopIsStaged = false
+    /// `.setLoop` pushes, counted: a test seam for "once, on lift".
+    @ObservationIgnored var loopPushes = 0
     @ObservationIgnored var playheadBeforeLaneDrag: FrameIndex?
     @ObservationIgnored var laneDragCancelled = false
 

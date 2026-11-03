@@ -1,6 +1,6 @@
 import ArtscribeKit
 
-/// What `A`, `S` and `G` do to the loop region.
+/// What `A` and `S` do to the loop region.
 ///
 /// The whole of the interesting behaviour is what happens when the two edges
 /// cross, which a transcriber hits constantly: set the out point, then decide the
