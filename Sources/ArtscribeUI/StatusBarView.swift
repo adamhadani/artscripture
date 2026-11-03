@@ -29,12 +29,14 @@ struct StatusBarView: View {
         // `StatusBarFields.candidates` *is* the priority. The last candidate is
         // the essential three, which always fits anything worth calling a
         // window.
+        //
+        // A `ForEach`, never literal indices: those named five arrangements
+        // over a list whose length follows `dropOrder`, and when the Selection
+        // field went (2026-11) the bar trapped "Index out of range" on launch.
         ViewThatFits(in: .horizontal) {
-            row(StatusBarFields.candidates[0])
-            row(StatusBarFields.candidates[1])
-            row(StatusBarFields.candidates[2])
-            row(StatusBarFields.candidates[3])
-            row(StatusBarFields.candidates[4])
+            ForEach(StatusBarFields.candidates.indices, id: \.self) { index in
+                row(StatusBarFields.candidates[index])
+            }
         }
         .padding(.horizontal, Metrics.gutter)
         .padding(.top, Metrics.md + bottomInset / 2)

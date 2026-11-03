@@ -87,4 +87,19 @@ struct StatusBarFieldsTests {
             "the narrowest arrangement still needs \(narrowest) pt, so a small window clips")
         #expect(narrowest < widest)
     }
+
+    /// **The crash this exists for.** `StatusBarView` named its arrangements as
+    /// `candidates[0]` … `candidates[4]`, five literal indices over a list whose
+    /// length follows `dropOrder`. Removing the Selection field (2026-11) made it
+    /// four, and the app trapped "Index out of range" the moment the bar was
+    /// built — found by the acceptance run, invisible to every unit test because
+    /// nothing evaluated the view. Evaluating `body` runs `ViewThatFits`' content
+    /// closure, which is exactly where it trapped.
+    @MainActor
+    @Test("the status bar builds every arrangement there is, whatever their number")
+    func theViewBuildsWithTheCurrentCandidates() {
+        let view = StatusBarView(model: ViewerModel())
+        _ = view.body
+        #expect(StatusBarFields.candidates.count == StatusBarFields.dropOrder.count + 1)
+    }
 }
