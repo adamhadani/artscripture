@@ -269,7 +269,7 @@ extension AcceptanceRun {
         model: ViewerModel, ruler: CGRect, log: inout Logger
     ) async {
         model.fitWholeFile()
-        model.clearSelection()
+        model.clearLoop()
         model.seek(to: 0)
         // A quarter across, so anchoring on the playhead (frame 0, far left)
         // would be unmistakable.
@@ -298,7 +298,7 @@ extension AcceptanceRun {
             "the ruler drag holds its anchor under the pointer "
                 + "(\(rounded(anchorX - ruler.minX)) pt -> \(rounded(landed)) pt)",
             abs(landed - (anchorX - ruler.minX)) <= 2)
-        log.check("a ruler drag selects nothing", model.selection.isEmpty)
+        log.check("a ruler drag selects nothing", model.loop.range.isEmpty)
         log.check("and does not move the playhead", model.playhead == 0)
 
         // The other direction. A second gesture starts from where the viewport
@@ -321,15 +321,16 @@ extension AcceptanceRun {
         model: ViewerModel, lanes: CGRect, log: inout Logger
     ) async {
         model.fitWholeFile()
-        model.clearSelection()
+        model.clearLoop()
 
-        // 1. Plain drag still selects, and selects exactly the dragged pixels.
+        // 1. A plain drag still marks a range — the loop — of exactly the
+        //    dragged pixels.
         let fromX = lanes.minX + 200
         let toX = lanes.minX + 520
         let expected = PixelMapping.range(fromPixel: 200, toPixel: 520, in: model.viewport)
         await pointerDrag(
             from: CGPoint(x: fromX, y: lanes.midY), to: CGPoint(x: toX, y: lanes.midY))
-        let selected = model.selection.range
+        let selected = model.loop.range
         log.check("a real plain drag in the lanes selects", !selected.isEmpty)
         log.check("and selects exactly the dragged pixels", selected == expected)
 
@@ -342,22 +343,22 @@ extension AcceptanceRun {
             from: CGPoint(x: toX + 40, y: lanes.midY),
             to: CGPoint(x: lanes.minX + 800, y: lanes.midY))
         await setModifier(shiftKey, flags: .maskShift, down: false)
-        let extended = model.selection.range
+        let extended = model.loop.range
         log.check(
             "Shift really reached the gesture", heldShift,
             unless: heldShift
                 ? nil : "a synthesised flagsChanged did not reach NSEvent.modifierFlags"
         )
         log.check(
-            "a real Shift-drag extends the selection instead of restarting it "
+            "a real Shift-drag extends the range instead of restarting it "
                 + "(\(selected.start)…\(selected.end) -> \(extended.start)…\(extended.end))",
             extended.start == selected.start && extended.end > selected.end,
             unless: heldShift ? nil : "Shift never reached the process")
 
-        // 3. ⌥-drag zooms, and takes nothing away from the selection.
+        // 3. ⌥-drag zooms, and takes nothing away from the range.
         model.fitWholeFile()
         let fitted = model.zoomFactor
-        let keptSelection = model.selection.range
+        let keptRange = model.loop.range
         let keptPlayhead = model.playhead
         let anchorX = lanes.minX + lanes.width * 0.4
         let travel = ViewerModel.zoomDragPointsPerDoubling
@@ -376,11 +377,11 @@ extension AcceptanceRun {
             model.zoomFactor > fitted * 1.2, unless: optionReason)
         log.check(
             "and makes no selection while doing it",
-            model.selection.range == keptSelection, unless: optionReason)
+            model.loop.range == keptRange, unless: optionReason)
         log.check(
             "and leaves the playhead alone", model.playhead == keptPlayhead,
             unless: optionReason)
         model.fitWholeFile()
-        model.clearSelection()
+        model.clearLoop()
     }
 }

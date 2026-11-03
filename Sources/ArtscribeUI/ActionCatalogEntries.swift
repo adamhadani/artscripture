@@ -84,10 +84,20 @@ extension ActionCatalog {
         ActionEntry(
             .loopRestart, "Restart Loop", .loop,
             chords: [.key("f")], menu: .loop, enablement: .trackLoop),
+        // `Esc` was Clear Selection. With one range, deselecting and clearing
+        // the loop are the same act (design 2026-11-03).
         ActionEntry(
-            .loopFromSelection, "Selection → Loop", .loop,
-            chords: [.key("g")], menu: .loop, enablement: .trackSelection),
-        ActionEntry(.loopClear, "Clear Loop", .loop, menu: .loop, enablement: .trackLoop)
+            .loopClear, "Clear Loop", .loop,
+            chords: [KeyChord(.escape)], menu: .loop, enablement: .trackLoop),
+        // On the arrows ⇧ extends the range, following the macOS text-editing
+        // convention; on Z/X it means a finer step. Spec §6.2 records why the
+        // two clusters differ on purpose.
+        ActionEntry(
+            .loopExtendLeft, "Extend Loop Left", .loop,
+            chords: [KeyChord(.leftArrow, .shift)], menu: .loop, enablement: .track),
+        ActionEntry(
+            .loopExtendRight, "Extend Loop Right", .loop,
+            chords: [KeyChord(.rightArrow, .shift)], menu: .loop, enablement: .track)
     ]
 
     /// The twelve `loop.move` items. `A S D F` is the loop row and reads left to
@@ -102,16 +112,22 @@ extension ActionCatalog {
         loopMove(.loopMoveOutRight, "Move Loop Out Right", .key("f", .shift)),
         loopMove(.loopMoveOutLeftFar, "Move Loop Out Left (Far)", .key("d", [.shift, .option])),
         loopMove(.loopMoveOutRightFar, "Move Loop Out Right (Far)", .key("f", [.shift, .option])),
-        loopMove(.loopMoveLeft, "Move Loop Left", .key("c", .shift)),
-        loopMove(.loopMoveRight, "Move Loop Right", .key("v", .shift)),
-        loopMove(.loopMoveLeftFar, "Move Loop Left (Far)", .key("c", [.shift, .option])),
-        loopMove(.loopMoveRightFar, "Move Loop Right (Far)", .key("v", [.shift, .option]))
+        // `C`/`V` and `⌥C`/`⌥V` moved the selection; with one range they move
+        // the loop, and the loop's own ⇧ chords stay as aliases.
+        loopMove(.loopMoveLeft, "Move Loop Left", .key("c"), .key("c", .shift)),
+        loopMove(.loopMoveRight, "Move Loop Right", .key("v"), .key("v", .shift)),
+        loopMove(
+            .loopMoveLeftFar, "Move Loop Left (Far)", .key("c", .option),
+            .key("c", [.shift, .option])),
+        loopMove(
+            .loopMoveRightFar, "Move Loop Right (Far)", .key("v", .option),
+            .key("v", [.shift, .option]))
     ]
 
     private static func loopMove(
-        _ id: ActionID, _ title: String, _ chord: KeyChord
+        _ id: ActionID, _ title: String, _ chords: KeyChord...
     ) -> ActionEntry {
-        ActionEntry(id, title, .loop, chords: [chord], menu: .loop, enablement: .trackLoop)
+        ActionEntry(id, title, .loop, chords: chords, menu: .loop, enablement: .trackLoop)
     }
 
     // MARK: - Playback ▸ speed
@@ -190,36 +206,14 @@ extension ActionCatalog {
             chords: [.key("m")], menu: .playback, enablement: .track, kind: .toggle)
     ]
 
-    // MARK: - Edit ▸ selection
+    // MARK: - Edit ▸ Select All
 
+    /// `⌘A` makes the whole file the range. In Edit, where every Mac app keeps
+    /// it — and where its invoker hands ⌘A to a text field being edited.
     static let selectionEntries: [ActionEntry] = [
         ActionEntry(
-            .selectionSelectAll, "Select All", .selection,
-            chords: [.key("a", .command)], menu: .edit, enablement: .track),
-        ActionEntry(
-            .selectionClear, "Clear Selection", .selection,
-            chords: [KeyChord(.escape)], menu: .edit, enablement: .track),
-        // On the arrows ⇧ extends the selection, following the macOS
-        // text-editing convention; on Z/X it means a finer step. Spec §6.2
-        // records why the two clusters differ on purpose.
-        ActionEntry(
-            .selectionExtendLeft, "Extend Selection Left", .selection,
-            chords: [KeyChord(.leftArrow, .shift)], menu: .edit, enablement: .track),
-        ActionEntry(
-            .selectionExtendRight, "Extend Selection Right", .selection,
-            chords: [KeyChord(.rightArrow, .shift)], menu: .edit, enablement: .track),
-        ActionEntry(
-            .selectionMoveLeft, "Move Selection Left", .selection,
-            chords: [.key("c")], menu: .edit, enablement: .track),
-        ActionEntry(
-            .selectionMoveRight, "Move Selection Right", .selection,
-            chords: [.key("v")], menu: .edit, enablement: .track),
-        ActionEntry(
-            .selectionMoveLeftFar, "Move Selection Left (Far)", .selection,
-            chords: [.key("c", .option)], menu: .edit, enablement: .track),
-        ActionEntry(
-            .selectionMoveRightFar, "Move Selection Right (Far)", .selection,
-            chords: [.key("v", .option)], menu: .edit, enablement: .track)
+            .loopSelectAll, "Select All", .loop,
+            chords: [.key("a", .command)], menu: .edit, enablement: .track)
     ]
 
     // MARK: - View
@@ -235,9 +229,8 @@ extension ActionCatalog {
             // "there is nothing to zoom to" was a nicety; making one of two
             // adjacent zoom commands focus-sensitive and the other not was a
             // bug. The command guards itself.
-            .zoomToSelection, "Zoom to Selection", .view,
-            chords: [.key("9", .command)], menu: .view,
-            note: "Falls back to the loop when nothing is selected"),
+            .zoomToLoop, "Zoom to Loop", .view,
+            chords: [.key("9", .command)], menu: .view),
         ActionEntry(
             .zoomIn, "Zoom In", .view,
             chords: [.key("r")], menu: .view, enablement: .documentKey),

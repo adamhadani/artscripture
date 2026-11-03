@@ -78,23 +78,14 @@ public enum MenuPlan {
         .action(.editCopy),
         .action(.editPaste),
         .separator,
-        .action(.selectionSelectAll),
-        .action(.selectionClear),
-        .separator,
-        .action(.selectionExtendLeft),
-        .action(.selectionExtendRight),
-        .separator,
-        .action(.selectionMoveLeft),
-        .action(.selectionMoveRight),
-        .action(.selectionMoveLeftFar),
-        .action(.selectionMoveRightFar)
+        .action(.loopSelectAll)
     ]
 
     /// Into the *standard* View menu (`CommandGroup(after: .toolbar)`) rather
     /// than a second one of our own, which would sit beside it in the menu bar.
     static let view: [MenuEntry] = [
         .action(.zoomFit),
-        .action(.zoomToSelection),
+        .action(.zoomToLoop),
         .separator,
         .action(.zoomIn),
         .action(.zoomOut),
@@ -159,8 +150,9 @@ public enum MenuPlan {
         .action(.loopSetOut),
         .action(.loopToggle),
         .action(.loopRestart),
+        .action(.loopExtendLeft),
+        .action(.loopExtendRight),
         .separator,
-        .action(.loopFromSelection),
         .action(.loopClear),
         .separator,
         // Task 21. Its own block: it is the only item here that runs over time

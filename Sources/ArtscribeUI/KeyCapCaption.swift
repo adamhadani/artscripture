@@ -35,10 +35,6 @@ enum KeyCapCaption {
         "Play from Start": "From Start",
         "Nudge Back (Fine)": "Nudge ← fine",
         "Nudge Forward (Fine)": "Nudge → fine",
-        "Move Selection Left": "Sel. ←",
-        "Move Selection Right": "Sel. →",
-        "Move Selection Left (Far)": "Sel. ← far",
-        "Move Selection Right (Far)": "Sel. → far",
         "Move Loop In Left": "Loop In ←",
         "Move Loop In Right": "Loop In →",
         "Move Loop Out Left": "Loop Out ←",
@@ -59,6 +55,9 @@ enum KeyCapCaption {
     /// Words too long for a key cap, and what they become on one. Deliberately
     /// tiny: an abbreviation the reader has to decode is worse than a wrap, so
     /// this earns entries one at a time.
+    ///
+    /// "Selection" no longer appears in any catalog title (the loop became the
+    /// only range in 2026-11); it stays as the mechanism's one worked example.
     static let abbreviations = ["Selection": "Sel."]
 
     /// The smallest a caption may be drawn relative to the board's own size.

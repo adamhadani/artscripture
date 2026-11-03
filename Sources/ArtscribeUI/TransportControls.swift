@@ -15,7 +15,6 @@ public struct TransportState: Equatable, Sendable {
     public var loopIsEmpty = true
     public var loopIsEnabled = false
     public var prerollIsEnabled = true
-    public var selectionIsEmpty = true
     public var speedRatio = 1.0
 
     public init() {}
@@ -46,14 +45,11 @@ public enum TransportControl: String, CaseIterable, Sendable, Hashable {
     /// The coarse tier forwards — "Skip" in the Playback menu.
     case skip
     case playFromStart
-    /// **The button a touch-only device cannot do without.**
-    ///
-    /// Dragging out a selection is the first thing anyone does to a waveform,
-    /// and until this existed it dead-ended: the region was drawn, it was not a
-    /// loop, and `.loop` only *toggles* one — it is disabled outright while the
-    /// loop is empty and looping is off. The keyboard had `L`; a phone has no
-    /// keyboard and iPadOS's menu bar needs one.
-    case loopFromSelection
+    /// Turns looping on and off for the range — the one button between a drag
+    /// and a repeating bar. There used to be a *Selection → Loop* button before
+    /// it, because a drag made a selection rather than a loop; since the loop
+    /// became the only range (2026-11) a drag *is* the loop, and this is all a
+    /// touch-only device needs.
     case loop
     case preroll
     case slower
@@ -66,7 +62,7 @@ public enum TransportControl: String, CaseIterable, Sendable, Hashable {
     public static let groups: [[TransportControl]] = [
         [.rewind, .nudgeBackward, .playPause, .nudgeForward, .skip],
         [.playFromStart],
-        [.loopFromSelection, .loop, .preroll],
+        [.loop, .preroll],
         [.slower, .faster],
         [.zoomOut, .zoomIn]
     ]
@@ -91,19 +87,9 @@ public enum TransportControl: String, CaseIterable, Sendable, Hashable {
         .nudgeForward: Face(shortcut: "X", title: "Nudge Forward", symbol: "forward.frame.fill"),
         .skip: Face(shortcut: "⌥X", title: "Skip", symbol: "forward.fill"),
         .playFromStart: Face(
-            // Not "from Selection Start": since Task 22 it also aims at an
-            // active loop's in point when there is no selection.
+            // To the range's start (the loop, looping or not), else the file's.
             shortcut: "⇧Space", title: "Play from Start",
             symbol: "backward.end.fill"),
-        .loopFromSelection: Face(
-            // `selection.pin.in.out` rather than a second `repeat` glyph: this
-            // acts on the *selection*, and two repeat symbols side by side would
-            // read as two ways of doing the same thing.
-            //
-            // `repeat.badge.plus` was the first choice and does not exist —
-            // caught by `every control names a real SF Symbol`, which is exactly
-            // why that test walks `allCases`.
-            shortcut: "G", title: "Selection → Loop", symbol: "selection.pin.in.out"),
         .loop: Face(shortcut: "D", title: "Loop", symbol: "repeat"),
         // `arrow.uturn.backward` reads as "start a little earlier" rather than
         // as a rewind, which `backward.fill` next to it already owns.
@@ -168,10 +154,6 @@ public enum TransportControl: String, CaseIterable, Sendable, Hashable {
         guard state.hasTrack else { return false }
         switch self {
         case .loop: return !(state.loopIsEmpty && !state.loopIsEnabled)
-        // Nothing to make a loop out of. Disabled rather than hidden: a control
-        // that appears when you happen to have a selection is one you never
-        // learn is there.
-        case .loopFromSelection: return !state.selectionIsEmpty
         default: return true
         }
     }
@@ -198,7 +180,6 @@ extension ViewerModel {
         state.loopIsEmpty = loop.range.isEmpty
         state.loopIsEnabled = loop.isEnabled
         state.prerollIsEnabled = prefs.prerollEnabled
-        state.selectionIsEmpty = selection.isEmpty
         state.speedRatio = speed.ratio
         return state
     }
@@ -234,7 +215,6 @@ extension ViewerModel {
     /// next omission into a build error instead of a silent dead button.
     private func performSpeedOrView(_ control: TransportControl) {
         switch control {
-        case .loopFromSelection: loopFromSelection()
         case .loop: toggleLoop()
         case .preroll: togglePreroll()
         case .slower: slower(fine: false)

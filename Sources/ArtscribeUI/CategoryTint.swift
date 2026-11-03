@@ -27,7 +27,6 @@ extension ActionCategory {
         .transport: RGB(0x4F_D1C5),  // teal — the accent, and the transport is the app
         .navigation: RGB(0x5F_C2EE),  // sky
         .loop: RGB(0xB4_A6F8),  // violet, the loop's colour on the lanes
-        .selection: RGB(0xF0_A35E),  // amber, the selection's colour on the lanes
         .speed: RGB(0xE9_CE6A),  // gold
         .volume: RGB(0x86_D992),  // green
         .view: RGB(0x9A_B2EE),  // periwinkle
@@ -41,7 +40,6 @@ extension ActionCategory {
         .transport: RGB(0x08_6259),
         .navigation: RGB(0x0F_5C7E),
         .loop: RGB(0x53_40C4),
-        .selection: RGB(0x8A_4B05),
         .speed: RGB(0x6B_5304),
         .volume: RGB(0x18_663A),
         .view: RGB(0x33_468F),

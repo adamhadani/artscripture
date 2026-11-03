@@ -36,34 +36,23 @@ struct TimelineHandleTests {
     }
 
     /// A selection from 700 pt to 900 pt — clear of the loop above.
-    private func selection() -> Selection {
-        Selection(anchor: frame(atPoint: 700), head: frame(atPoint: 900))
-    }
-
     private func handle(
         atPoint x: Double,
         y: Double = laneHeight / 2,
-        loop: LoopRegion = LoopRegion(),
-        selection: Selection = Selection()
+        loop: LoopRegion = LoopRegion()
     ) -> TimelineHandle? {
         TimelineHandles.handle(
             at: CGPoint(x: x, y: y), laneHeight: Self.laneHeight, loop: loop,
-            selection: selection, viewport: viewport())
+            viewport: viewport())
     }
 
     // MARK: - Nothing to grab
 
-    @Test("with no loop and no selection there is nothing to grab anywhere")
+    @Test("with no loop there is nothing to grab anywhere")
     func emptyTimelineOffersNoHandle() {
         for x in stride(from: 0.0, through: 1000.0, by: 50) {
             #expect(handle(atPoint: x) == nil)
         }
-    }
-
-    @Test("an empty selection has no edges, even at the frame it collapsed to")
-    func emptySelectionOffersNoHandle() {
-        let collapsed = Selection(anchor: frame(atPoint: 500), head: frame(atPoint: 500))
-        #expect(handle(atPoint: 500, selection: collapsed) == nil)
     }
 
     // MARK: - Loop edges
@@ -103,48 +92,15 @@ struct TimelineHandleTests {
         #expect(handle(atPoint: 300, loop: none) == nil)
     }
 
-    // MARK: - Selection edges
-
-    @Test("the selection's edges are grabbable the same way")
-    func selectionEdgesAreGrabbable() {
-        #expect(handle(atPoint: 700, selection: selection()) == .selectionStart)
-        #expect(handle(atPoint: 900, selection: selection()) == .selectionEnd)
-        #expect(handle(atPoint: 800, selection: selection()) == nil)
-    }
-
-    /// A selection dragged out backwards has the same edges: the handle is
-    /// decided by where the edge *is*, not by which end was the anchor.
-    @Test("a backwards selection offers the same two edges")
-    func backwardsSelectionOffersTheSameEdges() {
-        let backwards = Selection(anchor: frame(atPoint: 900), head: frame(atPoint: 700))
-        #expect(handle(atPoint: 700, selection: backwards) == .selectionStart)
-        #expect(handle(atPoint: 900, selection: backwards) == .selectionEnd)
-    }
-
-    // MARK: - The overlap, which `G` makes routine
-
-    /// `G` copies the selection into the loop, so the two regions coincide
-    /// exactly. One of the four edges under the pointer has to win, and it is
-    /// the loop's: the loop is the persistent setting that changes what you
-    /// hear, while a selection can be redrawn with one plain drag anywhere.
-    @Test("with a loop and a selection on the same frame, the loop's edge wins")
-    func loopWinsAnExactTie() {
-        let together = selection()
-        let asLoop = LoopRegion(range: together.range, isEnabled: true)
-        #expect(handle(atPoint: 700, loop: asLoop, selection: together) == .loopStart)
-        #expect(handle(atPoint: 900, loop: asLoop, selection: together) == .loopEnd)
-    }
-
-    /// Within the zone the *nearer* edge wins, so neither is ever unreachable
-    /// when the two are merely close rather than identical.
-    @Test("when two edges are close but not equal, the nearer one wins")
+    /// Within reach the *nearer* edge wins, so neither edge of a short loop is
+    /// ever unreachable.
+    @Test("when both edges of a short loop are in reach, the nearer one wins")
     func nearerEdgeWins() {
-        let nearby = Selection(anchor: frame(atPoint: 205), head: frame(atPoint: 900))
-        // 202 is 2 pt from the loop's edge at 200 and 3 pt from the selection's
-        // at 205.
-        #expect(handle(atPoint: 202, loop: loop(), selection: nearby) == .loopStart)
-        // 204 is the other way about.
-        #expect(handle(atPoint: 204, loop: loop(), selection: nearby) == .selectionStart)
+        let short = LoopRegion(
+            range: FrameRange(start: frame(atPoint: 200), count: frame(atPoint: 10)),
+            isEnabled: true)
+        #expect(handle(atPoint: 203, loop: short) == .loopStart)
+        #expect(handle(atPoint: 208, loop: short) == .loopEnd)
     }
 
     // MARK: - The loop body
@@ -177,7 +133,7 @@ struct TimelineHandleTests {
         let handleAt = { (y: Double) in
             TimelineHandles.handle(
                 at: CGPoint(x: 400, y: y), laneHeight: short, loop: self.loop(),
-                selection: Selection(), viewport: self.viewport())
+                viewport: self.viewport())
         }
         #expect(handleAt(1) == .loopBody)
         #expect(handleAt(short - 1) == .loopBody)
@@ -195,33 +151,18 @@ struct TimelineHandleTests {
         #expect(handle(atPoint: 800, y: 2, loop: loop()) == nil)
     }
 
-    /// Edges before bodies: a selection edge that happens to fall inside the
-    /// loop's top bar is still an edge, and edges are the precise handles.
-    @Test("a selection edge inside the loop's bar still beats the body")
-    func edgesBeatTheBody() {
-        let inside = Selection(anchor: frame(atPoint: 400), head: frame(atPoint: 500))
-        #expect(handle(atPoint: 400, y: 2, loop: loop(), selection: inside) == .selectionStart)
-    }
-
     // MARK: - The anchor a drag pivots on
 
     @Test("each edge handle pivots on its opposite number")
     func anchorsAreTheOppositeEdge() {
         let loop = loop()
-        let selection = selection()
         #expect(
-            TimelineHandles.anchor(for: .loopStart, loop: loop, selection: selection)
+            TimelineHandles.anchor(for: .loopStart, loop: loop)
                 == loop.range.end)
         #expect(
-            TimelineHandles.anchor(for: .loopEnd, loop: loop, selection: selection)
+            TimelineHandles.anchor(for: .loopEnd, loop: loop)
                 == loop.range.start)
-        #expect(
-            TimelineHandles.anchor(for: .selectionStart, loop: loop, selection: selection)
-                == selection.range.end)
-        #expect(
-            TimelineHandles.anchor(for: .selectionEnd, loop: loop, selection: selection)
-                == selection.range.start)
-        #expect(TimelineHandles.anchor(for: .loopBody, loop: loop, selection: selection) == nil)
+        #expect(TimelineHandles.anchor(for: .loopBody, loop: loop) == nil)
     }
 
     // MARK: - Resizing from one edge
@@ -304,7 +245,7 @@ struct TimelineHandleTests {
     private func handle(atX x: Double, y: Double, reach: HandleReach) -> TimelineHandle? {
         TimelineHandles.handle(
             at: CGPoint(x: x, y: y), laneHeight: Self.laneHeight, loop: loop(),
-            selection: Selection(), viewport: viewport(), reach: reach)
+            viewport: viewport(), reach: reach)
     }
 
     @Test("a finger catches a loop edge 20 points away")

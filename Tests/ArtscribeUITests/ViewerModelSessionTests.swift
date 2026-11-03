@@ -74,12 +74,14 @@ struct ViewerModelSessionTests {
         #expect(!model.isDirty)
     }
 
-    @Test("selecting is not an edit")
+    /// It used to be the opposite: a selection was transient and selecting was
+    /// not an edit. The range a drag marks *is* the loop now (2026-11), and the
+    /// loop is what a sidecar saves, so marking one is an edit like any other.
+    @Test("marking a range is an edit, because the range is the loop")
     func selectionIsNotAnEdit() throws {
         let model = SessionTestModel.make(try SessionScratch())
-        model.selectAll()
-        model.extendSelection(.backward)
-        #expect(!model.isDirty)
+        model.loopWholeFile()
+        #expect(model.isDirty)
     }
 
     @Test("the volume is not part of the session and is not an edit")

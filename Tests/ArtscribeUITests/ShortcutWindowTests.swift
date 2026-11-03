@@ -198,7 +198,8 @@ struct ShortcutWindowTests {
     /// the shortcut for Stop", because there is not one. The list has to.
     @Test("an action with no shortcut is still findable in the list")
     func unboundActionsAreListed() {
-        for id in [ActionID.transportStop, .loopClear, .viewScrollLeft, .viewScrollRight] {
+        // Clear Loop left this list in 2026-11, when it took `Esc`.
+        for id in [ActionID.transportStop, .viewScrollLeft, .viewScrollRight] {
             let entry = ActionCatalog.entry(id)
             #expect(entry.chords.isEmpty, "\(id.rawValue) was expected to have no chord")
             let found = ShortcutSearch.grouped(query: entry.title).flatMap(\.entries).map(\.id)

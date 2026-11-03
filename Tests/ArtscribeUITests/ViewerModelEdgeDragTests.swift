@@ -46,10 +46,6 @@ struct ViewerModelEdgeDragTests {
     }
 
     /// A selection from 700 pt to 900 pt, clear of the loop above.
-    private func withSelection(_ model: ViewerModel) {
-        model.selection = Selection(anchor: frame(700), head: frame(900))
-    }
-
     /// One gesture, walked the way `DragGesture` walks it: an `onChanged` per
     /// step with a stable `startLocation`, then an `onEnded`.
     private func drag(
@@ -111,18 +107,15 @@ struct ViewerModelEdgeDragTests {
             model.loop.range == FrameRange(start: frame(200), count: Self.totalFrames - frame(200)))
     }
 
-    /// Grabbing an edge is not clicking on the waveform: it must not seek, must
-    /// not clear the selection, and must not chain into a double-click.
-    @Test("a loop edge drag leaves the playhead and the selection alone")
+    /// Grabbing an edge is not clicking on the waveform: it must not seek, and
+    /// must not chain into a double-click.
+    @Test("a loop edge drag leaves the playhead alone")
     func loopEdgeDragTouchesNothingElse() {
         let model = makeModel()
         withLoop(model)
-        withSelection(model)
         model.seek(to: frame(50))
-        let selectionBefore = model.selection
         drag(model, from: CGPoint(x: 200, y: midLane), toX: 300)
         #expect(model.playhead == frame(50))
-        #expect(model.selection == selectionBefore)
     }
 
     @Test("two edge grabs in quick succession are not a double-click")
@@ -164,57 +157,28 @@ struct ViewerModelEdgeDragTests {
         #expect(model.loop.range.end == Self.totalFrames)
     }
 
-    // MARK: - Selection edges
+    // MARK: - A dragged-out range is the loop
 
-    @Test("dragging a selection edge moves that edge only")
-    func selectionEdgeFollowsTheDrag() {
+    /// Until 2026-11 a drag made a *selection* with edges of its own. It makes
+    /// the loop now, so the edges a drag leaves behind are loop edges.
+    @Test("the edges of a range just dragged out are the loop's, and drag as such")
+    func aDraggedRangeHasLoopEdges() {
         let model = makeModel()
-        withSelection(model)
-        drag(model, from: CGPoint(x: 700, y: midLane), toX: 600)
-        #expect(model.selection.range == FrameRange(start: frame(600), count: frame(300)))
-        drag(model, from: CGPoint(x: 900, y: midLane), toX: 950)
-        #expect(model.selection.range == FrameRange(start: frame(600), count: frame(350)))
-    }
-
-    @Test("a selection edge dragged past the other swaps rather than collapsing")
-    func selectionEdgesSwap() {
-        let model = makeModel()
-        withSelection(model)
-        drag(model, from: CGPoint(x: 700, y: midLane), toX: 950)
-        #expect(model.selection.range == FrameRange(start: frame(900), count: frame(50)))
-    }
-
-    @Test("a selection edge drag does not move the playhead")
-    func selectionEdgeDragLeavesThePlayhead() {
-        let model = makeModel()
-        withSelection(model)
-        model.seek(to: frame(50))
-        drag(model, from: CGPoint(x: 700, y: midLane), toX: 600)
-        #expect(model.playhead == frame(50))
-    }
-
-    /// `G` puts the loop exactly on top of the selection. The loop's edge wins,
-    /// so this drag has to move the loop and leave the selection where it was.
-    @Test("with the loop on top of the selection, the drag takes the loop")
-    func loopWinsWhenTheyCoincide() {
-        let model = makeModel()
-        withSelection(model)
-        model.loopFromSelection()
-        let selectionBefore = model.selection
+        drag(model, from: CGPoint(x: 700, y: midLane), toX: 900)
+        #expect(model.loop.range == FrameRange(start: frame(700), count: frame(200)))
         drag(model, from: CGPoint(x: 700, y: midLane), toX: 600)
         #expect(model.loop.range == FrameRange(start: frame(600), count: frame(300)))
-        #expect(model.selection == selectionBefore)
     }
 
     // MARK: - Everything that was already there
 
-    @Test("a plain drag through the middle of the loop still selects")
+    @Test("a plain drag through the middle of the loop replaces it, and it keeps looping")
     func plainDragInsideTheLoopStillSelects() {
         let model = makeModel()
         withLoop(model)
         drag(model, from: CGPoint(x: 300, y: midLane), toX: 500)
-        #expect(model.selection.range == FrameRange(start: frame(300), count: frame(200)))
-        #expect(model.loop.range == FrameRange(start: frame(200), count: frame(400)))
+        #expect(model.loop.range == FrameRange(start: frame(300), count: frame(200)))
+        #expect(model.loop.isEnabled)
     }
 
     /// The escape hatch, and the reason a modifier outranks a handle: ⌥ on top
@@ -238,27 +202,24 @@ struct ViewerModelEdgeDragTests {
         #expect(model.loop.range == FrameRange(start: frame(200), count: frame(400)))
     }
 
-    /// And ⇧ on top of a selection edge still extends from the existing anchor,
-    /// which is what keeps a selection edge reachable even when a loop edge is
-    /// sitting exactly on it.
-    @Test("a Shift-drag starting on a selection edge still extends the selection")
+    /// And ⇧ on top of a loop edge still extends, from the far edge — ⇧
+    /// outranks a handle exactly as ⌥ does.
+    @Test("a Shift-drag starting on a loop edge extends the range rather than grabbing the edge")
     func shiftOnAnEdgeStillExtends() {
         let model = makeModel()
-        withSelection(model)
-        let anchorBefore = model.selection.anchor
-        drag(model, from: CGPoint(x: 700, y: midLane), toX: 950, shift: true)
-        #expect(model.selection.anchor == anchorBefore)
-        #expect(model.selection.head == frame(950))
+        withLoop(model)
+        drag(model, from: CGPoint(x: 600, y: midLane), toX: 950, shift: true)
+        #expect(model.loop.range == FrameRange(start: frame(200), count: frame(750)))
     }
 
-    @Test("a click well away from any edge still places the playhead and clears the selection")
+    @Test("a click well away from any edge still places the playhead and keeps the loop")
     func plainClickStillWorks() {
         let model = makeModel()
         withLoop(model)
-        withSelection(model)
+        let loop = model.loop
         drag(model, from: CGPoint(x: 400, y: midLane), toX: 400)
         #expect(model.playhead == frame(400))
-        #expect(model.selection.isEmpty)
+        #expect(model.loop == loop)
     }
 
     // MARK: - The live readout

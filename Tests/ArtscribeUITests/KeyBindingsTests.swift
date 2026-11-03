@@ -76,7 +76,7 @@ struct KeyBindingsTests {
         let shifted = KeyChord.fromPress(
             character: KeyEquivalent.rightArrow.character,
             modifiers: [.numericPad, .capsLock, .shift])
-        #expect(KeyBindings.windowAction(for: shifted) == .selectionExtendRight)
+        #expect(KeyBindings.windowAction(for: shifted) == .loopExtendRight)
     }
 
     /// Preserved from `DocumentView.handleLoop`, which recorded the reasoning:

@@ -79,7 +79,9 @@ struct StatusBarFieldsTests {
         let widest = width(StatusBarFields.candidates[0])
         let narrowest = width(StatusBarFields.candidates[StatusBarFields.candidates.count - 1])
 
-        #expect(widest > 1100, "the full row is \(widest) pt — the drop logic is not needed")
+        // 994 pt since the Selection field went (2026-11) — still wider than an
+        // iPhone's landscape safe area, so the drop logic still earns its place.
+        #expect(widest > 900, "the full row is \(widest) pt — the drop logic is not needed")
         #expect(
             narrowest < 560,
             "the narrowest arrangement still needs \(narrowest) pt, so a small window clips")

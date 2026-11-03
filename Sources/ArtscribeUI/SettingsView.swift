@@ -201,7 +201,7 @@ struct NudgeSettingsTab: View {
                 }
             }
         } header: {
-            Text("Selection and loop movement")
+            Text("Loop movement")
         } footer: {
             // The range is stated once, under the amounts above; repeating it
             // verbatim would cost a pane's worth of height to say nothing new.

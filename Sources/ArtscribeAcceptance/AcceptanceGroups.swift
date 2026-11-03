@@ -31,7 +31,7 @@ extension AcceptanceRun {
         case shortcuts
         case transport
         case navigation
-        case selection
+        case range
         case loop
         case playback
         case start
@@ -47,7 +47,7 @@ extension AcceptanceRun {
             switch self {
             case .pointer: "real pointer drags in the ruler and the waveform lanes"
             case .cursor: "the cursors that advertise the zoom and drag gestures"
-            case .edge: "dragging loop and selection edges, hovering them, and mid-playback"
+            case .edge: "dragging loop edges, hovering them, and mid-playback"
             case .zoom: "zoom anchoring, deep zoom, pan clamping, trackpad, wheel, drag, direction"
             case .theme: "the speed readout's emphasis and the three theme settings"
             case .menu: "File, View, Edit and Loop menus, Open Recent, and item enablement"
@@ -56,7 +56,7 @@ extension AcceptanceRun {
             case .transport: "the transport bar's buttons, focus, and the loop button's prominence"
             case .navigation:
                 "Z/X nudge tiers, their clamps and menu items, and the Settings window"
-            case .selection: "drag to select, zoom to selection, moving and extending a selection"
+            case .range: "drag out a range (the loop), zoom to it, moving and extending it"
             case .loop: "moving the whole loop, its walls, and its inversion guard"
             case .playback: "transport, volume, speed, seamless looping, auto-scroll, Playback menu"
             case .start: "Shift-Space's precedence rule and double-click-to-play"
@@ -99,7 +99,7 @@ extension AcceptanceRun {
             case .shortcuts: 24
             case .transport: 20
             case .navigation: 42
-            case .selection: 15
+            case .range: 15
             case .loop: 20
             case .playback: 105
             case .start: 16

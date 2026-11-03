@@ -1,23 +1,23 @@
 import ArtscribeKit
 import CoreGraphics
 
-/// Everything the user can do to the view: zoom, pan, and select.
+/// Everything the user can do to the view: zoom, pan, and mark a range.
 ///
 /// Split out of `ViewerModel` so the state and loading half stays readable. All
 /// of it is deliberately guarded — calling any of these without a loaded track,
-/// or with an empty selection, is a no-op rather than an error, because the menu
+/// or with an empty range, is a no-op rather than an error, because the menu
 /// bar can invoke them at any time.
 extension ViewerModel {
 
     public func zoomIn() { zoom(by: Self.zoomStep) }
     public func zoomOut() { zoom(by: 1 / Self.zoomStep) }
 
-    /// Zoom always anchors on the playhead (or the selection start when there is
-    /// one) — never the viewport centre, which slides the thing you are looking
-    /// at out from under the pointer.
-    public var zoomAnchor: FrameIndex {
-        selection.isEmpty ? playhead : selection.range.start
-    }
+    /// Zoom always anchors on the playhead — never the viewport centre, which
+    /// slides the thing you are looking at out from under the pointer (spec
+    /// §6.1). It used to prefer a selection's start; the range that replaced the
+    /// selection is the loop, which persists, and anchoring every zoom on it
+    /// would move the anchor away from the playhead for as long as a loop is set.
+    public var zoomAnchor: FrameIndex { playhead }
 
     public func zoom(by factor: Double, anchorFrame: FrameIndex? = nil) {
         guard hasTrack else { return }
@@ -130,21 +130,11 @@ extension ViewerModel {
         zoomDrag = nil
     }
 
-    // MARK: - Selection
+    // MARK: - The range
 
-    public func clearSelection() {
-        guard !selection.isEmpty else { return }
-        selection.clear()
-    }
-
-    public func selectAll() {
-        guard hasTrack else { return }
-        selection.begin(at: 0)
-        selection.extend(to: totalFrames)
-    }
-
-    /// A drag in the waveform lane. `extending` is shift-drag: it keeps the
-    /// existing anchor and moves only the head.
+    /// A drag in the waveform lane, which marks *the* range — the loop, since
+    /// the 2026-11 change that removed the separate selection. `extending` is
+    /// shift-drag: it keeps the far edge and moves the near one.
     ///
     /// The "is this a new drag" check compares against `startPixel` rather than
     /// testing `dragOrigin == nil`. `DragGesture.Value.startLocation` is stable
@@ -152,34 +142,44 @@ extension ViewerModel {
     /// gesture started — this is self-correcting even if `dragEnded` never ran
     /// (a cancelled gesture, or another gesture winning the recognizer race),
     /// where a nil-only check would leave `dragOrigin` stuck from the previous
-    /// drag and silently extend its selection from a stale anchor.
+    /// drag and silently extend its range from a stale anchor.
+    ///
+    /// **Nothing is staged until the gesture moves past the click slop.** A
+    /// touch-down arrives here as a change (`DragGesture(minimumDistance: 0)`),
+    /// and a range begun on it would replace a playing loop with an empty one
+    /// on every tap. The range is *staged* — drawn, not yet played — and
+    /// `dragEnded` commits it; see `stageLoop`.
     public func dragChanged(startPixel: Double, currentPixel: Double, extending: Bool) {
         guard hasTrack else { return }
         if dragOrigin != startPixel {
             dragOrigin = startPixel
-            if extending && !selection.isEmpty {
-                // Keep the anchor; the head follows the pointer.
+            let pressed = PixelMapping.frame(atPixel: startPixel, in: viewport)
+            if extending && !loop.range.isEmpty {
+                let range = loop.range
+                let startIsFarther = abs(pressed - range.start) > abs(pressed - range.end)
+                rangeAnchor = startIsFarther ? range.start : range.end
             } else {
-                let frame = PixelMapping.frame(atPixel: startPixel, in: viewport)
-                selection.begin(at: frame)
+                rangeAnchor = pressed
                 // **Not on touch.** See `LaneDragPolicy`: a finger going down is
                 // the start of a gesture nobody has decided the meaning of yet,
                 // and seeking there interrupts playback exactly when someone is
-                // reaching for a passage to mark. A tap still seeks, from
-                // `dragEnded`.
-                //
-                // `seek`, not a bare assignment: with playback wired, moving the
-                // playhead without telling the engine would have the next display
-                // poll snap it straight back.
-                if prefs.seeksOnSelectionPress { seek(to: frame) }
+                // reaching for a passage. A tap still seeks, from `dragEnded`.
+                if prefs.seeksOnSelectionPress { seek(to: pressed) }
             }
         }
-        selection.extend(to: PixelMapping.frame(atPixel: currentPixel, in: viewport))
+        guard abs(currentPixel - startPixel) >= Self.clickSlopPoints, let anchor = rangeAnchor
+        else { return }
+        let head = PixelMapping.frame(atPixel: currentPixel, in: viewport)
+        let low = Swift.min(anchor, head)
+        stageLoop(
+            LoopRegion(
+                range: FrameRange(start: low, count: Swift.max(anchor, head) - low),
+                isEnabled: loop.isEnabled))
     }
 
     /// Ends a drag. A drag that never really moved is a click: it places the
-    /// playhead and clears the selection, and two of them in quick succession do
-    /// that **and start playing from there**.
+    /// playhead and leaves the range alone, and two of them in quick succession
+    /// do that **and start playing from there**.
     ///
     /// Double-click was Select All until Task 22. `⌘A` still is, so nothing was
     /// lost — only the gesture was reassigned, to the thing a transcriber
@@ -215,16 +215,20 @@ extension ViewerModel {
     public func dragEnded(startPixel: Double, endPixel: Double, now: Double) {
         defer { dragOrigin = nil }
         guard hasTrack else { return }
-        guard abs(endPixel - startPixel) < Self.clickSlopPoints else {
+        // A range that was drawn is the range you get, even if the pointer
+        // wandered back inside the slop before letting go.
+        guard abs(endPixel - startPixel) < Self.clickSlopPoints, !loopIsStaged else {
             lastClick = nil
+            commitStagedLoop()
             return
         }
         // Cleared, not advanced: consuming it is what stops a third click from
         // chaining into another double-click.
         let isDouble = isSecondClick(at: endPixel, now: now)
         lastClick = isDouble ? nil : (endPixel, now)
+        // The range is kept: a tap is about the playhead, and a loop set on
+        // purpose is not a tap's to clear (design 2026-11-03, decision 3).
         seek(to: PixelMapping.frame(atPixel: endPixel, in: viewport))
-        selection.clear()
         if isDouble { play() }
     }
 

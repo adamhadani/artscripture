@@ -250,7 +250,7 @@ extension ViewerModel {
         let rewind = TransportLatch.rewindTarget(
             playhead: playhead, totalFrames: totalFrames, reachedEnd: reachedEnd,
             loopActive: loop.isActive,
-            selectionStart: selection.isEmpty ? nil : selection.range.start)
+            rangeStart: loop.range.isEmpty ? nil : loop.range.start)
         if let rewind { seek(to: rewind) }
         do {
             try session.start()
@@ -290,7 +290,7 @@ extension ViewerModel {
     /// that counts.
     public func returnToStart() {
         guard hasTrack else { return }
-        seek(to: PlaybackStart.target(selection: selection, loop: loop))
+        seek(to: PlaybackStart.target(loop: loop))
     }
 
     /// The single place the playhead moves by user action. Both halves matter:
@@ -327,11 +327,6 @@ extension ViewerModel {
         applyLoop(LoopEditing.settingOut(at: playhead, in: loop, totalFrames: totalFrames))
     }
 
-    public func loopFromSelection() {
-        guard hasTrack else { return }
-        applyLoop(LoopEditing.fromSelection(selection.range, in: loop, totalFrames: totalFrames))
-    }
-
     public func toggleLoop() {
         guard hasTrack else { return }
         var next = loop
@@ -354,6 +349,7 @@ extension ViewerModel {
 
     public func clearLoop() {
         guard hasTrack else { return }
+        rangeAnchor = nil
         applyLoop(LoopRegion())
     }
 
@@ -362,7 +358,9 @@ extension ViewerModel {
     /// it too — the alternative would be a second way to reach the render
     /// thread, which spec §5 does not have.
     func applyLoop(_ next: LoopRegion) {
-        guard next != loop else { return }
+        // A staged loop equal to `next` has still not reached the engine.
+        guard next != loop || loopIsStaged else { return }
+        loopIsStaged = false
         loop = next
         // The geometry the wrap detector measures against has just changed, so
         // its remembered position is from a different region: a loop dragged

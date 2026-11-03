@@ -100,15 +100,15 @@ struct TransportLatchTests {
         #expect(
             TransportLatch.rewindTarget(
                 playhead: 44_100, totalFrames: 44_100, reachedEnd: true, loopActive: false,
-                selectionStart: nil) == 0)
+                rangeStart: nil) == 0)
     }
 
-    @Test("a rewind lands on the selection start when there is a selection")
-    func rewindsToSelection() {
+    @Test("a rewind lands on the range start when there is a range")
+    func rewindsToTheRange() {
         #expect(
             TransportLatch.rewindTarget(
                 playhead: 44_100, totalFrames: 44_100, reachedEnd: true, loopActive: false,
-                selectionStart: 12_000) == 12_000)
+                rangeStart: 12_000) == 12_000)
     }
 
     @Test("a playhead parked exactly at the end rewinds even without a prior end-of-file")
@@ -116,7 +116,7 @@ struct TransportLatchTests {
         #expect(
             TransportLatch.rewindTarget(
                 playhead: 44_100, totalFrames: 44_100, reachedEnd: false, loopActive: false,
-                selectionStart: nil) == 0)
+                rangeStart: nil) == 0)
     }
 
     @Test("an active loop never rewinds: the engine wraps into the loop by itself")
@@ -124,7 +124,7 @@ struct TransportLatchTests {
         #expect(
             TransportLatch.rewindTarget(
                 playhead: 44_100, totalFrames: 44_100, reachedEnd: true, loopActive: true,
-                selectionStart: nil) == nil)
+                rangeStart: nil) == nil)
     }
 
     @Test("resuming mid-file does not rewind")
@@ -132,6 +132,6 @@ struct TransportLatchTests {
         #expect(
             TransportLatch.rewindTarget(
                 playhead: 20_000, totalFrames: 44_100, reachedEnd: false, loopActive: false,
-                selectionStart: 12_000) == nil)
+                rangeStart: 12_000) == nil)
     }
 }

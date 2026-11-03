@@ -39,10 +39,10 @@ extension AcceptanceRun {
                 titles.contains { $0.hasPrefix(expected) || $0.contains(expected) })
         }
 
-        // Task 18 split the menu. Anything that answers to Loop or to the
-        // selection has to have *left* — an action in two menus is one that can
-        // fire twice, or that greys out in one place and not the other.
-        for moved in ["Set Loop In", "Set Loop Out", "Restart Loop", "Selection", "Select All"] {
+        // Task 18 split the menu. Anything that answers to Loop or to Edit has
+        // to have *left* — an action in two menus is one that can fire twice, or
+        // that greys out in one place and not the other.
+        for moved in ["Set Loop In", "Set Loop Out", "Restart Loop", "Extend Loop", "Select All"] {
             log.check(
                 "\(moved) is no longer in the Playback menu",
                 !titles.contains { $0.hasPrefix(moved) })
@@ -156,23 +156,27 @@ extension AcceptanceRun {
         let titles = menu.items.map(\.title).filter { !$0.isEmpty }
         log.note("Loop menu", titles.joined(separator: " | "))
         for expected in [
-            "Set Loop In", "Set Loop Out", "Loop", "Restart Loop", "Selection", "Clear Loop"
+            "Set Loop In", "Set Loop Out", "Loop", "Restart Loop", "Extend Loop Left",
+            "Extend Loop Right", "Clear Loop"
         ] {
             log.check(
                 "the Loop menu carries \(expected)", titles.contains { $0.hasPrefix(expected) })
         }
 
-        model.clearSelection()
+        log.check(
+            "there is no Selection → Loop any more — a drag is the loop",
+            !titles.contains { $0.hasPrefix("Selection") })
+        model.clearLoop()
         await refresh(menu)
         log.check(
-            "Selection → Loop is disabled with no selection",
-            item(menu, "Selection")?.isEnabled == false)
-        model.selectAll()
+            "Clear Loop is disabled with no range", item(menu, "Clear Loop")?.isEnabled == false)
+        model.loopWholeFile()
         await refresh(menu)
         log.check(
-            "Selection → Loop enables as soon as there is a selection (the ⌘9 trap)",
-            item(menu, "Selection")?.isEnabled == true)
-        model.clearSelection()
+            "and enables as soon as there is one (the ⌘9 trap)",
+            item(menu, "Clear Loop")?.isEnabled == true)
+        await checkPlainKeyItemsStandDown(menu, log: &log)
+        model.clearLoop()
         await checkLoopMoveMenuItems(menu, log: &log)
     }
 
@@ -206,10 +210,12 @@ extension AcceptanceRun {
             Expected("Move Loop Out Right", "f", .shift),
             Expected("Move Loop Out Left (Far)", "d", [.shift, .option]),
             Expected("Move Loop Out Right (Far)", "f", [.shift, .option]),
-            Expected("Move Loop Left", "c", .shift),
-            Expected("Move Loop Right", "v", .shift),
-            Expected("Move Loop Left (Far)", "c", [.shift, .option]),
-            Expected("Move Loop Right (Far)", "v", [.shift, .option])
+            // The menu shows the first chord: `C`/`V` since the one-range change,
+            // with ⇧C/⇧V kept as aliases (`checkLoopMovement` fires both).
+            Expected("Move Loop Left", "c", []),
+            Expected("Move Loop Right", "v", []),
+            Expected("Move Loop Left (Far)", "c", .option),
+            Expected("Move Loop Right (Far)", "v", .option)
         ]
         for want in expected {
             // Exact-prefix match: "Move Loop In Left" must not be satisfied by
@@ -229,8 +235,8 @@ extension AcceptanceRun {
         }
     }
 
-    /// The **Edit** menu (Task 18): the selection actions, where macOS
-    /// convention puts them.
+    /// The **Edit** menu (Task 18): Select All, where macOS convention puts it.
+    /// The selection's other items moved to Loop with the one-range change.
     ///
     /// The two things measured here could not be reasoned about, and one of
     /// them was wrong on the first attempt: SwiftUI builds an Edit menu of its
@@ -246,13 +252,10 @@ extension AcceptanceRun {
         await refresh(menu)
         let titles = menu.items.map(\.title).filter { !$0.isEmpty }
         log.note("Edit menu", titles.joined(separator: " | "))
-        for expected in [
-            "Select All", "Clear Selection", "Extend Selection Left", "Extend Selection Right",
-            "Move Selection Left", "Move Selection Right"
-        ] {
-            log.check(
-                "the Edit menu carries \(expected)", titles.contains { $0.hasPrefix(expected) })
-        }
+        log.check("the Edit menu carries Select All", titles.contains { $0 == "Select All" })
+        log.check(
+            "and nothing named for the selection that went (\(titles.joined(separator: ", ")))",
+            !titles.contains { $0.contains("Selection") })
         log.check(
             "there is exactly one Select All (\(titles.filter { $0 == "Select All" }.count))",
             titles.filter { $0 == "Select All" }.count == 1)
@@ -269,27 +272,21 @@ extension AcceptanceRun {
                 "the Edit menu still carries \(expected)",
                 titles.contains { $0.hasPrefix(expected) })
         }
-        await checkSelectionItemsStandDown(menu, log: &log)
-
-        // The move amounts are in the titles, like the nudge amounts.
-        let gentle = NudgeAmounts.label(seconds: model.prefs.selectionMoveAmounts[.gentle])
-        log.check(
-            "the move items name their amount (\(gentle))",
-            titles.contains { $0.hasPrefix("Move Selection Left") && $0.hasSuffix(gentle) })
     }
 
     /// `C`, `V` and `Esc` are **plain** key equivalents, offered to the menu
     /// before the key window's first responder — so with Settings open, typing
-    /// `c` into an amount field would move the selection instead of typing.
+    /// `c` into an amount field would move the loop instead of typing.
     ///
     /// The remedy is the same one the Playback menu uses: a disabled item
-    /// claims nothing. This measures that the whole selection block really does
-    /// go dead when the document is not the key window, and comes back.
+    /// claims nothing. This measures that those items really do go dead when
+    /// the document is not the key window, and come back. Needs a range, or the
+    /// loop items are disabled for a reason that proves nothing.
     @MainActor
-    private static func checkSelectionItemsStandDown(
+    private static func checkPlainKeyItemsStandDown(
         _ menu: NSMenu, log: inout Logger
     ) async {
-        let watched = ["Move Selection Left", "Clear Selection", "Extend Selection Left"]
+        let watched = ["Move Loop Left", "Clear Loop", "Extend Loop Left"]
         KeyWindowTracker.shared.forcedDocumentIsKey = false
         await refresh(menu)
         let dead = watched.allSatisfy { item(menu, $0)?.isEnabled == false }
@@ -297,7 +294,7 @@ extension AcceptanceRun {
         await refresh(menu)
         let alive = watched.allSatisfy { item(menu, $0)?.isEnabled == true }
         log.check(
-            "the selection items go dead while another window holds the keyboard "
+            "the plain-key loop items go dead while another window holds the keyboard "
                 + "— C, V and Esc are plain keys over Settings' fields", dead)
         log.check("and come back when the document holds it again", alive)
     }

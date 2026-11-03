@@ -137,24 +137,24 @@ extension AcceptanceRun {
         }
     }
 
-    /// `selection`, `menu`'s two region menus, and `loop`.
+    /// `range`, `menu`'s two region menus, and `loop`.
     @MainActor
     static func runRegionGroups(
         model: ViewerModel, log: inout Logger, run: Inputs
     ) async {
-        if log.running(.selection) {
-            await checkSelection(model: model, log: &log)
+        if log.running(.range) {
+            await checkRangeDrag(model: model, log: &log)
             await settle(seconds: 0.2)
-            snapshot(to: "\(run.outputDirectory)/03-selection.png")
+            snapshot(to: "\(run.outputDirectory)/03-range.png")
 
-            await checkZoomToSelection(model: model, log: &log)
+            await checkZoomToLoop(model: model, log: &log)
             await settle(seconds: 0.2)
-            snapshot(to: "\(run.outputDirectory)/04-zoom-to-selection.png")
+            snapshot(to: "\(run.outputDirectory)/04-zoom-to-loop.png")
 
-            // Task 18: the selection moves and extends. Deliberately *after*
-            // `checkZoomToSelection`, which reads the selection this leaves
-            // cleared — measured, as a ⌘9 check that framed an empty range.
-            await checkSelectionMovement(model: model, log: &log)
+            // Task 18: the range moves and extends. Deliberately *after*
+            // `checkZoomToLoop`, which reads the range this leaves cleared —
+            // measured, as a ⌘9 check that framed an empty range.
+            await checkRangeMovement(model: model, log: &log)
         }
         if log.running(.menu) {
             await checkEditMenu(model: model, log: &log)

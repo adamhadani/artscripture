@@ -93,8 +93,6 @@ struct StatusBarView: View {
             self.field(
                 "LOOP", loopText, emphasised: model.loop.isActive,
                 tint: model.loop.isActive ? palette.loop.color() : nil)
-        case .selection:
-            self.field("SELECTION", selectionText)
         case .zoom:
             self.field("ZOOM", zoom)
         case .format:
@@ -185,16 +183,6 @@ struct StatusBarView: View {
         let factor = model.zoomFactor
         let fppText = fpp < 10 ? String(format: "%.2f", fpp) : String(format: "%.0f", fpp)
         return "\(fppText) f/px · \(String(format: "%.1f", factor))x"
-    }
-
-    private var selectionText: String {
-        let range = model.selection.range
-        guard model.hasTrack, !range.isEmpty else { return "none" }
-        let rate = model.sampleRate
-        let start = TimeCode.coarse(frames: range.start, sampleRate: rate)
-        let span = TimeCode.precise(
-            seconds: TimeCode.seconds(frames: range.count, sampleRate: rate))
-        return "\(span) @ \(start)"
     }
 
     /// The render-thread counters. Stays on screen once it has appeared: these

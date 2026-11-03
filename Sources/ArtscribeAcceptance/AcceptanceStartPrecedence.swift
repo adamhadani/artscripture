@@ -26,7 +26,7 @@ extension AcceptanceRun {
     /// the transport in a state the next case would have to undo.
     ///
     /// **This is also where "`⇧Space` takes no preroll" is checked.** Every aim
-    /// point below is asserted by exact equality against a selection start or a
+    /// point below is asserted by exact equality against a range start or a
     /// loop in point far past Task 29's default 2 s, so a preroll leaking into
     /// this key would fail three of these four cases outright.
     ///
@@ -51,15 +51,14 @@ extension AcceptanceRun {
             return aim
         }
 
-        // 1. Neither.
+        // 1. No range at all.
         model.clearLoop()
-        model.clearSelection()
         let neither = await aimOfShiftSpace()
-        log.check("⇧Space with no selection and no loop aims at the track start", neither == 0)
+        log.check("⇧Space with no range aims at the track start", neither == 0)
 
-        // 2. An active loop, no selection. This is the case the user reported:
-        //    it used to aim at 0 and let the engine drag the cursor into the
-        //    region, which is what made the app read as two competing rules.
+        // 2. An active loop. This is the case the user reported: it used to aim
+        //    at 0 and let the engine drag the cursor into the region, which is
+        //    what made the app read as two competing rules.
         model.seek(to: quarter)
         press(.a)
         model.seek(to: half)
@@ -69,40 +68,38 @@ extension AcceptanceRun {
         log.check(
             "A, S and D really set an active loop (\(loopStart)…\(model.loop.range.end))",
             model.loop.isActive && loopStart > 0)
-        model.clearSelection()
         let loopOnly = await aimOfShiftSpace()
         log.check(
-            "⇧Space with an active loop and no selection aims at the loop's in point "
+            "⇧Space with an active loop aims at the loop's in point "
                 + "(\(loopOnly) vs \(loopStart))",
             loopOnly == loopStart)
 
-        // 3. Both. The selection outranks the loop, so the aim point does not
-        //    depend on where the loop happens to sit.
+        // 3. A drag while looping: it replaces the loop, and looping stays on
+        //    (design 2026-11-03), so the new range's start is the aim.
         model.dragChanged(startPixel: 300, currentPixel: 300, extending: false)
         model.dragChanged(startPixel: 300, currentPixel: 520, extending: false)
         model.dragEnded(
             startPixel: 300, endPixel: 520, now: ProcessInfo.processInfo.systemUptime)
-        let selectionStart = model.selection.range.start
+        let rangeStart = model.loop.range.start
         log.check(
-            "a drag really made a selection distinct from the loop's in point",
-            !model.selection.isEmpty && selectionStart != loopStart)
-        let both = await aimOfShiftSpace()
+            "a drag while looping replaces the loop and keeps it looping "
+                + "(\(rangeStart) vs the old \(loopStart))",
+            model.loop.isActive && rangeStart != loopStart)
+        let replaced = await aimOfShiftSpace()
         log.check(
-            "⇧Space with both a selection and an active loop aims at the selection start "
-                + "(\(both) vs selection \(selectionStart), loop \(loopStart))",
-            both == selectionStart)
+            "⇧Space aims at the new range's start (\(replaced) vs \(rangeStart))",
+            replaced == rangeStart)
 
-        // 4. A loop that exists but is switched off must not steer anything:
-        //    `isActive`, not `isEnabled`.
+        // 4. Looping switched off: the range is still the passage you marked,
+        //    as a selection used to be, so ⇧Space still aims at its start.
         press(.d)
-        log.check("D really switched the loop off", !model.loop.isActive)
-        model.clearSelection()
+        log.check("D really switched looping off", !model.loop.isActive)
         let disabled = await aimOfShiftSpace()
         log.check(
-            "a loop the user switched off does not steer ⇧Space (\(disabled))", disabled == 0)
+            "with looping off ⇧Space still aims at the range's start (\(disabled))",
+            disabled == rangeStart)
 
         model.clearLoop()
-        model.clearSelection()
         model.seek(to: 0)
     }
 
@@ -113,9 +110,9 @@ extension AcceptanceRun {
     /// real click comes through — so `DragGesture(minimumDistance: 0)`, the click
     /// state machine and the transport are all under test rather than assumed.
     ///
-    /// Deliberately set up with a selection *and* an active loop in place, which
-    /// is where B has to compose with A: `⇧Space` would aim at the selection
-    /// start, and a double-click must not. The first click lands inside the loop,
+    /// Deliberately set up with an active loop in place, which is where B has to
+    /// compose with A: `⇧Space` would aim at the loop's in point, and a
+    /// double-click must not. The first click lands inside the loop,
     /// so neither candidate start can be what put the playhead there; the last
     /// pair of clicks lands past the out point, which is Task 24 A's case 3.
     @MainActor
@@ -140,14 +137,9 @@ extension AcceptanceRun {
         model.seek(to: model.totalFrames * 4 / 5)
         press(.s)
         if !model.loop.isActive { press(.d) }
-        model.dragChanged(startPixel: 100, currentPixel: 100, extending: false)
-        model.dragChanged(startPixel: 100, currentPixel: 260, extending: false)
-        model.dragEnded(startPixel: 100, endPixel: 260, now: ProcessInfo.processInfo.systemUptime)
-        let selectionStart = model.selection.range.start
+        let loopBefore = model.loop
         let loopStart = model.loop.range.start
-        log.check(
-            "the double-click check starts with an active loop and a selection",
-            model.loop.isActive && !model.selection.isEmpty)
+        log.check("the double-click check starts with an active loop", model.loop.isActive)
 
         // Well inside the loop, and nowhere near either candidate start.
         let clickX = lanes.minX + lanes.width * 0.6
@@ -167,18 +159,17 @@ extension AcceptanceRun {
         // already carried the playhead a fraction of a second past the click.
         // The bound is a quarter of a second of source, which is two orders of
         // magnitude smaller than the distance to either wrong answer — the
-        // selection start and the loop's in point are both over a million frames
+        // loop's in point is over a million frames
         // away — so this cannot be confused with a re-route.
         let drift = afterSecond - expected
         let tolerance = FrameIndex(model.sampleRate / 4)
         log.check(
-            "and from the click point, not the selection (\(selectionStart)) "
-                + "or the loop (\(loopStart)) — \(afterSecond) vs \(expected), "
+            "and from the click point, not the loop's in point (\(loopStart)) "
+                + "— \(afterSecond) vs \(expected), "
                 + "drift \(drift) of \(tolerance) allowed",
             drift >= -1 && drift < tolerance)
         log.check(
-            "double-click no longer selects the whole file — it clears like any click",
-            model.selection.isEmpty)
+            "a double-click leaves the loop exactly as it was", model.loop == loopBefore)
 
         // A third click must not chain: the double-click consumed the state, so
         // this is a plain click that places the playhead and plays nothing.
@@ -195,7 +186,6 @@ extension AcceptanceRun {
 
         model.pause()
         model.clearLoop()
-        model.clearSelection()
         model.seek(to: 0)
     }
 

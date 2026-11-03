@@ -177,8 +177,7 @@ struct TransportControlTests {
         #expect(model.transportState.hasTrack)
         #expect(model.transportState.loopIsEmpty)
         #expect(!model.transportState.loopIsEnabled)
-        model.selectAll()
-        model.loopFromSelection()
+        model.loopWholeFile()
         #expect(!model.transportState.loopIsEmpty)
         model.toggleLoop()
         #expect(model.transportState.loopIsEnabled == model.loop.isEnabled)
@@ -255,8 +254,7 @@ struct TransportControlTests {
     @Test("the loop button toggles the loop and nothing else")
     func loopButtonTogglesTheLoop() {
         let model = makeModel()
-        model.selectAll()
-        model.loopFromSelection()
+        model.loopWholeFile()
         let range = model.loop.range
         let enabled = model.loop.isEnabled
         model.perform(.loop)
@@ -264,12 +262,12 @@ struct TransportControlTests {
         #expect(model.loop.range == range)
     }
 
-    @Test("play-from-selection-start goes where Shift-Space goes")
+    @Test("play-from-start goes where Shift-Space goes: the range's start")
     func playFromStartButtonSeeksToTheSelection() {
         let model = makeModel()
         model.dragChanged(startPixel: 200, currentPixel: 520, extending: false)
         model.dragEnded(startPixel: 200, endPixel: 520, now: 0)
-        let start = model.selection.range.start
+        let start = model.loop.range.start
         #expect(start > 0)
         model.seek(to: 0)
         model.perform(.playFromStart)

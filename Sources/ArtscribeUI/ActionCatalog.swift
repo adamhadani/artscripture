@@ -26,8 +26,6 @@ public enum ActionEnablement: Hashable, Sendable {
     case trackLoopToggle
     /// A track, and a loop region that is not empty.
     case trackLoop
-    /// A track, and a selection that is not empty.
-    case trackSelection
 }
 
 /// Whether the menu draws a button or a checkmark for this action.

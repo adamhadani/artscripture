@@ -222,8 +222,9 @@ enum AcceptanceRun {
     /// the model entry points the gesture calls, and the run says so rather than
     /// claiming coverage it does not have.
     @MainActor
-    static func checkSelection(model: ViewerModel, log: inout Logger) async {
+    static func checkRangeDrag(model: ViewerModel, log: inout Logger) async {
         model.fitWholeFile()
+        model.clearLoop()
         let expected = PixelMapping.range(fromPixel: 200, toPixel: 520, in: model.viewport)
         // Try real pointer events first. They reach SwiftUI's gesture machinery
         // only sometimes — Task 10 established that a window that is not key
@@ -232,7 +233,7 @@ enum AcceptanceRun {
         // either. Rather than reporting that as a product failure, the run falls
         // back to the entry points the gesture calls and says which path it took.
         if NSApp.keyWindow != nil { await mouseDrag(fromX: 200, toX: 520) }
-        var viaPointer = !model.selection.range.isEmpty
+        var viaPointer = !model.loop.range.isEmpty
         if !viaPointer {
             // The lane entry points, which is what the view calls as of Task 16
             // — the plain left-drag now arrives through the same door as the
@@ -250,14 +251,14 @@ enum AcceptanceRun {
             viaPointer
                 ? "real pointer events"
                 : "model entry points (synthetic pointer events did not reach the gesture)")
-        let range = model.selection.range
+        let range = model.loop.range
         log.check(
             viaPointer ? "pointer drag selects a range" : "drag selects a range (via model)",
             !range.isEmpty)
         log.note(
-            "selection",
+            "range",
             "\(TimeCode.precise(frames: range.start, sampleRate: model.sampleRate))"
                 + "-\(TimeCode.precise(frames: range.end, sampleRate: model.sampleRate))")
-        log.check("selection matches the dragged pixels", range == expected)
+        log.check("the range matches the dragged pixels", range == expected)
     }
 }

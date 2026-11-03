@@ -122,16 +122,16 @@ struct ActionCatalogTests {
             .transportPlayPause: "Space",
             .transportReturnToStart: "⇧Space",
             .loopSetIn: "A", .loopSetOut: "S", .loopToggle: "D", .loopRestart: "F",
-            .loopFromSelection: "G",
             .nudgeBack: "Z", .nudgeForward: "X",
             .nudgeBackFine: "⇧Z", .nudgeForwardFine: "⇧X",
             .nudgeBackCoarse: "⌥Z", .nudgeForwardCoarse: "⌥X",
             .speedDown: "Q", .speedUp: "W",
-            .zoomOut: "E", .zoomIn: "R", .zoomFit: "⌘0", .zoomToSelection: "⌘9",
-            .selectionExtendLeft: "⇧←", .selectionExtendRight: "⇧→",
-            .selectionSelectAll: "⌘A", .selectionClear: "⎋",
-            .selectionMoveLeft: "C", .selectionMoveRight: "V",
-            .loopMoveInLeft: "⇧A", .loopMoveOutRight: "⇧F", .loopMoveLeftFar: "⌥⇧C",
+            .zoomOut: "E", .zoomIn: "R", .zoomFit: "⌘0", .zoomToLoop: "⌘9",
+            // The selection's keys, on the loop since the one-range change.
+            .loopExtendLeft: "⇧←", .loopExtendRight: "⇧→",
+            .loopSelectAll: "⌘A", .loopClear: "⎋",
+            .loopMoveLeft: "C", .loopMoveRight: "V",
+            .loopMoveInLeft: "⇧A", .loopMoveOutRight: "⇧F", .loopMoveLeftFar: "⌥C",
             .volumeMute: "M", .fileOpen: "⌘O",
             // Spec §6.2's own. `view.toggleInspector` sat beside it until Task
             // 25 cut the inspector; §6.2 no longer lists it either.

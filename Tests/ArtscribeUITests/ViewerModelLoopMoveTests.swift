@@ -163,20 +163,16 @@ struct ViewerModelLoopMoveTests {
     /// The playhead is where you are listening from; the loop is what you are
     /// listening to. Dragging the playhead along would also mean a `.seek`, which
     /// is one of the two things that reset the stretcher (CLAUDE.md on looping).
-    @Test("the playhead and the selection are left where they are")
+    @Test("the playhead is left where it is")
     func nothingElseMoves() {
         let model = makeModel()
         setLoop(model, from: 20, to: 25)
         model.seek(to: frames(30))
-        model.selection.begin(at: frames(2))
-        model.selection.extend(to: frames(4))
         let playhead = model.playhead
-        let selection = model.selection
         for target in LoopMoveTarget.allCases {
             model.moveLoop(target, .gentle, direction: .forward)
         }
         #expect(model.playhead == playhead)
-        #expect(model.selection == selection)
     }
 
     @Test("whether the loop is switched on is never changed by moving it")

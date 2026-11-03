@@ -14,7 +14,7 @@ import Waveform
 /// it: the amounts, their validation, the guards, and the fact that neither the
 /// playhead nor the loop is dragged along with the selection.
 @MainActor
-@Suite("Selection movement")
+@Suite("Moving and extending the range (the selection's keys, on the loop)")
 struct SelectionMovingTests {
 
     private static let sampleRate: Double = 44100
@@ -31,9 +31,10 @@ struct SelectionMovingTests {
         return model
     }
 
+    /// The range is the loop since 2026-11; these tests drove the selection
+    /// until then, and drive the same keys' behaviour on the range now.
     private func select(_ model: ViewerModel, from: FrameIndex, to: FrameIndex) {
-        model.selection.begin(at: from)
-        model.selection.extend(to: to)
+        model.applyLoop(LoopRegion(range: FrameRange(start: from, count: to - from)))
     }
 
     private func frames(_ seconds: Double) -> FrameIndex {
@@ -48,11 +49,11 @@ struct SelectionMovingTests {
         for tier in SelectionMoveTier.allCases {
             let step = frames(tier.defaultSeconds)
             select(model, from: frames(20), to: frames(25))
-            model.moveSelection(tier, direction: .forward)
-            #expect(model.selection.range.start == frames(20) + step)
-            #expect(model.selection.range.end == frames(25) + step)
-            model.moveSelection(tier, direction: .backward)
-            #expect(model.selection.range == FrameRange(start: frames(20), count: frames(5)))
+            model.moveLoop(.whole, tier, direction: .forward)
+            #expect(model.loop.range.start == frames(20) + step)
+            #expect(model.loop.range.end == frames(25) + step)
+            model.moveLoop(.whole, tier, direction: .backward)
+            #expect(model.loop.range == FrameRange(start: frames(20), count: frames(5)))
         }
     }
 
@@ -68,27 +69,27 @@ struct SelectionMovingTests {
     func clampsAtTheStart() {
         let model = makeModel()
         select(model, from: frames(0.1), to: frames(1.1))
-        let length = model.selection.range.count
-        for _ in 0..<20 { model.moveSelection(.aggressive, direction: .backward) }
-        #expect(model.selection.range.start == 0)
-        #expect(model.selection.range.count == length)
+        let length = model.loop.range.count
+        for _ in 0..<20 { model.moveLoop(.whole, .aggressive, direction: .backward) }
+        #expect(model.loop.range.start == 0)
+        #expect(model.loop.range.count == length)
         // And pressing again at the wall changes nothing at all.
-        let parked = model.selection
-        model.moveSelection(.aggressive, direction: .backward)
-        #expect(model.selection == parked)
+        let parked = model.loop
+        model.moveLoop(.whole, .aggressive, direction: .backward)
+        #expect(model.loop == parked)
     }
 
     @Test("a selection pushed against the end of the file stops, keeping its length")
     func clampsAtTheEnd() {
         let model = makeModel()
         select(model, from: Self.totalFrames - frames(1.1), to: Self.totalFrames - frames(0.1))
-        let length = model.selection.range.count
-        for _ in 0..<20 { model.moveSelection(.aggressive, direction: .forward) }
-        #expect(model.selection.range.end == Self.totalFrames)
-        #expect(model.selection.range.count == length)
-        let parked = model.selection
-        model.moveSelection(.aggressive, direction: .forward)
-        #expect(model.selection == parked)
+        let length = model.loop.range.count
+        for _ in 0..<20 { model.moveLoop(.whole, .aggressive, direction: .forward) }
+        #expect(model.loop.range.end == Self.totalFrames)
+        #expect(model.loop.range.count == length)
+        let parked = model.loop
+        model.moveLoop(.whole, .aggressive, direction: .forward)
+        #expect(model.loop == parked)
     }
 
     // MARK: - Guards
@@ -96,33 +97,29 @@ struct SelectionMovingTests {
     @Test("moving an empty selection does nothing — there is nothing to move")
     func emptySelection() {
         let model = makeModel()
-        model.clearSelection()
+        model.clearLoop()
         for tier in SelectionMoveTier.allCases {
-            model.moveSelection(tier, direction: .forward)
+            model.moveLoop(.whole, tier, direction: .forward)
         }
-        #expect(model.selection.isEmpty)
+        #expect(model.loop.range.isEmpty)
     }
 
     @Test("moving the selection is a no-op with no track loaded")
     func withoutATrack() {
         let model = ViewerModel()
-        model.moveSelection(.gentle, direction: .forward)
-        #expect(model.selection.isEmpty)
+        model.moveLoop(.whole, .gentle, direction: .forward)
+        #expect(model.loop.range.isEmpty)
     }
 
-    /// The selection is not the playhead, and it is not the loop. Moving it
-    /// must not seek — a seek resets the stretcher (see CLAUDE.md on looping) —
-    /// and must not drag an already-set loop region with it.
-    @Test("moving the selection leaves the playhead and the loop where they were")
+    /// The range is not the playhead. Moving it must not seek — a seek resets
+    /// the stretcher (see CLAUDE.md on looping).
+    @Test("moving the range leaves the playhead where it was")
     func movingTouchesNothingElse() {
         let model = makeModel()
         model.seek(to: frames(30))
         select(model, from: frames(10), to: frames(12))
-        model.loopFromSelection()
-        let loop = model.loop
-        model.moveSelection(.aggressive, direction: .forward)
+        model.moveLoop(.whole, .aggressive, direction: .forward)
         #expect(model.playhead == frames(30))
-        #expect(model.loop == loop)
     }
 
     // MARK: - The amounts
@@ -133,8 +130,8 @@ struct SelectionMovingTests {
         model.prefs.setSelectionMoveAmount(5, for: .gentle)
         #expect(model.prefs.selectionMoveAmounts[.gentle] == 5)
         select(model, from: frames(10), to: frames(11))
-        model.moveSelection(.gentle, direction: .forward)
-        #expect(model.selection.range.start == frames(15))
+        model.moveLoop(.whole, .gentle, direction: .forward)
+        #expect(model.loop.range.start == frames(15))
     }
 
     /// 20 ms has to be expressible, which is the whole reason these are edited
@@ -145,8 +142,8 @@ struct SelectionMovingTests {
         model.prefs.setSelectionMoveAmount(0.02, for: .gentle)
         #expect(model.prefs.selectionMoveAmounts[.gentle] == 0.02)
         select(model, from: frames(10), to: frames(11))
-        model.moveSelection(.gentle, direction: .forward)
-        #expect(model.selection.range.start == frames(10) + FrameIndex((0.02 * 44100).rounded()))
+        model.moveLoop(.whole, .gentle, direction: .forward)
+        #expect(model.loop.range.start == frames(10) + FrameIndex((0.02 * 44100).rounded()))
     }
 
     /// Spec §8: a stored zero would be a menu item that silently does nothing.
@@ -165,8 +162,8 @@ struct SelectionMovingTests {
 
         // The point of the validation: the action still moves.
         select(model, from: frames(10), to: frames(11))
-        model.moveSelection(.gentle, direction: .forward)
-        #expect(model.selection.range.start > frames(10))
+        model.moveLoop(.whole, .gentle, direction: .forward)
+        #expect(model.loop.range.start > frames(10))
     }
 
     @Test("Restore Defaults puts both amounts back")
@@ -202,37 +199,37 @@ struct SelectionMovingTests {
     func extendSelection() {
         let model = makeModel()
         select(model, from: frames(10), to: frames(12))
-        model.extendSelection(.forward)
-        #expect(model.selection.anchor == frames(10))
-        #expect(model.selection.head == frames(12) + frames(2))
-        model.extendSelection(.backward)
-        #expect(model.selection.head == frames(12))
+        model.extendLoop(.forward)
+        #expect(model.loop.range.start == frames(10))
+        #expect(model.loop.range.end == frames(12) + frames(2))
+        model.extendLoop(.backward)
+        #expect(model.loop.range.end == frames(12))
     }
 
     @Test("extending with no selection starts one at the playhead")
     func extendFromNothing() {
         let model = makeModel()
         model.seek(to: frames(20))
-        model.clearSelection()
-        model.extendSelection(.forward)
-        #expect(model.selection.range == FrameRange(start: frames(20), count: frames(2)))
+        model.clearLoop()
+        model.extendLoop(.forward)
+        #expect(model.loop.range == FrameRange(start: frames(20), count: frames(2)))
     }
 
     @Test("extending clamps at both ends of the file")
     func extendClamps() {
         let model = makeModel()
         select(model, from: frames(1), to: frames(2))
-        for _ in 0..<40 { model.extendSelection(.backward) }
-        #expect(model.selection.head == 0)
-        for _ in 0..<80 { model.extendSelection(.forward) }
-        #expect(model.selection.head == Self.totalFrames)
+        for _ in 0..<40 { model.extendLoop(.backward) }
+        #expect(model.loop.range.start == 0)
+        for _ in 0..<80 { model.extendLoop(.forward) }
+        #expect(model.loop.range.end == Self.totalFrames)
     }
 
     @Test("extending is a no-op with no track loaded")
     func extendWithoutATrack() {
         let model = ViewerModel()
-        model.extendSelection(.forward)
-        #expect(model.selection.isEmpty)
+        model.extendLoop(.forward)
+        #expect(model.loop.range.isEmpty)
     }
 
     // MARK: - Persistence

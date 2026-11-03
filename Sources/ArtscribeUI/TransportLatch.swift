@@ -71,16 +71,16 @@ public struct TransportLatch: Equatable, Sendable {
     /// the stream, immediately re-finalise it and clear the playing flag inside
     /// the *same* render call — so the button lights up and goes out again, and
     /// nothing is heard. Rewinding first turns that into the thing the user
-    /// actually meant: play it again from the top of the selection.
+    /// actually meant: play it again from the top of the range.
     public static func rewindTarget(
         playhead: FrameIndex, totalFrames: FrameIndex, reachedEnd: Bool, loopActive: Bool,
-        selectionStart: FrameIndex?
+        rangeStart: FrameIndex?
     ) -> FrameIndex? {
         // An active loop wraps by itself; the engine handles it and a rewind
         // would throw away the position inside the loop.
         guard !loopActive else { return nil }
         guard reachedEnd || playhead >= totalFrames else { return nil }
-        return selectionStart ?? 0
+        return rangeStart ?? 0
     }
 }
 

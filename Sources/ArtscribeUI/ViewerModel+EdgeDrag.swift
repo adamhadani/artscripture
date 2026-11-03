@@ -54,8 +54,8 @@ extension ViewerModel {
     public func timelineHandle(at point: CGPoint) -> TimelineHandle? {
         guard hasTrack else { return nil }
         return TimelineHandles.handle(
-            at: point, laneHeight: lanePointHeight, loop: loop, selection: selection,
-            viewport: viewport, reach: prefs.handleReach)
+            at: point, laneHeight: lanePointHeight, loop: loop, viewport: viewport,
+            reach: prefs.handleReach)
     }
 
     /// One event of a handle drag.
@@ -82,11 +82,6 @@ extension ViewerModel {
                 drag.originalRange, toStart: pointer - drag.grabOffset, totalFrames: totalFrames)
             applyLoop(LoopRegion(range: range, isEnabled: loop.isEnabled))
             drag.currentFrame = range.start
-        case .selectionStart, .selectionEnd:
-            // Through `Selection`'s own anchor/head, so a region dragged past
-            // its opposite edge normalises exactly as a backwards drag does.
-            selection = Selection(anchor: drag.anchorFrame ?? pointer, head: pointer)
-            drag.currentFrame = pointer
         }
         edgeDrag = drag
     }
@@ -110,11 +105,11 @@ extension ViewerModel {
 
     private func beganEdgeDrag(handle: TimelineHandle, atPixel pixel: Double) -> EdgeDrag {
         let grabbed = PixelMapping.frame(atPixel: pixel, in: viewport)
-        let region = handle.isLoop ? loop.range : selection.range
+        let region = loop.range
         return EdgeDrag(
             handle: handle,
             startPixel: pixel,
-            anchorFrame: TimelineHandles.anchor(for: handle, loop: loop, selection: selection),
+            anchorFrame: TimelineHandles.anchor(for: handle, loop: loop),
             originalRange: region,
             grabOffset: grabbed - region.start,
             currentFrame: handle == .loopBody ? region.start : grabbed)

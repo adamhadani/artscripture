@@ -33,17 +33,6 @@ public enum LoopEditing {
             isEnabled: loop.isEnabled)
     }
 
-    /// `G` — the selection becomes the loop region. It deliberately does not
-    /// enable looping: `D` is what does that, so `G` alone is safe to press while
-    /// something else is looping.
-    public static func fromSelection(
-        _ range: FrameRange, in loop: LoopRegion, totalFrames: FrameIndex
-    ) -> LoopRegion {
-        let clamped = range.clamped(to: totalFrames)
-        guard !clamped.isEmpty else { return loop }
-        return LoopRegion(range: clamped, isEnabled: loop.isEnabled)
-    }
-
     private static func clamp(_ frame: FrameIndex, _ totalFrames: FrameIndex) -> FrameIndex {
         Swift.max(0, Swift.min(frame, totalFrames))
     }

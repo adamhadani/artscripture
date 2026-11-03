@@ -43,7 +43,7 @@ extension ViewerModel {
                 option: option, shift: shift, handle: timelineHandle(at: start))
             laneDragStart = start
             laneDragMode = mode
-            selectionBeforeLaneDrag = selection
+            loopBeforeLaneDrag = loop
             playheadBeforeLaneDrag = playhead
             laneDragCancelled = false
             // A new gesture never continues the previous one's zoom or handle
@@ -52,7 +52,7 @@ extension ViewerModel {
             edgeDrag = nil
         }
         switch mode {
-        case .select(let extending):
+        case .range(let extending):
             dragChanged(startPixel: start.x, currentPixel: current.x, extending: extending)
         case .zoom:
             zoomDragChanged(start: start, current: current)
@@ -88,9 +88,18 @@ extension ViewerModel {
     /// starts playback.
     public func cancelLaneDrag() {
         guard laneDragMode != nil else { return }
-        if let previous = selectionBeforeLaneDrag { selection = previous }
+        if let previous = loopBeforeLaneDrag {
+            if loopIsStaged {
+                // Never reached the engine, so only the drawing goes back.
+                loop = previous
+                loopIsStaged = false
+            } else {
+                // An edge or body drag pushed as it went; undo that too.
+                applyLoop(previous)
+            }
+        }
         if let previous = playheadBeforeLaneDrag { seek(to: previous) }
-        selectionBeforeLaneDrag = nil
+        loopBeforeLaneDrag = nil
         playheadBeforeLaneDrag = nil
         laneDragMode = nil
         laneDragStart = nil
@@ -112,14 +121,14 @@ extension ViewerModel {
         let mode = laneDragMode
         laneDragStart = nil
         laneDragMode = nil
-        selectionBeforeLaneDrag = nil
+        loopBeforeLaneDrag = nil
         playheadBeforeLaneDrag = nil
         switch mode {
         case .zoom:
             zoomDragEnded()
         case .edge:
             edgeDragEnded()
-        case .select, nil:
+        case .range, nil:
             dragEnded(startPixel: start.x, endPixel: end.x, now: now)
         }
     }
@@ -144,7 +153,7 @@ extension ViewerModel {
     /// passage either way, and refusing to zoom to a loop you can plainly see
     /// because playback is not currently cycling it would be a distinction
     /// without a difference.
-    public func zoomToSelection() {
+    public func zoomToLoop() {
         guard hasTrack, let range = zoomTarget else { return }
         viewport.zoom(to: range)
         refresh()
@@ -156,9 +165,7 @@ extension ViewerModel {
     /// the command acts on, rather than on a second copy of the rule that can
     /// drift from it.
     public var zoomTarget: FrameRange? {
-        if !selection.isEmpty { return selection.range }
-        if !loop.range.isEmpty { return loop.range }
-        return nil
+        loop.range.isEmpty ? nil : loop.range
     }
 
     public func scrollLeft() { scroll(byPoints: -panStep) }

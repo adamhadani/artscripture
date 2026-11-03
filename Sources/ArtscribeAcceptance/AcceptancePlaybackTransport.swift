@@ -69,7 +69,6 @@ extension AcceptanceRun {
     @MainActor
     private static func checkPreroll(model: ViewerModel, log: inout Logger) async {
         model.clearLoop()
-        model.clearSelection()
         model.pause()
         await settle(seconds: 0.2)
 

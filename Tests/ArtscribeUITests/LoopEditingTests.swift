@@ -73,31 +73,4 @@ struct LoopEditingTests {
             at: Self.total * 3, in: Self.existing, totalFrames: Self.total)
         #expect(high.range.end == Self.total)
     }
-
-    // MARK: - From selection
-
-    @Test("a selection becomes the loop region and keeps the enabled state")
-    func fromSelection() {
-        let range = FrameRange(start: 10_000, count: 40_000)
-        let loop = LoopEditing.fromSelection(range, in: LoopRegion(), totalFrames: Self.total)
-        #expect(loop.range == range)
-        // G sets the region; D is what turns looping on. Verified here because
-        // the acceptance script is literally "drag-select, then G, then D".
-        #expect(!loop.isEnabled)
-    }
-
-    @Test("an empty selection leaves the loop untouched")
-    func fromEmptySelection() {
-        let loop = LoopEditing.fromSelection(
-            FrameRange(start: 5, count: 0), in: Self.existing, totalFrames: Self.total)
-        #expect(loop == Self.existing)
-    }
-
-    @Test("a selection running past the end of the file is clamped")
-    func fromSelectionClamps() {
-        let loop = LoopEditing.fromSelection(
-            FrameRange(start: 900_000, count: Self.total), in: LoopRegion(),
-            totalFrames: Self.total)
-        #expect(loop.range == FrameRange(start: 900_000, count: 100_000))
-    }
 }

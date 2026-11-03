@@ -46,8 +46,6 @@ public enum ActionTitle {
     ]
 
     private static let moveTiers: [ActionID: SelectionMoveTier] = [
-        .selectionMoveLeft: .gentle, .selectionMoveRight: .gentle,
-        .selectionMoveLeftFar: .aggressive, .selectionMoveRightFar: .aggressive,
         .loopMoveInLeft: .gentle, .loopMoveInRight: .gentle,
         .loopMoveInLeftFar: .aggressive, .loopMoveInRightFar: .aggressive,
         .loopMoveOutLeft: .gentle, .loopMoveOutRight: .gentle,
@@ -84,7 +82,6 @@ enum ActionAvailability {
         case .trackPlaying: return ready && model.isPlaying
         case .trackLoopToggle: return ready && !(model.loop.range.isEmpty && !model.loop.isEnabled)
         case .trackLoop: return ready && !model.loop.range.isEmpty
-        case .trackSelection: return ready && !model.selection.isEmpty
         }
     }
 }

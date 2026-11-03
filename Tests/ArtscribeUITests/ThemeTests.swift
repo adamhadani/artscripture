@@ -120,23 +120,19 @@ struct ThemeTests {
     }
 
     /// Switching theme must not disturb what you were doing.
-    @Test("a theme switch leaves position, selection, loop and zoom alone")
+    @Test("a theme switch leaves position, loop and zoom alone")
     func switchingIsNonDisruptive() {
         let model = makeModel()
         model.seek(to: 90_000)
-        model.selection.begin(at: 10_000)
-        model.selection.extend(to: 50_000)
-        model.loopFromSelection()
+        model.applyLoop(LoopRegion(range: FrameRange(start: 10_000, count: 40_000)))
         model.zoomIn()
         let viewport = model.viewport
-        let selection = model.selection.range
         let loop = model.loop
         let playhead = model.playhead
 
         model.setAppearance(.light)
 
         #expect(model.viewport == viewport)
-        #expect(model.selection.range == selection)
         #expect(model.loop == loop)
         #expect(model.playhead == playhead)
     }

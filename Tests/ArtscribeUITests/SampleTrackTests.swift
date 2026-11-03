@@ -138,12 +138,12 @@ struct LoopGuidanceTests {
         }
     }
 
-    /// …and are pointed at the control that actually exists there. Naming it is
-    /// the point: the button was added because touch had no route to a loop.
-    @Test("touch surfaces are pointed at the Selection → Loop button")
+    /// …and are pointed at the control that actually exists there: the Loop
+    /// button, the one step between a drag and a repeating bar since 2026-11.
+    @Test("touch surfaces are pointed at the Loop button")
     func touchNamesTheButton() {
         for surface in [EmptyStatePrompt.Surface.tabletWithDrop, .phone] {
-            #expect(EmptyStatePrompt.loopGuidance(for: surface).contains("Selection → Loop"))
+            #expect(EmptyStatePrompt.loopGuidance(for: surface).contains("tap Loop"))
         }
     }
 

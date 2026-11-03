@@ -66,7 +66,6 @@ public final class ViewerModel {
     /// Mutated only through the methods in `ViewerModel+Interaction`, so the
     /// view layer cannot move the view without going past `refresh()`.
     public internal(set) var viewport = Viewport(totalFrames: 0, widthPixels: 1)
-    public internal(set) var selection = Selection()
     /// The audible position. Written by `seek(to:)` for a user action and by the
     /// display-link poll of `PlaybackEngine.currentFrame` during playback — never
     /// pushed from the audio thread. Zoom anchors here, so the frame under the
@@ -306,8 +305,18 @@ public final class ViewerModel {
 
     /// Snapshots for undoing a lane drag that turns out to be the first finger of
     /// a pinch — see `cancelLaneDrag`. The playhead is included because a
-    /// select-drag *also moves it*.
-    @ObservationIgnored var selectionBeforeLaneDrag: Selection?
+    /// range drag *also moves it* on a pointer.
+    @ObservationIgnored var loopBeforeLaneDrag: LoopRegion?
+
+    /// The edge of the range that holds still while the other one moves: where
+    /// a drag began, or the edge a `⇧`-arrow is extending away from. `nil`
+    /// when nothing has set one, and then the range's start is assumed.
+    @ObservationIgnored var rangeAnchor: FrameIndex?
+
+    /// The loop as drawn has moved on from the loop the engine was last told
+    /// about — a range being dragged out, committed when the finger lifts. See
+    /// `stageLoop`.
+    @ObservationIgnored var loopIsStaged = false
     @ObservationIgnored var playheadBeforeLaneDrag: FrameIndex?
     @ObservationIgnored var laneDragCancelled = false
 

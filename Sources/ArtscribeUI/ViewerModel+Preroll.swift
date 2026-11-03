@@ -66,7 +66,7 @@ extension ViewerModel {
         let rewind = TransportLatch.rewindTarget(
             playhead: playhead, totalFrames: totalFrames, reachedEnd: reachedEnd,
             loopActive: loop.isActive,
-            selectionStart: selection.isEmpty ? nil : selection.range.start)
+            rangeStart: loop.range.isEmpty ? nil : loop.range.start)
         guard rewind == nil else { return playhead }
         guard prefs.prerollEnabled else { return playhead }
         return Preroll.target(

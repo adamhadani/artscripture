@@ -57,7 +57,6 @@ struct TimelineEdgeOverlay: View {
         let drag = model.edgeDrag
         let viewport = model.viewport
         let loopRange = model.loop.range
-        let selectionRange = model.selection.range
         let sampleRate = model.sampleRate
 
         GeometryReader { proxy in
@@ -80,8 +79,7 @@ struct TimelineEdgeOverlay: View {
                         ink: ink(drag.handle), size: size)
                 } else if let hovering {
                     hover(
-                        hovering, loopRange: loopRange, selectionRange: selectionRange,
-                        viewport: viewport, size: size)
+                        hovering, loopRange: loopRange, viewport: viewport, size: size)
                 }
             }
             .frame(width: size.width, height: size.height, alignment: .topLeading)
@@ -101,22 +99,21 @@ struct TimelineEdgeOverlay: View {
     private func hover(
         _ handle: TimelineHandle,
         loopRange: FrameRange,
-        selectionRange: FrameRange,
         viewport: Viewport,
         size: CGSize
     ) -> some View {
         if handle == .loopBody {
             bars(loopRange, viewport: viewport, size: size, extra: 1)
-        } else if let mark = hoverMark(handle, loop: loopRange, selection: selectionRange) {
+        } else if let mark = hoverMark(handle, loop: loopRange) {
             draw(mark, viewport: viewport, size: size)
         }
     }
 
     private func hoverMark(
-        _ handle: TimelineHandle, loop: FrameRange, selection: FrameRange
+        _ handle: TimelineHandle, loop: FrameRange
     ) -> Mark? {
         guard let side = handle.side,
-            let frame = frame(of: handle, loop: loop, selection: selection)
+            let frame = frame(of: handle, loop: loop)
         else { return nil }
         return Mark(
             frame: frame, width: Self.hoverEdgeWidth, wash: Self.hoverWashWidth, side: side,
@@ -201,17 +198,15 @@ struct TimelineEdgeOverlay: View {
     // MARK: - Which ink, which frame
 
     private func ink(_ handle: TimelineHandle) -> RGB {
-        handle.isLoop ? palette.loop : palette.selection
+        palette.loop
     }
 
     private func frame(
-        of handle: TimelineHandle, loop: FrameRange, selection: FrameRange
+        of handle: TimelineHandle, loop: FrameRange
     ) -> FrameIndex? {
         switch handle {
         case .loopStart: return loop.start
         case .loopEnd: return loop.end
-        case .selectionStart: return selection.start
-        case .selectionEnd: return selection.end
         case .loopBody: return nil
         }
     }

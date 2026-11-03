@@ -172,7 +172,6 @@ extension AcceptanceRun {
             readings.notes.append(("cursor after the drag ended", found))
         }
         model.fitWholeFile()
-        model.clearSelection()
     }
 
     // MARK: - Asserting

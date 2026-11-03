@@ -31,7 +31,7 @@ struct PointerAffordanceTests {
     /// A lane drag in flight belongs to the lanes; it must not reach across and
     /// change what the ruler says.
     @Test func rulerIgnoresALaneDragInFlight() {
-        for drag: LaneDragMode? in [.zoom, .select(extending: false), .select(extending: true)] {
+        for drag: LaneDragMode? in [.zoom, .range(extending: false), .range(extending: true)] {
             #expect(
                 PointerAffordance.over(.timeRuler, optionHeld: false, laneDrag: drag)
                     == .verticalDrag)
@@ -79,7 +79,7 @@ struct PointerAffordanceTests {
         for extending in [false, true] {
             #expect(
                 PointerAffordance.over(
-                    .waveformLanes, optionHeld: true, laneDrag: .select(extending: extending))
+                    .waveformLanes, optionHeld: true, laneDrag: .range(extending: extending))
                     == .selectRange)
         }
     }
@@ -98,14 +98,6 @@ struct PointerAffordanceTests {
             PointerAffordance.over(
                 .waveformLanes, optionHeld: false, laneDrag: nil,
                 hovering: .loopEnd) == .resizeRegionTrailing)
-        #expect(
-            PointerAffordance.over(
-                .waveformLanes, optionHeld: false, laneDrag: nil,
-                hovering: .selectionStart) == .resizeRegionLeading)
-        #expect(
-            PointerAffordance.over(
-                .waveformLanes, optionHeld: false, laneDrag: nil,
-                hovering: .selectionEnd) == .resizeRegionTrailing)
     }
 
     /// The loop body opens the hand on hover and closes it while moving —
@@ -167,10 +159,10 @@ struct PointerAffordanceTests {
         (.waveformLanes, true, nil, .zoom),
         (.waveformLanes, false, .zoom, .zoom),
         (.waveformLanes, true, .zoom, .zoom),
-        (.waveformLanes, false, .select(extending: false), .selectRange),
-        (.waveformLanes, true, .select(extending: false), .selectRange),
-        (.waveformLanes, false, .select(extending: true), .selectRange),
-        (.waveformLanes, true, .select(extending: true), .selectRange)
+        (.waveformLanes, false, .range(extending: false), .selectRange),
+        (.waveformLanes, true, .range(extending: false), .selectRange),
+        (.waveformLanes, false, .range(extending: true), .selectRange),
+        (.waveformLanes, true, .range(extending: true), .selectRange)
     ])
     func theWholeScheme(
         region: PointerRegion, option: Bool, drag: LaneDragMode?, expected: PointerAffordance
