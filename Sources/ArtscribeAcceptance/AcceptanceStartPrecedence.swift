@@ -151,6 +151,12 @@ extension AcceptanceRun {
             "a single real click places the playhead without playing "
                 + "(\(afterFirst) vs \(expected))",
             abs(afterFirst - expected) <= 1 && !model.isPlaying)
+        // Review focus 1 of the one-range plan, end to end: a touch-down reaches
+        // the gesture as a change, and a range begun there would replace the loop.
+        log.check(
+            "and a single real click inside the loop leaves the loop alone "
+                + "(\(model.loop.range.start)…\(model.loop.range.end))",
+            model.loop == loopBefore)
 
         await click(at: point)
         let afterSecond = model.playhead
