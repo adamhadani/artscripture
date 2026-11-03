@@ -50,6 +50,9 @@ public final class Preferences {
     /// checkable from a Mac.
     public var seeksOnSelectionPress = LaneDragPolicy.seeksOnPress(on: EmptyStatePrompt.current)
 
+    /// How far from a loop handle a press still takes it — wider for a finger.
+    public var handleReach = ControlMetrics.handleReach(on: EmptyStatePrompt.current)
+
     /// Whether a vertical drag *up* zooms in. `false` — the shipped default —
     /// means down zooms in, the direction the user asked for after driving Task
     /// 16's. Governs both vertical drags and the wheel zoom, so one window never

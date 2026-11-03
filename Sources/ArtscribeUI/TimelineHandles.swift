@@ -77,6 +77,25 @@ public enum TimelineEdgeSide: Equatable, Sendable {
 /// `⌥C`/`⌥V` already move the selection by keyboard, with configurable amounts,
 /// in an app whose stated bias is the keyboard. Its *edges* are draggable, which
 /// is the half that has no keyboard equivalent.
+/// How far from a drawn handle a press still takes hold of it — a question
+/// about the input device, not about taste, so it comes from `ControlMetrics`
+/// per surface rather than being one constant.
+public struct HandleReach: Equatable, Sendable {
+    /// Points either side of a loop edge.
+    public let edge: Double
+    /// Depth of the loop-body grab band at the top and the bottom of the lanes.
+    public let bodyBand: Double
+
+    public init(edge: Double, bodyBand: Double) {
+        self.edge = edge
+        self.bodyBand = bodyBand
+    }
+
+    /// A pointer's: `TimelineHandles.grabRadius` and `.bodyBandHeight`.
+    public static let pointer = HandleReach(
+        edge: TimelineHandles.grabRadius, bodyBand: TimelineHandles.bodyBandHeight)
+}
+
 public enum TimelineHandles {
 
     /// How far either side of a drawn edge counts as grabbing it.
@@ -103,13 +122,17 @@ public enum TimelineHandles {
         laneHeight: Double,
         loop: LoopRegion,
         selection: Selection,
-        viewport: Viewport
+        viewport: Viewport,
+        reach: HandleReach = .pointer
     ) -> TimelineHandle? {
         guard point.x.isFinite, point.y.isFinite else { return nil }
-        if let edge = edge(atPixel: point.x, loop: loop, selection: selection, viewport: viewport) {
-            return edge
-        }
-        return body(at: point, laneHeight: laneHeight, loop: loop, viewport: viewport)
+        let edge = edge(
+            atPixel: point.x, loop: loop, selection: selection, viewport: viewport,
+            radius: reach.edge)
+        if let edge { return edge }
+        return body(
+            at: point, laneHeight: laneHeight, loop: loop, viewport: viewport,
+            band: reach.bodyBand)
     }
 
     /// Step 3 of the precedence rule: the nearest edge within `grabRadius`,
@@ -120,7 +143,8 @@ public enum TimelineHandles {
     /// That is the whole of the tie-break, and it is why it cannot depend on
     /// sort stability.
     private static func edge(
-        atPixel x: Double, loop: LoopRegion, selection: Selection, viewport: Viewport
+        atPixel x: Double, loop: LoopRegion, selection: Selection, viewport: Viewport,
+        radius: Double
     ) -> TimelineHandle? {
         var candidates: [(TimelineHandle, FrameIndex)] = []
         if !loop.range.isEmpty {
@@ -135,7 +159,7 @@ public enum TimelineHandles {
         var bestDistance = Double.infinity
         for (handle, frame) in candidates {
             let distance = abs(viewport.pixel(forFrame: frame) - x)
-            guard distance.isFinite, distance <= grabRadius, distance < bestDistance else {
+            guard distance.isFinite, distance <= radius, distance < bestDistance else {
                 continue
             }
             bestHandle = handle
@@ -146,14 +170,15 @@ public enum TimelineHandles {
 
     /// Step 4: the loop's own bars, and only within its own span.
     private static func body(
-        at point: CGPoint, laneHeight: Double, loop: LoopRegion, viewport: Viewport
+        at point: CGPoint, laneHeight: Double, loop: LoopRegion, viewport: Viewport,
+        band bandHeight: Double
     ) -> TimelineHandle? {
         guard !loop.range.isEmpty, laneHeight > 0 else { return nil }
         // Never more than a quarter of the lane at each end, however short the
         // lane gets. Two fixed 14 pt bands in a 28 pt lane would leave no lane
         // at all, and the plain drag — which selects — would vanish from a
         // window the user had merely made small.
-        let band = Swift.min(bodyBandHeight, laneHeight / 4)
+        let band = Swift.min(bandHeight, laneHeight / 4)
         let onABar = point.y < band || point.y > laneHeight - band
         guard onABar else { return nil }
         let startX = viewport.pixel(forFrame: loop.range.start)

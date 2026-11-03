@@ -55,7 +55,7 @@ extension ViewerModel {
         guard hasTrack else { return nil }
         return TimelineHandles.handle(
             at: point, laneHeight: lanePointHeight, loop: loop, selection: selection,
-            viewport: viewport)
+            viewport: viewport, reach: prefs.handleReach)
     }
 
     /// One event of a handle drag.

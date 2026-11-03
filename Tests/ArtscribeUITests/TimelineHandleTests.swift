@@ -295,4 +295,42 @@ struct TimelineHandleTests {
         let moved = TimelineHandles.moved(range, toStart: 500, totalFrames: Self.totalFrames)
         #expect(moved == FrameRange(start: 0, count: Self.totalFrames))
     }
+
+    // MARK: - Reach by input device
+
+    /// Reported from an iPhone: missing a loop edge "by just a tiny bit" started
+    /// something else instead of moving the edge. 9 pt either side is a 20 pt
+    /// target — fine for a pointer, half the 44 pt a fingertip needs.
+    private func handle(atX x: Double, y: Double, reach: HandleReach) -> TimelineHandle? {
+        TimelineHandles.handle(
+            at: CGPoint(x: x, y: y), laneHeight: Self.laneHeight, loop: loop(),
+            selection: Selection(), viewport: viewport(), reach: reach)
+    }
+
+    @Test("a finger catches a loop edge 20 points away")
+    func aFingerCatchesAnEdgeTwentyPointsAway() {
+        let reach = ControlMetrics.handleReach(on: .phone)
+        #expect(handle(atX: 620, y: Self.laneHeight / 2, reach: reach) == .loopEnd)
+        #expect(handle(atX: 180, y: Self.laneHeight / 2, reach: reach) == .loopStart)
+    }
+
+    @Test("a pointer does not, at the same distance")
+    func thePointerDoesNot() {
+        let reach = ControlMetrics.handleReach(on: .desktop)
+        #expect(handle(atX: 620, y: Self.laneHeight / 2, reach: reach) == nil)
+    }
+
+    @Test("a finger's loop-body band is deeper than a pointer's")
+    func touchBodyBandIsDeeper() {
+        #expect(handle(atX: 400, y: 20, reach: ControlMetrics.handleReach(on: .phone)) == .loopBody)
+        #expect(handle(atX: 400, y: 20, reach: ControlMetrics.handleReach(on: .desktop)) == nil)
+    }
+
+    @Test("touch reach is a 44 pt target; the Mac keeps its 20 pt one")
+    func reachValues() {
+        #expect(ControlMetrics.handleReach(on: .phone) == HandleReach(edge: 22, bodyBand: 22))
+        #expect(
+            ControlMetrics.handleReach(on: .tabletWithDrop) == HandleReach(edge: 22, bodyBand: 22))
+        #expect(ControlMetrics.handleReach(on: .desktop) == HandleReach(edge: 9, bodyBand: 14))
+    }
 }
