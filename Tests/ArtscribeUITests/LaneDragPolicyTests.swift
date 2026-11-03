@@ -38,7 +38,7 @@ struct LaneDragPolicyTests {
     }
 
     /// The bug, as the model sees it.
-    @Test("dragging out a selection under a finger leaves the playhead alone")
+    @Test("dragging out a range under a finger leaves the playhead alone")
     func touchDragDoesNotSeek() {
         let model = makeModel(seeksOnPress: false)
         model.seek(to: 1_500_000)
@@ -48,14 +48,14 @@ struct LaneDragPolicyTests {
 
         #expect(model.playhead == 1_500_000, "the press moved the playhead to \(model.playhead)")
         #expect(
-            model.selection.range
+            model.loop.range
                 == PixelMapping.range(fromPixel: 100, toPixel: 400, in: model.viewport),
-            "and the selection has to still come out right")
+            "and the range has to still come out right")
     }
 
     /// The other half: with a pointer nothing changed. This is the behaviour
     /// every acceptance check and the whole macOS build depend on.
-    @Test("dragging out a selection with a pointer still moves the playhead")
+    @Test("dragging out a range with a pointer still moves the playhead")
     func pointerDragStillSeeks() {
         let model = makeModel(seeksOnPress: true)
         model.seek(to: 1_500_000)
@@ -77,6 +77,6 @@ struct LaneDragPolicyTests {
         model.dragEnded(startPixel: 250, endPixel: 250, now: 100)
 
         #expect(model.playhead == PixelMapping.frame(atPixel: 250, in: model.viewport))
-        #expect(model.selection.isEmpty, "a tap clears the selection, as it always has")
+        #expect(model.loop.range.isEmpty, "a tap marks no range")
     }
 }

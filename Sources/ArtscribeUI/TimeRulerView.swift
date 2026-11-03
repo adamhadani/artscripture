@@ -42,7 +42,6 @@ struct TimeRulerView: View {
         let hasTrack = model.hasTrack
         let viewport = model.viewport
         let sampleRate = model.sampleRate
-        let selectionRange = model.selection.range
         let loop = model.loop
         let playhead = model.playhead
 
@@ -77,8 +76,6 @@ struct TimeRulerView: View {
             }
 
             drawLoopMarkers(in: &context, size: size, loop: loop, viewport: viewport)
-            drawSelectionMarkers(
-                in: &context, size: size, range: selectionRange, viewport: viewport)
             drawPlayhead(in: &context, size: size, frame: playhead, viewport: viewport)
         }
         .frame(height: Self.height)
@@ -143,20 +140,5 @@ struct TimeRulerView: View {
         context.fill(
             Path(CGRect(x: x - 1, y: 0, width: 2, height: size.height)),
             with: .color(palette.accent.color()))
-    }
-
-    /// The selection edges repeat on the ruler so the in/out points stay findable
-    /// when the lanes are busy.
-    private func drawSelectionMarkers(
-        in context: inout GraphicsContext, size: CGSize, range: FrameRange, viewport: Viewport
-    ) {
-        guard !range.isEmpty else { return }
-        for frame in [range.start, range.end] {
-            let x = viewport.pixel(forFrame: frame)
-            guard x >= 0, x <= size.width else { continue }
-            context.fill(
-                Path(CGRect(x: x - 1, y: size.height - 5, width: 2, height: 5)),
-                with: .color(palette.selection.color()))
-        }
     }
 }

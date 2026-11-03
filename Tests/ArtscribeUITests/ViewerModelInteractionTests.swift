@@ -35,48 +35,55 @@ struct ViewerModelInteractionTests {
     }
 
     // MARK: - dragChanged
+    //
+    // A drag marks *the* range — the loop — since the 2026-11 change that
+    // removed the separate selection. These tests drove the selection until then.
 
-    @Test("a drag begins a selection at the start pixel")
+    private func setRange(_ model: ViewerModel, _ start: FrameIndex, _ end: FrameIndex) {
+        model.applyLoop(LoopRegion(range: FrameRange(start: start, count: end - start)))
+    }
+
+    @Test("a drag begins the range at the start pixel")
     func dragBeginsAtStartPixel() {
         let model = makeModel()
         model.dragChanged(startPixel: 100, currentPixel: 100, extending: false)
-        #expect(model.selection.isEmpty)
+        #expect(model.loop.range.isEmpty)
 
         model.dragChanged(startPixel: 100, currentPixel: 400, extending: false)
         let expected = PixelMapping.range(fromPixel: 100, toPixel: 400, in: model.viewport)
-        #expect(model.selection.range == expected)
+        #expect(model.loop.range == expected)
         #expect(model.playhead == PixelMapping.frame(atPixel: 100, in: model.viewport))
     }
 
-    @Test("shift-drag extends the existing selection without moving the anchor")
+    @Test("shift-drag extends the range from its far edge")
     func extendingDragKeepsAnchor() {
         let model = makeModel()
-        model.selection.begin(at: 500_000)
-        model.selection.extend(to: 2_000_000)
-        let anchorBefore = model.selection.anchor
+        setRange(model, 500_000, 2_000_000)
 
+        // 700 px is frame 1,400,000: nearer the end, so the start holds.
+        model.dragChanged(startPixel: 700, currentPixel: 700, extending: true)
         model.dragChanged(startPixel: 700, currentPixel: 900, extending: true)
 
-        #expect(model.selection.anchor == anchorBefore)
-        #expect(model.selection.head == PixelMapping.frame(atPixel: 900, in: model.viewport))
+        #expect(model.loop.range.start == 500_000)
+        #expect(model.loop.range.end == PixelMapping.frame(atPixel: 900, in: model.viewport))
     }
 
-    @Test("a plain drag (not extending) replaces the previous selection")
+    @Test("a plain drag (not extending) replaces the previous range")
     func nonExtendingDragReplacesSelection() {
         let model = makeModel()
-        model.selection.begin(at: 500_000)
-        model.selection.extend(to: 2_000_000)
+        setRange(model, 500_000, 2_000_000)
 
+        model.dragChanged(startPixel: 700, currentPixel: 700, extending: false)
         model.dragChanged(startPixel: 700, currentPixel: 900, extending: false)
 
-        #expect(model.selection.anchor == PixelMapping.frame(atPixel: 700, in: model.viewport))
+        #expect(model.loop.range.start == PixelMapping.frame(atPixel: 700, in: model.viewport))
     }
 
     @Test("dragChanged is a no-op with no track loaded")
     func dragChangedNoTrackIsNoOp() {
         let model = ViewerModel()
         model.dragChanged(startPixel: 100, currentPixel: 400, extending: false)
-        #expect(model.selection.isEmpty)
+        #expect(model.loop.range.isEmpty)
         #expect(model.playhead == 0)
     }
 
@@ -84,11 +91,10 @@ struct ViewerModelInteractionTests {
     /// decide "is this a new drag?" by checking `dragOrigin == nil`, which is
     /// only reset in `dragEnded`'s `defer`. If SwiftUI ever drops the end
     /// phase (a cancelled gesture, or another gesture winning the
-    /// recognizer), the next drag would skip `selection.begin()` and
-    /// silently extend the *previous* selection from a stale anchor. The fix
-    /// compares against `startPixel` instead, which is stable for one drag's
-    /// lifetime and therefore self-correcting regardless of whether the
-    /// previous drag's end phase ever ran.
+    /// recognizer), the next drag would silently extend the *previous* range
+    /// from a stale anchor. The fix compares against `startPixel` instead,
+    /// which is stable for one drag's lifetime and therefore self-correcting
+    /// regardless of whether the previous drag's end phase ever ran.
     @Test("a drag whose end phase never ran does not leak its anchor into the next drag")
     func abandonedDragDoesNotLeakAnchor() {
         let model = makeModel()
@@ -97,38 +103,34 @@ struct ViewerModelInteractionTests {
         // simulating a cancelled or superseded gesture.
         model.dragChanged(startPixel: 100, currentPixel: 100, extending: false)
         model.dragChanged(startPixel: 100, currentPixel: 300, extending: false)
-        #expect(model.selection.anchor == PixelMapping.frame(atPixel: 100, in: model.viewport))
+        let first = PixelMapping.range(fromPixel: 100, toPixel: 300, in: model.viewport)
+        #expect(model.loop.range == first)
 
-        // A second, unrelated drag starts at 700. If `dragOrigin` were still
-        // stuck at 100, this would be read as a continuation and extend from
-        // the old anchor instead of beginning a fresh selection at 700.
+        // A second, unrelated drag starts at 700. Nothing is staged until it
+        // moves; then it must begin afresh at 700, not extend from 100.
         model.dragChanged(startPixel: 700, currentPixel: 700, extending: false)
-        let freshAnchor = PixelMapping.frame(atPixel: 700, in: model.viewport)
-        #expect(model.selection.anchor == freshAnchor)
-        #expect(model.selection.isEmpty)
+        #expect(model.loop.range == first)
 
         model.dragChanged(startPixel: 700, currentPixel: 900, extending: false)
         let expected = PixelMapping.range(fromPixel: 700, toPixel: 900, in: model.viewport)
-        #expect(model.selection.range == expected)
+        #expect(model.loop.range == expected)
     }
 
     // MARK: - dragEnded / click / double-click
 
-    @Test(
-        "a drag that never really moved is a click: it places the playhead and clears the selection"
-    )
+    @Test("a drag that never really moved is a click: it places the playhead and keeps the range")
     func clickPlacesPlayheadAndClears() {
         let model = makeModel()
-        model.selection.begin(at: 100)
-        model.selection.extend(to: 900_000)
+        setRange(model, 100, 900_000)
+        let range = model.loop
 
         model.dragEnded(startPixel: 300, endPixel: 300, now: 0)
 
-        #expect(model.selection.isEmpty)
+        #expect(model.loop == range)
         #expect(model.playhead == PixelMapping.frame(atPixel: 300, in: model.viewport))
     }
 
-    @Test("dragEnded past the click-slop distance leaves the drag's selection alone")
+    @Test("dragEnded past the click-slop distance commits the drag's range")
     func realDragLeavesSelectionAlone() {
         let model = makeModel()
         model.dragChanged(startPixel: 100, currentPixel: 100, extending: false)
@@ -137,7 +139,8 @@ struct ViewerModelInteractionTests {
         model.dragEnded(startPixel: 100, endPixel: 500, now: 0)
 
         let expected = PixelMapping.range(fromPixel: 100, toPixel: 500, in: model.viewport)
-        #expect(model.selection.range == expected)
+        #expect(model.loop.range == expected)
+        #expect(!model.loopIsStaged)
     }
 
     /// These tests have no audio session (`loadForTesting` leaves it nil), so
@@ -167,20 +170,14 @@ struct ViewerModelInteractionTests {
 
         #expect(model.playhead == PixelMapping.frame(atPixel: 301, in: model.viewport))
         #expect(playWasRequested(model))
-        // Emphatically not the old behaviour.
-        #expect(model.selection.range != FrameRange(start: 0, count: Self.totalFrames))
-        #expect(model.selection.isEmpty)
+        // Emphatically not the old behaviour (Select All), and no range either.
+        #expect(model.loop.range.isEmpty)
     }
 
-    /// How B composes with A. `⇧Space` (play from start) aims at the selection
-    /// start, else an active loop's in point — but a double-click is an
-    /// *explicit* cursor placement and must play from where the finger landed,
-    /// so it must not be routed through that precedence.
-    ///
-    /// The selection is re-made between the two clicks because the first click
-    /// clears it, exactly as `⌘A` between two clicks would: what is under test is
-    /// the state `dragEnded` sees when it decides.
-    @Test("a double-click plays from the click point, not the selection or loop start")
+    /// How B composes with A. `⇧Space` (play from start) aims at the range's
+    /// start — but a double-click is an *explicit* cursor placement and must play
+    /// from where the finger landed, so it must not be routed through that rule.
+    @Test("a double-click plays from the click point, not the loop start")
     func doubleClickIgnoresTheSelectionAndLoopStart() {
         let model = makeModel()
         model.seek(to: 200_000)
@@ -191,8 +188,6 @@ struct ViewerModelInteractionTests {
         #expect(model.loop.isActive)
 
         model.dragEnded(startPixel: 600, endPixel: 600, now: 0)
-        model.selectAll()
-        #expect(!model.selection.isEmpty)
         model.dragEnded(startPixel: 600, endPixel: 600, now: 0.1)
 
         let clicked = PixelMapping.frame(atPixel: 600, in: model.viewport)
@@ -208,7 +203,7 @@ struct ViewerModelInteractionTests {
         model.dragEnded(startPixel: 300, endPixel: 300, now: 0)
         model.dragEnded(startPixel: 300, endPixel: 300, now: 1.0)
 
-        #expect(model.selection.isEmpty)
+        #expect(model.loop.range.isEmpty)
         #expect(model.playhead == PixelMapping.frame(atPixel: 300, in: model.viewport))
         #expect(!playWasRequested(model))
     }
@@ -219,7 +214,7 @@ struct ViewerModelInteractionTests {
         model.dragEnded(startPixel: 100, endPixel: 100, now: 0)
         model.dragEnded(startPixel: 500, endPixel: 500, now: 0.1)
 
-        #expect(model.selection.isEmpty)
+        #expect(model.loop.range.isEmpty)
         #expect(model.playhead == PixelMapping.frame(atPixel: 500, in: model.viewport))
         #expect(!playWasRequested(model))
     }
@@ -244,6 +239,6 @@ struct ViewerModelInteractionTests {
         let model = ViewerModel()
         model.dragEnded(startPixel: 100, endPixel: 100, now: 0)
         #expect(model.playhead == 0)
-        #expect(model.selection.isEmpty)
+        #expect(model.loop.range.isEmpty)
     }
 }

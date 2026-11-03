@@ -95,7 +95,7 @@ enum PointerAffordance: Equatable, Sendable {
         case .waveformLanes:
             switch laneDrag {
             case .zoom: return .zoom
-            case .select: return .selectRange
+            case .range: return .selectRange
             case .edge(let handle): return forHandle(handle, dragging: true)
             case nil:
                 if optionHeld { return .zoom }

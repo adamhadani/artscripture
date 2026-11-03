@@ -26,8 +26,9 @@ extension AcceptanceRun {
         "dragging the out point past the in point swaps rather than collapsing",
         "a real drag on the loop's top bar moves the whole loop",
         "and preserves its length exactly",
-        "a real drag on a selection edge moves that edge",
-        "a plain drag through the middle of the loop still selects"
+        "a real drag dragged out a range, and its edge then moves",
+        "a plain drag through the middle of a playing loop replaces it",
+        "and it keeps looping"
     ]
 
     @MainActor
@@ -46,18 +47,16 @@ extension AcceptanceRun {
             return
         }
         model.fitWholeFile()
-        model.clearSelection()
 
         await checkEdgeHover(model: model, lanes: lanes, log: &log)
         await checkLoopEdgeDrags(model: model, lanes: lanes, log: &log)
         await checkLoopBodyDrag(model: model, lanes: lanes, log: &log)
-        await checkSelectionEdgeDrag(model: model, lanes: lanes, log: &log)
+        await checkNewRangeEdgeDrag(model: model, lanes: lanes, log: &log)
         await checkPlainDragSurvives(model: model, lanes: lanes, log: &log)
         await captureTreatment(
             model: model, theme: theme, lanes: lanes, outputDirectory: outputDirectory)
 
         model.clearLoop()
-        model.clearSelection()
         model.fitWholeFile()
     }
 
@@ -199,24 +198,23 @@ extension AcceptanceRun {
     }
 
     @MainActor
-    private static func checkSelectionEdgeDrag(
+    private static func checkNewRangeEdgeDrag(
         model: ViewerModel, lanes: CGRect, log: inout Logger
     ) async {
         model.clearLoop()
-        model.clearSelection()
         // Dragged out for real, so the edge being grabbed is one the pointer
-        // actually made.
+        // actually made — and, since the one-range change, is the loop's.
         await pointerDrag(
             from: CGPoint(x: lanes.minX + 500, y: lanes.midY),
             to: CGPoint(x: lanes.minX + 800, y: lanes.midY))
-        let startBefore = model.selection.range.start
+        let startBefore = model.loop.range.start
         await pointerDrag(
             from: CGPoint(x: lanes.minX + 800, y: lanes.midY),
             to: CGPoint(x: lanes.minX + 900, y: lanes.midY))
-        let moved = model.selection.range
-        log.note("selection after dragging its trailing edge", "\(moved.start)…\(moved.end)")
+        let moved = model.loop.range
+        log.note("range after dragging its trailing edge", "\(moved.start)…\(moved.end)")
         log.check(
-            "a real drag on a selection edge moves that edge",
+            "a real drag dragged out a range, and its edge then moves",
             moved.start == startBefore && within(model, moved.end, ofPoint: 900))
     }
 
@@ -224,20 +222,23 @@ extension AcceptanceRun {
 
     /// The eighth gesture must not have eaten the first. A plain drag through
     /// the middle of a loop region still drags out a passage, because the loop's
-    /// body handle is its bars and not its whole area.
+    /// body handle is its bars and not its whole area — and since the one-range
+    /// change that passage *replaces* the loop, which keeps looping.
     @MainActor
     private static func checkPlainDragSurvives(
         model: ViewerModel, lanes: CGRect, log: inout Logger
     ) async {
         setLoop(model, fromPoint: 200, toPoint: 900)
-        model.clearSelection()
+        if !model.loop.isEnabled { press(.d) }
         let expected = PixelMapping.range(fromPixel: 400, toPixel: 600, in: model.viewport)
         await pointerDrag(
             from: CGPoint(x: lanes.minX + 400, y: lanes.midY),
             to: CGPoint(x: lanes.minX + 600, y: lanes.midY))
         log.check(
-            "a plain drag through the middle of the loop still selects",
-            model.selection.range == expected)
+            "a plain drag through the middle of a playing loop replaces it "
+                + "(\(model.loop.range.start)…\(model.loop.range.end))",
+            model.loop.range == expected)
+        log.check("and it keeps looping", model.loop.isEnabled)
     }
 
     // MARK: - What it looks like
@@ -316,7 +317,6 @@ extension AcceptanceRun {
         }
 
         model.fitWholeFile()
-        model.clearSelection()
         setLoop(model, fromPoint: 200, toPoint: 800)
         if !model.loop.isEnabled { press(.d) }
         model.seek(to: model.loop.range.start)

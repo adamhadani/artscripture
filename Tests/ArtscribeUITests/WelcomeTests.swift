@@ -137,15 +137,14 @@ struct WelcomeTests {
         }
     }
 
-    /// **The three buttons that carry someone from a drag to a repeating bar.**
-    /// Selection → Loop exists because selecting used to dead-end, and a tour
-    /// that does not name it leaves the dead end exactly where it was.
+    /// **The two buttons that carry someone from a drag to a repeating bar.**
+    /// There were three until a drag became the loop (2026-11).
     @Test("the tour introduces the loop route on every surface")
     func loopRouteIsAlwaysTaught() {
         for surface in Self.surfaces {
             let introduced = Set(
                 WelcomePage.pages(for: surface).flatMap { $0.controls.map(\.control) })
-            for control in [TransportControl.loopFromSelection, .loop, .preroll] {
+            for control in [TransportControl.loop, .preroll] {
                 #expect(introduced.contains(control), "\(surface) never introduces \(control)")
             }
         }

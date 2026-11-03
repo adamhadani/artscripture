@@ -100,7 +100,7 @@ struct ViewerModelDragZoomTests {
         #expect(straight.viewport == diagonal.viewport)
     }
 
-    @Test("a ruler drag moves neither the playhead nor the selection")
+    @Test("a ruler drag moves neither the playhead nor the range")
     func rulerDragLeavesSelectionAlone() {
         let model = makeModel()
         model.laneDragChanged(
@@ -111,13 +111,13 @@ struct ViewerModelDragZoomTests {
             option: false, shift: false)
         model.laneDragEnded(
             start: CGPoint(x: 100, y: 300), end: CGPoint(x: 400, y: 300), now: 0)
-        let selection = model.selection.range
+        let selection = model.loop.range
         let playhead = model.playhead
         #expect(!selection.isEmpty)
 
         dragRuler(in: model, from: CGPoint(x: 700, y: 12), toY: 200)
 
-        #expect(model.selection.range == selection)
+        #expect(model.loop.range == selection)
         #expect(model.playhead == playhead)
     }
 
@@ -146,12 +146,12 @@ struct ViewerModelDragZoomTests {
 
         #expect(abs(model.zoomFactor - 2) < 0.05)
         expectFrame(anchored, staysAtPixel: 300, in: model)
-        #expect(model.selection.isEmpty)
+        #expect(model.loop.range.isEmpty)
     }
 
     /// The pre-existing gesture, routed through the new entry point: a plain
     /// left-drag still selects, exactly as before.
-    @Test("a plain left-drag in the lanes still selects and does not zoom")
+    @Test("a plain left-drag in the lanes still marks a range and does not zoom")
     func plainDragStillSelects() {
         let model = makeModel()
         let before = model.viewport
@@ -164,11 +164,11 @@ struct ViewerModelDragZoomTests {
         model.laneDragEnded(start: start, end: CGPoint(x: 600, y: 120), now: 0)
 
         #expect(model.viewport == before)
-        #expect(model.selection.range.start == PixelMapping.frame(atPixel: 200, in: before))
-        #expect(model.selection.range.end == PixelMapping.frame(atPixel: 600, in: before))
+        #expect(model.loop.range.start == PixelMapping.frame(atPixel: 200, in: before))
+        #expect(model.loop.range.end == PixelMapping.frame(atPixel: 600, in: before))
     }
 
-    @Test("Shift-drag in the lanes still extends the existing selection")
+    @Test("Shift-drag in the lanes still extends the existing range")
     func shiftDragStillExtends() {
         let model = makeModel()
         let first = CGPoint(x: 200, y: 300)
@@ -176,7 +176,7 @@ struct ViewerModelDragZoomTests {
         model.laneDragChanged(
             start: first, current: CGPoint(x: 400, y: 300), option: false, shift: false)
         model.laneDragEnded(start: first, end: CGPoint(x: 400, y: 300), now: 0)
-        let anchor = model.selection.range.start
+        let anchor = model.loop.range.start
 
         let second = CGPoint(x: 800, y: 300)
         model.laneDragChanged(start: second, current: second, option: false, shift: true)
@@ -184,15 +184,15 @@ struct ViewerModelDragZoomTests {
             start: second, current: CGPoint(x: 900, y: 300), option: false, shift: true)
         model.laneDragEnded(start: second, end: CGPoint(x: 900, y: 300), now: 0)
 
-        #expect(model.selection.range.start == anchor)
-        #expect(model.selection.range.end == PixelMapping.frame(atPixel: 900, in: model.viewport))
+        #expect(model.loop.range.start == anchor)
+        #expect(model.loop.range.end == PixelMapping.frame(atPixel: 900, in: model.viewport))
     }
 
     // MARK: - The latch
 
     /// Pressing ⌥ halfway through a selection drag must not turn it into a
     /// zoom. The gesture is what it was when the mouse went down.
-    @Test("Option pressed mid-drag does not convert a selection into a zoom")
+    @Test("Option pressed mid-drag does not convert a range drag into a zoom")
     func optionMidDragDoesNotBecomeAZoom() {
         let model = makeModel()
         let before = model.viewport
@@ -207,12 +207,12 @@ struct ViewerModelDragZoomTests {
         model.laneDragEnded(start: start, end: CGPoint(x: 400, y: 100), now: 0)
 
         #expect(model.viewport == before)
-        #expect(!model.selection.isEmpty)
+        #expect(!model.loop.range.isEmpty)
     }
 
     /// And the mirror: releasing ⌥ halfway through a zoom drag must not start
     /// selecting.
-    @Test("Option released mid-drag does not convert a zoom into a selection")
+    @Test("Option released mid-drag does not convert a zoom into a range drag")
     func optionReleasedMidDragStaysAZoom() {
         let model = makeModel()
         let start = CGPoint(x: 300, y: 400)
@@ -225,13 +225,13 @@ struct ViewerModelDragZoomTests {
         }
         model.laneDragEnded(start: start, end: CGPoint(x: 420, y: 520), now: 0)
 
-        #expect(model.selection.isEmpty)
+        #expect(model.loop.range.isEmpty)
         #expect(model.zoomFactor > 1.9)
     }
 
     /// An ⌥-drag that never moved is not a click: it must not seek, and it must
     /// not throw away the selection you already had.
-    @Test("an Option-click does not seek or clear the selection")
+    @Test("an Option-click does not seek or clear the range")
     func optionClickIsNotAClick() {
         let model = makeModel()
         let first = CGPoint(x: 200, y: 300)
@@ -239,14 +239,14 @@ struct ViewerModelDragZoomTests {
         model.laneDragChanged(
             start: first, current: CGPoint(x: 600, y: 300), option: false, shift: false)
         model.laneDragEnded(start: first, end: CGPoint(x: 600, y: 300), now: 0)
-        let selection = model.selection.range
+        let selection = model.loop.range
         let playhead = model.playhead
 
         let click = CGPoint(x: 900, y: 300)
         model.laneDragChanged(start: click, current: click, option: true, shift: false)
         model.laneDragEnded(start: click, end: click, now: 0.5)
 
-        #expect(model.selection.range == selection)
+        #expect(model.loop.range == selection)
         #expect(model.playhead == playhead)
     }
 
@@ -350,6 +350,6 @@ struct ViewerModelDragZoomTests {
         model.laneDragEnded(
             start: CGPoint(x: 200, y: 300), end: CGPoint(x: 200, y: 100), now: 0)
         #expect(model.viewport.startFrame == 0)
-        #expect(model.selection.isEmpty)
+        #expect(model.loop.range.isEmpty)
     }
 }

@@ -1,6 +1,6 @@
 import ArtscribeKit
 
-/// What `A`, `S` and `G` do to the loop region.
+/// What `A` and `S` do to the loop region.
 ///
 /// The whole of the interesting behaviour is what happens when the two edges
 /// cross, which a transcriber hits constantly: set the out point, then decide the
@@ -31,17 +31,6 @@ public enum LoopEditing {
         return LoopRegion(
             range: FrameRange(start: start, count: Swift.max(0, end - start)),
             isEnabled: loop.isEnabled)
-    }
-
-    /// `G` — the selection becomes the loop region. It deliberately does not
-    /// enable looping: `D` is what does that, so `G` alone is safe to press while
-    /// something else is looping.
-    public static func fromSelection(
-        _ range: FrameRange, in loop: LoopRegion, totalFrames: FrameIndex
-    ) -> LoopRegion {
-        let clamped = range.clamped(to: totalFrames)
-        guard !clamped.isEmpty else { return loop }
-        return LoopRegion(range: clamped, isEnabled: loop.isEnabled)
     }
 
     private static func clamp(_ frame: FrameIndex, _ totalFrames: FrameIndex) -> FrameIndex {

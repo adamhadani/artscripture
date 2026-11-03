@@ -225,6 +225,9 @@ extension ViewerModel {
 
     /// Internal, not private: a nudge follows the playhead through this as well.
     func autoScroll() {
+        // Never under a finger: a page flip mid-drag would map the same finger
+        // position into a new viewport, a page away from where it is.
+        guard laneDragMode == nil else { return }
         guard let start = AutoScroll.pageStart(playhead: playhead, viewport: viewport, loop: loop)
         else { return }
         let delta = Double(start - viewport.startFrame) / viewport.framesPerPixel
@@ -250,7 +253,7 @@ extension ViewerModel {
         let rewind = TransportLatch.rewindTarget(
             playhead: playhead, totalFrames: totalFrames, reachedEnd: reachedEnd,
             loopActive: loop.isActive,
-            selectionStart: selection.isEmpty ? nil : selection.range.start)
+            rangeStart: loop.range.isEmpty ? nil : loop.range.start)
         if let rewind { seek(to: rewind) }
         do {
             try session.start()
@@ -290,7 +293,7 @@ extension ViewerModel {
     /// that counts.
     public func returnToStart() {
         guard hasTrack else { return }
-        seek(to: PlaybackStart.target(selection: selection, loop: loop))
+        seek(to: PlaybackStart.target(loop: loop))
     }
 
     /// The single place the playhead moves by user action. Both halves matter:
@@ -327,13 +330,12 @@ extension ViewerModel {
         applyLoop(LoopEditing.settingOut(at: playhead, in: loop, totalFrames: totalFrames))
     }
 
-    public func loopFromSelection() {
-        guard hasTrack else { return }
-        applyLoop(LoopEditing.fromSelection(selection.range, in: loop, totalFrames: totalFrames))
-    }
-
+    /// Mirrors the menu's `.trackLoopToggle` enablement, which a key handled by
+    /// `onKeyPress` never consults: with no range and looping off there is
+    /// nothing to switch on, and switching it on would make the next drag
+    /// loop at once without anyone having asked.
     public func toggleLoop() {
-        guard hasTrack else { return }
+        guard hasTrack, !(loop.range.isEmpty && !loop.isEnabled) else { return }
         var next = loop
         next.isEnabled.toggle()
         applyLoop(next)
@@ -354,6 +356,7 @@ extension ViewerModel {
 
     public func clearLoop() {
         guard hasTrack else { return }
+        rangeAnchor = nil
         applyLoop(LoopRegion())
     }
 
@@ -362,7 +365,9 @@ extension ViewerModel {
     /// it too — the alternative would be a second way to reach the render
     /// thread, which spec §5 does not have.
     func applyLoop(_ next: LoopRegion) {
-        guard next != loop else { return }
+        // A staged loop equal to `next` has still not reached the engine.
+        guard next != loop || loopIsStaged else { return }
+        loopIsStaged = false
         loop = next
         // The geometry the wrap detector measures against has just changed, so
         // its remembered position is from a different region: a loop dragged
@@ -370,6 +375,7 @@ extension ViewerModel {
         wrapTracker.reset()
         // Takes effect on the next pass, not this one: the engine wraps at the
         // boundary it is fed, and never resets the stretcher there (spec §5.1).
+        loopPushes += 1
         session?.push(.setLoop(loop.range, loop.isEnabled))
         markSessionEdited()
     }

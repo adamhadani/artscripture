@@ -25,14 +25,13 @@ enum StatusBarFields {
         case volume
         case speed
         case loop
-        case selection
         case zoom
         case format
     }
 
     /// Left-to-right order on screen. Dropping never reorders what is left.
     static let displayOrder: [Field] = [
-        .position, .volume, .speed, .loop, .selection, .zoom, .format
+        .position, .volume, .speed, .loop, .zoom, .format
     ]
 
     /// Given up in this order, first entry first.
@@ -41,10 +40,10 @@ enum StatusBarFields {
     /// change while you work — you read it once on load, and the title bar and
     /// the load notice already carry the file's identity. `zoom` next: the
     /// waveform *is* the zoom readout, so the number is a refinement of
-    /// something already on screen. `selection` and `loop` are last because they
-    /// are the two pieces of state you can leave set and forget, and both change
-    /// what the transport does.
-    static let dropOrder: [Field] = [.format, .zoom, .selection, .loop]
+    /// something already on screen. `loop` is last because it is state you can
+    /// leave set and forget, and it changes what the transport does. (There was a
+    /// `selection` field until the loop became the only range, 2026-11.)
+    static let dropOrder: [Field] = [.format, .zoom, .loop]
 
     /// Never dropped, at any width.
     ///
@@ -74,7 +73,6 @@ enum StatusBarFields {
         case .volume: return 150
         case .speed: return 150
         case .loop: return 160
-        case .selection: return 150
         case .zoom: return 146
         case .format: return 104
         }

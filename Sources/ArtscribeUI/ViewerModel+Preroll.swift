@@ -51,7 +51,7 @@ extension ViewerModel {
     /// `prerollSeconds` and clamped by `Preroll`.
     ///
     /// **Except at the end of the file**, where it stands aside. Parked on the
-    /// end, `play()` rewinds to the selection start or to zero
+    /// end, `play()` rewinds to the range's start or to zero
     /// (`TransportLatch.rewindTarget`) because that press means "play it again";
     /// a preroll that first stepped back two seconds would cancel that rewind
     /// and play the last two seconds instead, which is a different action from
@@ -66,7 +66,7 @@ extension ViewerModel {
         let rewind = TransportLatch.rewindTarget(
             playhead: playhead, totalFrames: totalFrames, reachedEnd: reachedEnd,
             loopActive: loop.isActive,
-            selectionStart: selection.isEmpty ? nil : selection.range.start)
+            rangeStart: loop.range.isEmpty ? nil : loop.range.start)
         guard rewind == nil else { return playhead }
         guard prefs.prerollEnabled else { return playhead }
         return Preroll.target(

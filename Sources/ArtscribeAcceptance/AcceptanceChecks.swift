@@ -16,7 +16,7 @@ extension AcceptanceRun {
         outputDirectory: String
     ) async {
         model.fitWholeFile()
-        model.clearSelection()
+        model.clearLoop()
         var worst = 0.0
         var total = 0.0
         var steps = 0
@@ -72,7 +72,7 @@ extension AcceptanceRun {
     @MainActor
     static func checkScrollZoom(model: ViewerModel, log: inout Logger) async {
         model.fitWholeFile()
-        model.clearSelection()
+        model.clearLoop()
         model.seek(to: 0)
         let lanes = model.laneFrame
         let strip = model.overviewFrame
@@ -164,7 +164,7 @@ extension AcceptanceRun {
     @MainActor
     static func checkDragZoom(model: ViewerModel, log: inout Logger) async {
         model.fitWholeFile()
-        model.clearSelection()
+        model.clearLoop()
         let lanes = model.laneFrame
         guard !lanes.isEmpty else {
             log.check("lane geometry is known to the drag-zoom check", false)
@@ -222,7 +222,7 @@ extension AcceptanceRun {
         model: ViewerModel, lanes: CGRect, log: inout Logger
     ) async {
         model.fitWholeFile()
-        model.clearSelection()
+        model.clearLoop()
         let start = CGPoint(x: lanes.width * 0.4, y: lanes.height * 0.5)
         let fitted = model.zoomFactor
         for offset in 1...240 {
@@ -237,7 +237,7 @@ extension AcceptanceRun {
             "Option-drag in the lanes zooms (\(rounded(fitted))x -> "
                 + "\(rounded(model.zoomFactor))x)",
             model.zoomFactor > fitted * 1.5)
-        log.check("and makes no selection while doing it", model.selection.isEmpty)
+        log.check("and makes no range while doing it", model.loop.range.isEmpty)
 
         // The modifier released halfway must not start selecting.
         model.fitWholeFile()
@@ -252,10 +252,10 @@ extension AcceptanceRun {
         model.laneDragEnded(
             start: second, end: CGPoint(x: second.x + 120, y: second.y + 120), now: 0)
         log.check(
-            "releasing Option mid-drag does not turn the zoom into a selection",
-            model.selection.isEmpty && model.zoomFactor > 1.5)
+            "releasing Option mid-drag does not turn the zoom into a range",
+            model.loop.range.isEmpty && model.zoomFactor > 1.5)
         model.fitWholeFile()
-        model.clearSelection()
+        model.clearLoop()
     }
 
     /// The overview strip always shows the whole file, so zooming there has to
@@ -282,14 +282,14 @@ extension AcceptanceRun {
     }
 
     @MainActor
-    static func checkZoomToSelection(model: ViewerModel, log: inout Logger) async {
-        let range = model.selection.range
+    static func checkZoomToLoop(model: ViewerModel, log: inout Logger) async {
+        let range = model.loop.range
         press(.nine)
         await settle(seconds: 0.25)
         let framed =
             model.viewport.startFrame == range.start
             && abs(Double(model.viewport.visibleFrames - range.count)) < Double(range.count) * 0.05
-        log.check("Cmd-9 frames the selection", framed)
+        log.check("Cmd-9 frames the loop", framed)
         if !framed {
             log.note(
                 "Cmd-9 detail",
@@ -297,7 +297,7 @@ extension AcceptanceRun {
                     + "visible \(model.viewport.visibleFrames) vs \(range.count)")
         }
         press(.escape)
-        log.check("Esc clears the selection", model.selection.isEmpty)
+        log.check("Esc clears the loop", model.loop.range.isEmpty)
         press(.zero)
         await settle(seconds: 0.15)
         log.check(

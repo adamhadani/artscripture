@@ -145,8 +145,7 @@ extension AcceptanceRun {
                 model.playhead < nudged && model.playhead == middle
             ))
 
-        model.selectAll()
-        model.loopFromSelection()
+        model.loopWholeFile()
         let looping = model.loop.isEnabled
         paths.insert(await activate(.loop, model: model))
         results.append(
@@ -171,7 +170,6 @@ extension AcceptanceRun {
             ))
         if model.prefs.prerollEnabled != prerollWas { model.togglePreroll() }
         model.clearLoop()
-        model.clearSelection()
         model.setSpeedPreset(1.0)
         model.seek(to: 0)
 
@@ -322,8 +320,7 @@ extension AcceptanceRun {
         model: ViewerModel, log: inout Logger, outputDirectory: String
     ) async {
         let band = statusBarRect()
-        model.selectAll()
-        model.loopFromSelection()
+        model.loopWholeFile()
         if model.loop.isEnabled { model.toggleLoop() }
         await settle(seconds: 0.35)
         let violet = colour(Palette.of(model.cache.appearance).loop)
@@ -348,7 +345,6 @@ extension AcceptanceRun {
 
         model.toggleLoop()
         model.clearLoop()
-        model.clearSelection()
         await settle(seconds: 0.2)
     }
 }

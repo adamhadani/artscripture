@@ -60,13 +60,11 @@ public enum EmptyStatePrompt {
     public static func loopGuidance(for surface: Surface) -> String {
         switch surface {
         case .desktop:
-            return "Put the playhead where the passage starts and press A, then where it "
-                + "ends and press S. Or drag a selection and press G to turn it into a loop."
+            return "Drag across the waveform to mark the passage, then press D to loop it. "
+                + "Or put the playhead where it starts and press A, then where it ends and press S."
         case .tabletWithDrop, .phone:
-            // The transport's Selection → Loop button is the touch route, and
-            // naming it is the whole point: it exists because there was none.
-            return "Drag across the waveform to select the passage, then tap "
-                + "Selection → Loop in the transport bar."
+            return "Drag across the waveform to mark the passage, then tap Loop in the "
+                + "transport bar. Drag its edges to adjust it."
         }
     }
 

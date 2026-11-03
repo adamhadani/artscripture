@@ -59,7 +59,7 @@ extension AcceptanceRun {
         await refreshMenu(view)
         let titles = view.items.map(\.title).filter { !$0.isEmpty }
         log.note("View menu", titles.joined(separator: " | "))
-        let wanted = ["Fit Whole File", "Zoom to Selection", "Zoom In", "Zoom Out"]
+        let wanted = ["Fit Whole File", "Zoom to Loop", "Zoom In", "Zoom Out"]
         for expected in wanted {
             log.check(
                 "the View menu carries \(expected)", titles.contains { $0.hasPrefix(expected) })
@@ -67,7 +67,7 @@ extension AcceptanceRun {
         // Task 18 moved these to Edit, where macOS convention puts them. An
         // action left behind in two menus is one that can grey out in one place
         // and not the other.
-        for moved in ["Select All", "Clear Selection"] {
+        for moved in ["Select All", "Clear Loop"] {
             log.check(
                 "\(moved) has left the View menu",
                 !titles.contains { $0.hasPrefix(moved) })

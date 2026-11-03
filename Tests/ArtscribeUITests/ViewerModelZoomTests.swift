@@ -188,24 +188,24 @@ struct LaneDragCancelTests {
         return model
     }
 
-    /// The property the whole method exists for: a pinch must leave the
-    /// selection exactly as it found it.
-    @Test("cancelling puts the selection back")
+    /// The property the whole method exists for: a pinch must leave the range
+    /// (the loop) exactly as it found it.
+    @Test("cancelling puts the range back")
     func cancellingRestoresSelection() {
         let model = makeModel()
         model.laneDragChanged(
             start: .init(x: 100, y: 10), current: .init(x: 100, y: 10),
             option: false, shift: false)
         model.laneDragEnded(start: .init(x: 100, y: 10), end: .init(x: 100, y: 10), now: 0)
-        let before = model.selection.range
+        let before = model.loop.range
 
         model.laneDragChanged(
             start: .init(x: 200, y: 10), current: .init(x: 600, y: 10),
             option: false, shift: false)
-        #expect(model.selection.range != before, "the drag did not select anything to undo")
+        #expect(model.loop.range != before, "the drag did not mark anything to undo")
 
         model.cancelLaneDrag()
-        #expect(model.selection.range == before, "the selection was not restored")
+        #expect(model.loop.range == before, "the range was not restored")
     }
 
     /// **The half that is easy to miss.** The `DragGesture` still delivers its
@@ -255,6 +255,6 @@ struct LaneDragCancelTests {
         model.seek(to: 1000)
         model.cancelLaneDrag()
         #expect(model.playhead == 1000)
-        #expect(model.selection.range.isEmpty)
+        #expect(model.loop.range.isEmpty)
     }
 }

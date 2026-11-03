@@ -79,7 +79,7 @@ It is the acceptance equivalent of `swift test --filter <Target>` during the loo
 | `--only transport` | 13.3 s | 12× |
 | `--only practice` | 23 s | 7× |
 | `--only menu` | 6.2 s | 27× |
-| `--only selection` | 4.6 s | 36× |
+| `--only range` (was `selection`) | 4.6 s | 36× |
 | `--only loop` | 3.4 s | **48×** |
 
 Measured on 2026-07-28, release build, the same 108 MB FLAC each time; the full-run figure is
@@ -358,7 +358,8 @@ read as not landing *while it was working*.
 **Let SwiftUI catch up before clicking.** `activate` settles first. A press that races the
 render pass hits a button still drawn **disabled** — a disabled SwiftUI button swallows the
 click in silence — and the loop button read as broken for a whole run purely because
-`loopFromSelection()` had given it a region the view had not yet been told about.
+`loopFromSelection()` (removed in 2026-11) had given it a region the view had not yet been
+told about.
 
 **Mutation-test the harness, not just the unit suite.** Three deliberate defects — the loop
 button's action removed, the preroll button's action removed, the edge drag ignoring where

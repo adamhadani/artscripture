@@ -137,7 +137,7 @@ extension ViewerModel {
         fileName = nil
         trackURL = nil
         generation += 1
-        selection.clear()
+        resetLaneGesture()
         loop = LoopRegion()
         playhead = 0
         reachedEnd = false
@@ -157,7 +157,7 @@ extension ViewerModel {
         pyramid = loaded.pyramid
         fileName = url.lastPathComponent
         generation += 1
-        selection.clear()
+        resetLaneGesture()
         // Speed and engine deliberately survive a load — they are a working
         // preference, not a property of the file — but the loop cannot: its
         // frames mean nothing in a different recording.
@@ -224,7 +224,7 @@ extension ViewerModel {
         self.pyramid = pyramid
         fileName = "test-track"
         generation += 1
-        selection.clear()
+        resetLaneGesture()
         loop = LoopRegion()
         playhead = 0
         wrapTracker.reset()

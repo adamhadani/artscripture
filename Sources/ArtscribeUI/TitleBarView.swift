@@ -120,6 +120,13 @@ struct TitleBarView: View {
                         action: auxiliary.shortcuts)
                     Button("Practice", systemImage: "metronome", action: auxiliary.practice)
                     Divider()
+                    // A phone has no menu bar, so this and the Loop button's
+                    // long press are its only ways to remove a loop.
+                    Button("Clear Loop", systemImage: "xmark.circle", role: .destructive) {
+                        model.clearLoop()
+                    }
+                    .disabled(model.loop.range.isEmpty)
+                    Divider()
                     Button(
                         "About Artscripture", systemImage: "info.circle", action: auxiliary.about)
                 } label: {

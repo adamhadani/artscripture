@@ -50,7 +50,6 @@ struct WaveformLanesView: View {
     /// list either.
     private struct OverlayState {
         let channels: Int
-        let selectionRange: FrameRange
         let viewport: Viewport
         let hasTrack: Bool
         let playhead: FrameIndex
@@ -68,12 +67,11 @@ struct WaveformLanesView: View {
         // tracking is only guaranteed for reads that happen while a view's
         // `body` is being evaluated; a `Canvas` renderer closure runs as part
         // of the display list, not necessarily under that same tracking scope.
-        // A pure selection change touches none of `body`'s other dependencies
-        // (the bitmap is selection-invariant), so without this the selection
-        // band and channel rules could freeze until an unrelated redraw.
+        // A pure loop change touches none of `body`'s other dependencies (the
+        // bitmap is loop-invariant), so without this the loop and channel rules
+        // could freeze until an unrelated redraw.
         let state = OverlayState(
             channels: model.channels,
-            selectionRange: model.selection.range,
             viewport: model.viewport,
             hasTrack: model.hasTrack,
             playhead: model.playhead,
@@ -223,8 +221,6 @@ struct WaveformLanesView: View {
 
     private func draw(in context: inout GraphicsContext, size: CGSize, state: OverlayState) {
         drawChannelRules(in: &context, size: size, channels: state.channels)
-        drawSelection(
-            in: &context, size: size, range: state.selectionRange, viewport: state.viewport)
         drawLoop(in: &context, size: size, state: state)
         // Under the playhead and over the loop: a track boundary is standing
         // scenery, the playhead is where you are, and the playhead must never be
@@ -264,33 +260,10 @@ struct WaveformLanesView: View {
         }
     }
 
-    private func drawSelection(
-        in context: inout GraphicsContext, size: CGSize, range: FrameRange, viewport: Viewport
-    ) {
-        guard !range.isEmpty else { return }
-        let startX = viewport.pixel(forFrame: range.start)
-        let endX = viewport.pixel(forFrame: range.end)
-        guard endX > 0, startX < size.width else { return }
-
-        let left = max(0, startX)
-        let right = min(size.width, endX)
-        context.fill(
-            Path(CGRect(x: left, y: 0, width: max(0, right - left), height: size.height)),
-            with: .color(palette.selection.color(opacity: palette.selectionFillOpacity)))
-
-        let edge = Palette.selectionEdgeWidth
-        for x in [startX, endX] where x >= -edge && x <= size.width + edge {
-            context.fill(
-                Path(CGRect(x: x - edge / 2, y: 0, width: edge, height: size.height)),
-                with: .color(palette.selection.color()))
-        }
-    }
-
-    /// The loop region: bars along the top and bottom edges plus solid in/out
-    /// posts. Deliberately a different *shape* as well as a different colour from
-    /// the selection's full-height wash, because the two are shown together and
-    /// mean different things. A region that exists but is switched off is drawn
-    /// faintly rather than hidden — having set it is worth remembering.
+    /// The range — the loop: bars along the top and bottom edges plus solid
+    /// in/out posts. With looping off it is drawn faintly rather than hidden: it
+    /// is the passage you marked, and one press of Loop away from repeating.
+    /// (Until 2026-11 a separate selection drew a full-height amber wash here.)
     private func drawLoop(
         in context: inout GraphicsContext, size: CGSize, state: OverlayState
     ) {
@@ -309,11 +282,10 @@ struct WaveformLanesView: View {
             context.fill(
                 Path(CGRect(x: left, y: y, width: width, height: bar)), with: .color(colour))
         }
-        if state.loop.isEnabled {
-            context.fill(
-                Path(CGRect(x: left, y: 0, width: width, height: size.height)),
-                with: .color(palette.loop.color(opacity: 0.07)))
-        }
+        let wash = state.loop.isEnabled ? Palette.loopWashOpacity : Palette.loopWashDisabledOpacity
+        context.fill(
+            Path(CGRect(x: left, y: 0, width: width, height: size.height)),
+            with: .color(palette.loop.color(opacity: wash)))
         for x in [startX, endX] where x >= -2 && x <= size.width + 2 {
             context.fill(
                 Path(CGRect(x: x - 1, y: 0, width: 2, height: size.height)), with: .color(colour))

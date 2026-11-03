@@ -181,7 +181,7 @@ extension AcceptanceRun {
             undeliverable() ?? (focused ? nil : "the filter never took the keyboard to type into")
 
         shortcuts.query = ""
-        model.clearSelection()
+        model.clearLoop()
         await settle(seconds: 0.3)
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString("nudge", forType: .string)
@@ -196,14 +196,14 @@ extension AcceptanceRun {
         let selection = TextFocusProbe.editor(in: window)?.selectedRange()
         log.note(
             "after ⌘A",
-            "field selection \(selection.map { "\($0)" } ?? "none"), audio selection "
-                + "\(model.selection)")
+            "field selection \(selection.map { "\($0)" } ?? "none"), loop "
+                + "\(model.loop.range.start)…\(model.loop.range.end)")
         log.check(
             "⌘A over the filter selects its text, not the whole track",
             selection?.length == shortcuts.query.utf16.count && selection?.length ?? 0 > 0,
             unless: unfocused)
         log.check(
-            "and leaves the audio selection alone", model.selection.isEmpty, unless: unfocused)
+            "and leaves the loop alone", model.loop.range.isEmpty, unless: unfocused)
 
         NSPasteboard.general.clearContents()
         press(Key(8, "c", modifiers: .command))

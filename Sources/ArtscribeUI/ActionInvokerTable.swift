@@ -35,8 +35,19 @@ extension ActionInvoker {
         .loopSetOut: { $0.model.setLoopOut() },
         .loopToggle: { $0.model.toggleLoop() },
         .loopRestart: { $0.model.restartLoop() },
-        .loopFromSelection: { $0.model.loopFromSelection() },
-        .loopClear: { $0.model.clearLoop() },
+        .loopClear: { context in
+            // `⎋` in a text field ends the edit, which is what the platform
+            // means by it; clearing the loop from under a field the reader is
+            // typing in is not.
+            #if os(macOS)
+            guard !TextFocus.isEditingText else {
+                return send(#selector(NSResponder.cancelOperation(_:)))
+            }
+            #endif
+            context.model.clearLoop()
+        },
+        .loopExtendLeft: { $0.model.extendLoop(.backward) },
+        .loopExtendRight: { $0.model.extendLoop(.forward) },
         .loopMoveInLeft: loopMove(.inPoint, .gentle, .backward),
         .loopMoveInRight: loopMove(.inPoint, .gentle, .forward),
         .loopMoveInLeftFar: loopMove(.inPoint, .aggressive, .backward),
@@ -111,42 +122,19 @@ extension ActionInvoker {
         // check to run first, once there is one: focus the shortcut sheet's
         // filter field, type ⌘A, and confirm the *text* is selected rather than
         // the whole track.
-        .selectionSelectAll: { context in
+        .loopSelectAll: { context in
             #if os(macOS)
             guard !TextFocus.isEditingText else { return send(#selector(NSText.selectAll(_:))) }
             #endif
-            context.model.selectAll()
-        },
-        .selectionClear: { context in
-            // `⎋` in a text field ends the edit, which is what the platform
-            // means by it; clearing the audio selection from under a field the
-            // reader is typing in is not.
-            #if os(macOS)
-            guard !TextFocus.isEditingText else {
-                return send(#selector(NSResponder.cancelOperation(_:)))
-            }
-            #endif
-            context.model.clearSelection()
-        },
-        .selectionExtendLeft: { $0.model.extendSelection(.backward) },
-        .selectionExtendRight: { $0.model.extendSelection(.forward) },
-        .selectionMoveLeft: selectionMove(.gentle, .backward),
-        .selectionMoveRight: selectionMove(.gentle, .forward),
-        .selectionMoveLeftFar: selectionMove(.aggressive, .backward),
-        .selectionMoveRightFar: selectionMove(.aggressive, .forward)
+            context.model.loopWholeFile()
+        }
     ]
-
-    private static func selectionMove(
-        _ tier: SelectionMoveTier, _ direction: NudgeDirection
-    ) -> @MainActor (MenuContext) -> Void {
-        { $0.model.moveSelection(tier, direction: direction) }
-    }
 
     static let viewActions: [ActionID: @MainActor (MenuContext) -> Void] = [
         .zoomIn: { $0.model.zoomIn() },
         .zoomOut: { $0.model.zoomOut() },
         .zoomFit: { $0.model.fitWholeFile() },
-        .zoomToSelection: { $0.model.zoomToSelection() },
+        .zoomToLoop: { $0.model.zoomToLoop() },
         .viewScrollLeft: { $0.model.scrollLeft() },
         .viewScrollRight: { $0.model.scrollRight() },
         // Toggles rather than shows: ⌘/ pressed at a window already in front of

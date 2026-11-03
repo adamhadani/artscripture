@@ -308,7 +308,6 @@ extension AcceptanceRun {
             !guardedEnabled)
         log.check("and the keystroke no longer moves the transport", !guarded.moved)
         model.clearLoop()
-        model.clearSelection()
     }
 
     // MARK: - Typing

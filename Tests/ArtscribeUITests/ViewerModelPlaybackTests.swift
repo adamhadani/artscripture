@@ -164,15 +164,13 @@ struct ViewerModelPlaybackTests {
         #expect(!model.loop.isEnabled)
     }
 
-    @Test("D toggles looping and G turns the selection into the loop region")
+    @Test("a drag defines the loop region, and D toggles looping")
     func loopFromSelection() {
         let model = makeModel()
         model.dragChanged(startPixel: 100, currentPixel: 100, extending: false)
         model.dragChanged(startPixel: 100, currentPixel: 400, extending: false)
-        let selected = model.selection.range
-
-        model.loopFromSelection()
-        #expect(model.loop.range == selected)
+        model.dragEnded(startPixel: 100, endPixel: 400, now: 0)
+        #expect(!model.loop.range.isEmpty)
         #expect(!model.loop.isActive)
 
         model.toggleLoop()
@@ -204,8 +202,7 @@ struct ViewerModelPlaybackTests {
     @Test("clearing the loop region turns looping off as well")
     func clearLoop() {
         let model = makeModel()
-        model.selectAll()
-        model.loopFromSelection()
+        model.loopWholeFile()
         model.toggleLoop()
         #expect(model.loop.isActive)
         model.clearLoop()
@@ -215,8 +212,7 @@ struct ViewerModelPlaybackTests {
     @Test("a new track clears the loop")
     func loadClearsLoop() {
         let model = makeModel()
-        model.selectAll()
-        model.loopFromSelection()
+        model.loopWholeFile()
         let storage = AudioStorage(channels: 1, capacityFrames: 1000)
         let audio = DecodedAudio(
             channels: 1, sampleRate: Self.sampleRate, frameCount: 1000, storage: storage)
@@ -254,7 +250,7 @@ struct ViewerModelPlaybackTests {
         model.setLoopOut()
         model.toggleLoop()
         model.restartLoop()
-        model.loopFromSelection()
+        model.loopWholeFile()
         model.returnToStart()
         #expect(!model.isPlaying)
         #expect(model.loop == LoopRegion())

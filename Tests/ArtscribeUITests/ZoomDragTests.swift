@@ -172,12 +172,12 @@ struct LaneDragModeTests {
 
     @Test("a plain drag selects")
     func plain() {
-        #expect(LaneDragMode(option: false, shift: false) == .select(extending: false))
+        #expect(LaneDragMode(option: false, shift: false) == .range(extending: false))
     }
 
-    @Test("Shift-drag extends the selection")
+    @Test("Shift-drag extends the range")
     func shift() {
-        #expect(LaneDragMode(option: false, shift: true) == .select(extending: true))
+        #expect(LaneDragMode(option: false, shift: true) == .range(extending: true))
     }
 
     /// ⌥ is the zoom modifier because it collides with neither ⇧-drag (extend)

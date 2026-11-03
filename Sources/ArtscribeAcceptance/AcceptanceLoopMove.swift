@@ -180,26 +180,20 @@ extension AcceptanceRun {
             model.loop.range.start == model.totalFrames / 4
                 && model.loop.range.end == model.totalFrames * 3 / 4)
 
-        // ⇧C / ⇧V now belong to the loop, so the selection must not move with
-        // them — the one binding this task took away from something else.
-        model.clearSelection()
-        let lanes = model.laneFrame
-        guard !lanes.isEmpty else { return }
-        let from = CGPoint(x: lanes.width * 0.3, y: lanes.height / 2)
-        let to = CGPoint(x: lanes.width * 0.45, y: lanes.height / 2)
-        model.laneDragChanged(start: from, current: from, option: false, shift: false)
-        model.laneDragChanged(start: from, current: to, option: false, shift: false)
-        model.laneDragEnded(start: from, end: to, now: ProcessInfo.processInfo.systemUptime)
-        let selection = model.selection.range
-        let loop = model.loop.range
-        press(.shiftV)
-        log.check(
-            "Shift-V moves the loop and leaves the selection exactly where it was",
-            model.selection.range == selection && model.loop.range != loop)
+        // C/V moved the selection until the loop became the only range; now they
+        // move the loop, and the loop's own ⇧C/⇧V stay as aliases. One step each.
+        let gentle = FrameIndex(
+            (model.prefs.selectionMoveAmounts[.gentle] * model.sampleRate).rounded())
+        let before = model.loop.range
         press(.v)
+        let byV = model.loop.range.start - before.start
+        press(.c)
+        press(.shiftV)
+        let byShiftV = model.loop.range.start - before.start
+        press(.shiftC)
         log.check(
-            "and plain V still moves the selection, not the loop",
-            model.selection.range != selection)
-        model.clearSelection()
+            "V and Shift-V both move the loop one gentle step (\(byV), \(byShiftV) of \(gentle))",
+            byV == gentle && byShiftV == gentle)
+        log.check("and C / Shift-C bring it back", model.loop.range == before)
     }
 }

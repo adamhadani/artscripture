@@ -10,7 +10,7 @@ import Waveform
 /// The key's job is "show me the bit I care about", and with a loop set and no
 /// selection it used to do nothing at all.
 @MainActor
-@Suite("Zoom to selection or loop")
+@Suite("Zoom to loop")
 struct ViewerModelZoomTargetTests {
 
     private func makeModel() -> ViewerModel {
@@ -23,29 +23,28 @@ struct ViewerModelZoomTargetTests {
         return model
     }
 
-    @Test("with no selection and no loop there is nothing to zoom to")
+    @Test("with no range there is nothing to zoom to")
     func nothingToZoomTo() {
         let model = makeModel()
         model.fitWholeFile()
         let before = model.framesPerPixel
         #expect(model.zoomTarget == nil)
-        model.zoomToSelection()
+        model.zoomToLoop()
         #expect(model.framesPerPixel == before)
     }
 
     /// The behaviour that was asked for.
-    @Test("with a loop and no selection it zooms to the loop")
+    @Test("with a loop it zooms to the loop")
     func fallsBackToTheLoop() {
         let model = makeModel()
         model.fitWholeFile()
         let before = model.framesPerPixel
         // A loop narrow enough that zooming to it is visibly not a whole-file
-        // fit, and no selection at all.
+        // fit.
         model.applyLoop(
             LoopRegion(range: FrameRange(start: 44_100, count: 44_100), isEnabled: false))
-        #expect(model.selection.isEmpty)
         #expect(model.zoomTarget == model.loop.range)
-        model.zoomToSelection()
+        model.zoomToLoop()
         #expect(model.framesPerPixel < before, "the view did not zoom in on the loop")
     }
 
@@ -59,19 +58,5 @@ struct ViewerModelZoomTargetTests {
             LoopRegion(range: FrameRange(start: 1000, count: 5000), isEnabled: false))
         #expect(!model.loop.isEnabled)
         #expect(model.zoomTarget == model.loop.range)
-    }
-
-    /// The selection is the more transient of the two, so it wins: you drag one
-    /// out to look at something, and a loop set ten minutes ago should not
-    /// override what you just did.
-    @Test("a selection beats a loop when both exist")
-    func selectionWins() {
-        let model = makeModel()
-        model.applyLoop(
-            LoopRegion(range: FrameRange(start: 200_000, count: 5000), isEnabled: true))
-        model.selection.begin(at: 1000)
-        model.selection.extend(to: 4000)
-        #expect(model.zoomTarget == model.selection.range)
-        #expect(model.zoomTarget != model.loop.range)
     }
 }

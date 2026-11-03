@@ -17,7 +17,6 @@ extension AcceptanceRun {
         model: ViewerModel, log: inout Logger, outputDirectory: String
     ) async {
         model.fitWholeFile()
-        model.clearSelection()
         model.seek(to: 0)
 
         log.check("an audio output was opened for the loaded track", model.canPlay)
@@ -184,17 +183,16 @@ extension AcceptanceRun {
         model: ViewerModel, log: inout Logger, outputDirectory: String, stalled: String?
     ) async {
         model.fitWholeFile()
-        model.clearSelection()
 
-        // The acceptance script, exactly: drag-select, then G, then D.
+        // The acceptance script since the one-range change: drag, then D. The
+        // drag *is* the loop region; `G` (Selection → Loop) is gone.
+        model.clearLoop()
         model.dragChanged(startPixel: 300, currentPixel: 300, extending: false)
         model.dragChanged(startPixel: 300, currentPixel: 340, extending: false)
         model.dragEnded(
             startPixel: 300, endPixel: 340, now: ProcessInfo.processInfo.systemUptime)
-        let selected = model.selection.range
-        press(.g)
-        log.check("G turns the selection into the loop region", model.loop.range == selected)
-        log.check("G alone does not start looping", !model.loop.isEnabled)
+        log.check("a drag defines the loop region", !model.loop.range.isEmpty)
+        log.check("a drag alone does not start looping", !model.loop.isEnabled)
         press(.d)
         log.check("D enables looping", model.loop.isActive)
         press(.d)
@@ -276,7 +274,6 @@ extension AcceptanceRun {
         model: ViewerModel, log: inout Logger, stalled: String?
     ) async {
         model.clearLoop()
-        model.clearSelection()
         model.fitWholeFile()
         model.seek(to: 0)
         // Zoomed until a page is a few seconds wide, so several flips fit into

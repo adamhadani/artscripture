@@ -278,8 +278,8 @@ struct KeyCapCaptionTests {
     /// itself as the window is resized.
     @Test("an action with a short name uses it")
     func shortNamesWin() {
-        #expect(KeyCapCaption.caption(for: "Move Selection Left", perLine: 9) == "Sel. ←")
-        #expect(KeyCapCaption.caption(for: "Move Selection Left", perLine: 40) == "Sel. ←")
+        #expect(KeyCapCaption.caption(for: "Move Loop Left", perLine: 9) == "Loop ←")
+        #expect(KeyCapCaption.caption(for: "Move Loop Left", perLine: 40) == "Loop ←")
     }
 
     /// Nothing else is abbreviated mechanically today, but the rule is what

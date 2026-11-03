@@ -22,7 +22,6 @@ struct OverviewStripView: View {
         let hasTrack: Bool
         let viewport: Viewport
         let totalFrames: FrameIndex
-        let selectionRange: FrameRange
         let loop: LoopRegion
         let playhead: FrameIndex
     }
@@ -36,7 +35,6 @@ struct OverviewStripView: View {
             hasTrack: model.hasTrack,
             viewport: model.viewport,
             totalFrames: model.totalFrames,
-            selectionRange: model.selection.range,
             loop: model.loop,
             playhead: model.playhead)
 
@@ -142,8 +140,6 @@ struct OverviewStripView: View {
             with: .color(palette.accent.color(opacity: 0.9)),
             lineWidth: 1)
 
-        drawSelection(
-            in: &context, size: size, total: state.totalFrames, range: state.selectionRange)
         drawLoop(in: &context, size: size, total: state.totalFrames, loop: state.loop)
         drawPlayhead(in: &context, size: size, total: state.totalFrames, frame: state.playhead)
     }
@@ -171,18 +167,5 @@ struct OverviewStripView: View {
         context.fill(
             Path(CGRect(x: x - 0.5, y: 0, width: 1, height: size.height)),
             with: .color(palette.accent.color()))
-    }
-
-    private func drawSelection(
-        in context: inout GraphicsContext, size: CGSize, total: FrameIndex, range: FrameRange
-    ) {
-        guard !range.isEmpty else { return }
-        let left = PixelMapping.overviewPixel(
-            forFrame: range.start, totalFrames: total, width: size.width)
-        let right = PixelMapping.overviewPixel(
-            forFrame: range.end, totalFrames: total, width: size.width)
-        context.fill(
-            Path(CGRect(x: left, y: 0, width: max(1, right - left), height: size.height)),
-            with: .color(palette.selection.color(opacity: 0.22)))
     }
 }

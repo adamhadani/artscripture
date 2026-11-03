@@ -42,13 +42,12 @@ public enum SelectionMoveTier: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// The Settings row's name. It says "or loop" because the amount really does
-    /// govern both, and a row named only for the selection would be a lie the
-    /// moment a user pressed `⇧A`.
+    /// The Settings row's name. The amounts move the loop's edges and the whole
+    /// loop — the only range since the selection went (2026-11).
     public var label: String {
         switch self {
-        case .gentle: return "Move selection or loop"
-        case .aggressive: return "Move selection or loop (far)"
+        case .gentle: return "Move loop"
+        case .aggressive: return "Move loop (far)"
         }
     }
 

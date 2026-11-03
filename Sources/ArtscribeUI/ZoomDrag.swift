@@ -119,18 +119,18 @@ struct ZoomDrag: Equatable, Sendable {
 ///
 /// Decided once, when the mouse goes down, and held for the gesture's life. A
 /// modifier pressed or released halfway through must not silently turn a
-/// selection into a zoom or the other way about — you would be mid-gesture,
+/// range drag into a zoom or the other way about — you would be mid-gesture,
 /// watching the wrong thing happen, with no way to undo it.
 enum LaneDragMode: Equatable, Sendable {
-    /// The core gesture, and not negotiable: a plain left-drag selects a
-    /// passage. `extending` is ⇧-drag, which keeps the anchor and moves only
-    /// the head.
-    case select(extending: Bool)
+    /// The core gesture, and not negotiable: a plain left-drag marks a
+    /// passage — the range, which is the loop (2026-11). `extending` is ⇧-drag,
+    /// which keeps the far edge and moves the near one.
+    case range(extending: Bool)
     /// ⌥-drag. ⌥ because it collides with neither ⇧-drag (extend) nor ⌘-drag,
     /// and because Melodyne sets the precedent for a modifier-drag zoom inside
     /// the editing pane.
     case zoom
-    /// A loop or selection handle taken hold of at mouse-down (Task 23). The
+    /// A loop handle taken hold of at mouse-down (Task 23). The
     /// handle is latched with the mode, so an edge dragged past its opposite
     /// number keeps being *this* drag rather than becoming a different one.
     case edge(TimelineHandle)
@@ -139,10 +139,9 @@ enum LaneDragMode: Equatable, Sendable {
     /// whole of it and for why it is ordered this way:
     ///
     /// 1. ⌥ → zoom. It beats everything, including a handle under the pointer.
-    /// 2. ⇧ → extend the selection. Also beats a handle, which is what keeps a
-    ///    selection edge reachable when a loop edge is sitting on top of it.
+    /// 2. ⇧ → extend the range. Also beats a handle.
     /// 3. A handle under the pointer → drag it.
-    /// 4. Otherwise → a new selection, exactly as before.
+    /// 4. Otherwise → a new range, replacing the old one.
     ///
     /// ⌥ beating ⇧ when both are held is unchanged: holding both is a typo
     /// rather than a third gesture, and the same precedence already governs the
@@ -151,11 +150,11 @@ enum LaneDragMode: Equatable, Sendable {
         if option {
             self = .zoom
         } else if shift {
-            self = .select(extending: true)
+            self = .range(extending: true)
         } else if let handle {
             self = .edge(handle)
         } else {
-            self = .select(extending: false)
+            self = .range(extending: false)
         }
     }
 }

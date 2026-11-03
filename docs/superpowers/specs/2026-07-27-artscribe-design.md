@@ -25,7 +25,7 @@ In:
 - Open any natively-decodable audio file (⌘O, drag-and-drop, Recents)
 - Waveform lane, overview strip, and time ruler sharing one viewport
 - Zoom and pan — keyboard, pinch, scroll; always playhead-anchored
-- Selection by keyboard and mouse drag
+- Marking a passage by keyboard and mouse drag (a separate *selection* until 2026-11; the loop is the only range now)
 - Seamless, sample-accurate A/B looping
 - Speed 10–200%, pitch preserved, with a Studio/Fast engine switch
 - ~~Collapsible inspector~~ — **cut in Task 25.** It was built in Task 20 and removed one
@@ -108,7 +108,7 @@ UI (via `Waveform`) and the render thread read it; neither mutates it.
 
 | Module | Responsibility | Depends on | Platform deps |
 |---|---|---|---|
-| `ArtscribeKit` | `TimeRange`, `Viewport`, `Selection`, `LoopRegion`, `SpeedState`, `DocumentModel` | — | none |
+| `ArtscribeKit` | `TimeRange`, `Viewport`, `LoopRegion`, `SpeedState`, `DocumentModel` | — | none |
 | `AudioDecode` | `AVAssetReader` → `DecodedAudio`; `DecodeError` | ArtscribeKit | AVFoundation |
 | `Waveform` | `PeakPyramid` build (Accelerate) and query | ArtscribeKit | Accelerate |
 | `CRubberBand` | `systemLibrary` target, `pkgConfig: "rubberband"` | — | librubberband |
@@ -233,6 +233,13 @@ away from being back inside it.
 
 ### 6.2 Action catalog (MVP)
 
+**One range (2026-11).** There used to be a selection (an amber wash, what a drag made) and a
+loop (what played, set from the selection with `G`). Reported from an iPhone as three steps
+with an invisible middle one, the two became one: a drag defines **the range**, which *is*
+`LoopRegion`; `D` (the Loop button) switches looping on and off; a drag while looping replaces
+the loop and keeps it looping; a click keeps it. The selection's keys act on the range.
+Design: `docs/superpowers/specs/2026-11-03-one-range-loop-design.md`.
+
 **`Space` and `⇧Space` were swapped after first release and swapped back.** Task 28 made
 the bare `Space` play-from-start; the user drove that build and asked for the original pair
 returned, so `Space` toggles play/pause again and `⇧Space` is the variant of it that starts
@@ -255,7 +262,7 @@ is a fresh resume from wherever the playhead now is.
 | ActionID | Default binding | Action |
 |---|---|---|
 | `transport.playPause` | `Space` | Play / pause. A resume rolls back by the preroll (above) |
-| `transport.returnToStart` | `⇧Space` | To the selection start; else an **active** loop's in point; else 0 — and play from there. **No preroll**: the target is explicit |
+| `transport.returnToStart` | `⇧Space` | To the range's start, looping or not; else 0 — and play from there. **No preroll**: the target is explicit |
 | `transport.nudge.back` / `.forward` | `Z` / `X`, `←` / `→` | Nudge **2 s** (configurable) |
 | `transport.nudge.back.fine` / `.forward.fine` | `⇧Z` / `⇧X` | Nudge 50 ms (configurable) |
 | `transport.nudge.back.coarse` / `.forward.coarse` | `⌥Z` / `⌥X`, `⌥←` / `⌥→` | Rewind/skip **10 s** (configurable) |
@@ -263,28 +270,25 @@ is a fresh resume from wherever the playhead now is.
 | `loop.setOut` | `S` | Set loop out at playhead |
 | `loop.toggle` | `D` | Toggle looping |
 | `loop.restart` | `F` | Restart loop |
-| `loop.fromSelection` | `G` | Selection → loop |
+| ~~`loop.fromSelection`~~ | ~~`G`~~ | **Removed (2026-11).** A drag *is* the loop now — see below |
 | `loop.moveIn.left` / `.right` | `⇧A` / `⇧S` | Move the loop **in** point **250 ms** (configurable) |
 | `loop.moveIn.left.far` / `.right.far` | `⌥⇧A` / `⌥⇧S` | Move the loop **in** point **2 s** (configurable) |
 | `loop.moveOut.left` / `.right` | `⇧D` / `⇧F` | Move the loop **out** point **250 ms** (configurable) |
 | `loop.moveOut.left.far` / `.right.far` | `⌥⇧D` / `⌥⇧F` | Move the loop **out** point **2 s** (configurable) |
-| `loop.move.left` / `.right` | `⇧C` / `⇧V` | Move the whole loop, length preserved, **250 ms** (configurable) |
-| `loop.move.left.far` / `.right.far` | `⌥⇧C` / `⌥⇧V` | Move the whole loop, length preserved, **2 s** (configurable) |
+| `loop.move.left` / `.right` | `C` / `V` (and `⇧C` / `⇧V`) | Move the whole loop, length preserved, **250 ms** (configurable) |
+| `loop.move.left.far` / `.right.far` | `⌥C` / `⌥V` (and `⌥⇧C` / `⌥⇧V`) | Move the whole loop, length preserved, **2 s** (configurable) |
 | `speed.down` / `speed.up` | `Q` / `W` | ∓5% |
 | `speed.down.fine` / `speed.up.fine` | `⇧Q` / `⇧W` | ∓1% |
 | `speed.preset.100/75/50/33` | `1` / `2` / `3` / `4` | Speed presets |
 | ~~`speed.engineToggle`~~ | ~~`⌥E`~~ | **Removed.** Choosing between Rubber Band R3 and R2 was never a user's decision to make — R2 drifts pitch by up to 26 cents at half speed and 108 at the extremes, and it means nothing on iOS, where Rubber Band cannot be linked. Engine selection is developer-only now: Playback ▸ Developer ▸ Stretch Engine, present only under `ARTSCRIBE_DEV_MENU`, and `artscribe-cli --engine`. |
 | `zoom.out` / `zoom.in` | `E` / `R` | Zoom, playhead-anchored. `⌘−` / `⌘=` were listed here and never built; they are **not** bound, and the catalog rather than this table is now the record of what is |
 | `zoom.fit` | `⌘0` | Fit whole file |
-| `zoom.toSelection` | `⌘9` | Zoom to selection |
-| `selection.extendLeft` / `.extendRight` | `⇧←` / `⇧→` | Extend selection by the normal nudge amount |
-| `selection.moveLeft` / `.moveRight` | `C` / `V` | Move the whole selection **250 ms** (configurable) |
-| `selection.moveLeft.far` / `.moveRight.far` | `⌥C` / `⌥V` | Move the whole selection **2 s** (configurable) |
-| `selection.selectAll` | `⌘A` | Select all |
-| `selection.clear` | `Esc` | Clear selection |
+| `zoom.toLoop` | `⌘9` | Zoom to the loop (was `zoom.toSelection`) |
+| `loop.extendLeft` / `.extendRight` | `⇧←` / `⇧→` | Extend the range by the normal nudge amount; with no range, start one at the playhead |
+| `loop.selectAll` | `⌘A` | Select All: the whole file becomes the range; looping stays as it was |
 | `file.open` | `⌘O` | Open… |
 | `transport.stop` | — | Playback ▸ Stop. Menu only: `Space` already pauses, and a third way to say it would be a key spent on nothing |
-| `loop.clear` | — | Loop ▸ Clear Loop. Menu only |
+| `loop.clear` | `Esc` | Loop ▸ Clear Loop. `Esc` was Clear Selection; with one range they are the same act. On iPhone and iPad also in the `⋯` menu and on a long press of the Loop button |
 | `view.scrollLeft` / `.scrollRight` | — | View ▸ Scroll. Menu only: `Z`/`X` are the nudge keys and a nudge brings the view with it, so moving the view alone is left to these, the trackpad and the overview strip |
 | `file.save` / `file.saveAs` | `⌘S` / `⇧⌘S` | Write the sidecar; write it somewhere else (§7.1) |
 | `edit.cut` / `.copy` / `.paste` | `⌘X` / `⌘C` / `⌘V` | The standard pasteboard chords, re-declared because Artscripture **replaces** the standard group. They exist for the numeric fields in Settings |
@@ -312,14 +316,14 @@ starts, stops or restarts playback.
 left to right, so the *left* pair drives the loop's *left* (in) edge and the *right* pair
 its *right* (out) edge, and within each pair the left key moves left. `⇧` is what turns
 "set this edge at the playhead" into "nudge it from where it is". `⇧C`/`⇧V` then move the
-whole loop, on the very keys that already move the whole selection — the keyboard
-equivalent of the loop *body* that §6.1's pointer catalog makes draggable, and of the
-selection body it deliberately does not. `⌥` still means "the bigger step" and therefore
+whole loop — and so, since the one-range change, do the plain `C`/`V` that used to move the
+selection: the keyboard equivalent of the loop *body* that §6.1's pointer catalog makes
+draggable. `⌥` still means "the bigger step" and therefore
 *adds* to the chord rather than replacing the `⇧`. The whole cluster stays under the left
 hand, so the right one can stay on the mouse.
 
-**The loop moves share the selection's two amounts**, rather than carrying a third and
-fourth preference. Nudging a region into place is one job with one pair of sizes — a touch
+**The loop moves share one pair of amounts** (named for the selection they were first written
+for), rather than carrying a third and fourth preference. Nudging a region into place is one job with one pair of sizes — a touch
 and a lot — and it is the same job whether the region is the passage you are looking at or
 the one you are hearing. Settings edits both at once.
 
@@ -355,7 +359,7 @@ passage, at tempo, in the loop — which is what the exercise was for. The compl
 in the window rather than left to be inferred from a speed that stopped changing.
 
 **Note on ⇧, which is deliberately inconsistent between the two nudge bindings.** On the
-arrow keys ⇧ *extends the selection*, following the macOS text-editing convention every Mac
+arrow keys ⇧ *extends the range*, following the macOS text-editing convention every Mac
 user already has. On `Z`/`X` it means *finer increment*, matching `⇧Q`/`⇧W` in the speed
 cluster. This is intentional: the arrows belong to the system-conventions layer and the
 left-hand cluster belongs to the ergonomic layer, and each is internally consistent. It is
@@ -367,10 +371,10 @@ zoom is the only one that anchors on the playhead.
 
 | Gesture | Where | Action |
 |---|---|---|
-| Left-drag | Lanes | Select a passage. **The core gesture — not negotiable** |
-| ⇧ left-drag | Lanes | Extend the selection, keeping its anchor |
-| Click | Lanes | Place the playhead, clear the selection |
-| Double-click | Lanes | Place the playhead there **and play from it** — never re-routed to a selection or loop start (`⌘A` remains Select All) |
+| Left-drag | Lanes | Mark a passage — the range, which is the loop. **The core gesture — not negotiable**. While looping it replaces the loop, which keeps looping. Drawn live, played on release |
+| ⇧ left-drag | Lanes | Extend the range: the far edge holds, the near one follows |
+| Click | Lanes | Place the playhead. **The range is kept** — a loop set on purpose is not a click's to clear |
+| Double-click | Lanes | Place the playhead there **and play from it** — never re-routed to the loop start (`⌘A` remains Select All) |
 | **⌥ left-drag, vertically** | **Lanes** | **Zoom, smooth and continuous, anchored at the drag's start** |
 | **Left-drag, vertically** | **Time ruler** | **The same zoom, with no modifier — Ableton's and Melodyne's ruler convention** |
 | Click / tap | Overview strip | **Move the playhead there**, and centre the viewport on it when it was off-screen. Reported from an iPhone by someone who kept trying it |
@@ -387,7 +391,7 @@ whole gesture. Horizontal travel during it is ignored rather than panning as Abl
 does: holding the anchor still is the gesture's contract, and panning at the same time — or
 any sideways wobble during what the hand meant as a vertical drag — would break it. What a
 lane drag *means* is decided when the mouse goes down and held for the gesture's life, so a
-modifier pressed or released halfway through can never silently convert a selection into a
+modifier pressed or released halfway through can never silently convert a range drag into a
 zoom or the reverse.
 
 **Pointer affordances.** None of the drags above is visible, and an affordance nobody can
@@ -472,8 +476,9 @@ classic save prompt, which cannot both hold for the same document state: a file 
 matches the working state has nothing to prompt about. The macOS rule — ask about a document
 with no location, autosave one that has a location — keeps both halves meaningful.
 
-**An edit is speed, stretch engine, or loop.** The playhead, the viewport and the selection
-are persisted but never mark the document modified: they are where you are looking, not a
+**An edit is speed, stretch engine, or loop.** The playhead and the viewport are persisted
+but never mark the document modified (a dragged range *is* the loop since 2026-11, so
+marking one is an edit): they are where you are looking, not a
 decision about the track, and a playhead that ticks sixty times a second would leave the
 window permanently modified and the prompt meaningless.
 
@@ -525,8 +530,8 @@ hardware and no Xcode.
    within codec tolerance. Includes a **24-bit FLAC** fixture asserting Float32 output
    preserves more than 16 bits of resolution. Doubles as the regression guard on the
    assumption that macOS decodes Ogg Vorbis natively.
-4. **Viewport and selection math** — zoom clamping, playhead-anchored zoom, scroll bounds,
-   selection arithmetic.
+4. **Viewport and range math** — zoom clamping, playhead-anchored zoom, scroll bounds,
+   range arithmetic.
 5. **Peak pyramid** — golden values against a naive reference implementation; correct
    decimation level chosen per samples-per-pixel.
 6. **Bindings** — `BindingTable` JSON round-trip; no duplicate bindings; every `Action` has

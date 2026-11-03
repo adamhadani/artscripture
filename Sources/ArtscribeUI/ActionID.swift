@@ -29,8 +29,10 @@ public enum ActionID: String, CaseIterable, Hashable, Sendable {
     case loopSetOut = "loop.setOut"
     case loopToggle = "loop.toggle"
     case loopRestart = "loop.restart"
-    case loopFromSelection = "loop.fromSelection"
     case loopClear = "loop.clear"
+    case loopSelectAll = "loop.selectAll"
+    case loopExtendLeft = "loop.extendLeft"
+    case loopExtendRight = "loop.extendRight"
     case loopMoveInLeft = "loop.moveIn.left"
     case loopMoveInRight = "loop.moveIn.right"
     case loopMoveInLeftFar = "loop.moveIn.left.far"
@@ -68,21 +70,11 @@ public enum ActionID: String, CaseIterable, Hashable, Sendable {
     case volumeDownFine = "volume.down.fine"
     case volumeMute = "volume.mute"
 
-    // Selection
-    case selectionExtendLeft = "selection.extendLeft"
-    case selectionExtendRight = "selection.extendRight"
-    case selectionMoveLeft = "selection.moveLeft"
-    case selectionMoveRight = "selection.moveRight"
-    case selectionMoveLeftFar = "selection.moveLeft.far"
-    case selectionMoveRightFar = "selection.moveRight.far"
-    case selectionSelectAll = "selection.selectAll"
-    case selectionClear = "selection.clear"
-
     // View
     case zoomIn = "zoom.in"
     case zoomOut = "zoom.out"
     case zoomFit = "zoom.fit"
-    case zoomToSelection = "zoom.toSelection"
+    case zoomToLoop = "zoom.toLoop"
     case viewScrollLeft = "view.scrollLeft"
     case viewScrollRight = "view.scrollRight"
     case viewTrackMarksToggle = "view.trackMarks.toggle"
@@ -115,7 +107,6 @@ public enum ActionCategory: String, CaseIterable, Hashable, Sendable, Identifiab
     case transport
     case navigation
     case loop
-    case selection
     case speed
     case volume
     case view
@@ -129,7 +120,6 @@ public enum ActionCategory: String, CaseIterable, Hashable, Sendable, Identifiab
         case .transport: return "Transport"
         case .navigation: return "Navigation"
         case .loop: return "Loop"
-        case .selection: return "Selection"
         case .speed: return "Speed"
         case .volume: return "Volume"
         case .view: return "View"

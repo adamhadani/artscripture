@@ -35,15 +35,23 @@ extension ViewerModel {
     /// the same reasoning `dragChanged` records for `dragOrigin`.
     public func laneDragChanged(start: CGPoint, current: CGPoint, option: Bool, shift: Bool) {
         guard hasTrack else { return }
+        // A pinch cancelled this drag, and its first finger is still reporting.
+        // Those changes carry the same start; without this they read as a new
+        // gesture and could stage — and on lift commit — a fresh range.
+        if laneDragCancelled && laneDragStart == start { return }
         let mode: LaneDragMode
         if laneDragStart == start, let live = laneDragMode {
             mode = live
         } else {
+            // A range drawn by a drag whose end never arrived (an interrupted
+            // gesture) is still the range on screen: it reaches the engine now,
+            // before anything else happens, rather than lingering half-applied.
+            commitStagedLoop()
             mode = LaneDragMode(
                 option: option, shift: shift, handle: timelineHandle(at: start))
             laneDragStart = start
             laneDragMode = mode
-            selectionBeforeLaneDrag = selection
+            loopBeforeLaneDrag = loop
             playheadBeforeLaneDrag = playhead
             laneDragCancelled = false
             // A new gesture never continues the previous one's zoom or handle
@@ -52,7 +60,7 @@ extension ViewerModel {
             edgeDrag = nil
         }
         switch mode {
-        case .select(let extending):
+        case .range(let extending):
             dragChanged(startPixel: start.x, currentPixel: current.x, extending: extending)
         case .zoom:
             zoomDragChanged(start: start, current: current)
@@ -88,17 +96,42 @@ extension ViewerModel {
     /// starts playback.
     public func cancelLaneDrag() {
         guard laneDragMode != nil else { return }
-        if let previous = selectionBeforeLaneDrag { selection = previous }
+        if let previous = loopBeforeLaneDrag {
+            if loopIsStaged {
+                // Never reached the engine, so only the drawing goes back.
+                loop = previous
+                loopIsStaged = false
+            } else {
+                // An edge or body drag pushed as it went; undo that too.
+                applyLoop(previous)
+            }
+        }
         if let previous = playheadBeforeLaneDrag { seek(to: previous) }
-        selectionBeforeLaneDrag = nil
+        loopBeforeLaneDrag = nil
         playheadBeforeLaneDrag = nil
         laneDragMode = nil
-        laneDragStart = nil
+        // Kept, with the flag below: changes that keep arriving with this start
+        // belong to the cancelled gesture and are ignored until its end.
         dragOrigin = nil
         zoomDrag = nil
         edgeDrag = nil
         laneDragCancelled = true
         refresh()
+    }
+
+    /// Forgets any gesture in flight — for a track being loaded or closed under
+    /// it. Nothing is committed: the range belonged to the document going away.
+    func resetLaneGesture() {
+        laneDragMode = nil
+        laneDragStart = nil
+        laneDragCancelled = false
+        loopBeforeLaneDrag = nil
+        playheadBeforeLaneDrag = nil
+        loopIsStaged = false
+        rangeAnchor = nil
+        dragOrigin = nil
+        zoomDrag = nil
+        edgeDrag = nil
     }
 
     public func laneDragEnded(start: CGPoint, end: CGPoint, now: Double) {
@@ -107,19 +140,26 @@ extension ViewerModel {
         // absorbed and the next real gesture is unaffected.
         if laneDragCancelled {
             laneDragCancelled = false
+            laneDragStart = nil
             return
         }
         let mode = laneDragMode
         laneDragStart = nil
         laneDragMode = nil
-        selectionBeforeLaneDrag = nil
+        loopBeforeLaneDrag = nil
         playheadBeforeLaneDrag = nil
         switch mode {
         case .zoom:
             zoomDragEnded()
         case .edge:
+            // On touch a handle press that never moved is a tap (see
+            // `LaneDragPolicy.edgeTapIsAClick`): it seeks, and two play.
+            let stayed = edgeDrag.map { !$0.hasMoved } ?? true
             edgeDragEnded()
-        case .select, nil:
+            if stayed && prefs.edgeTapIsAClick {
+                dragEnded(startPixel: start.x, endPixel: end.x, now: now)
+            }
+        case .range, nil:
             dragEnded(startPixel: start.x, endPixel: end.x, now: now)
         }
     }
@@ -130,21 +170,14 @@ extension ViewerModel {
         refresh()
     }
 
-    /// `⌘9`. Fills the view with the selection — or, failing that, the loop.
+    /// `⌘9`. Fills the view with the loop.
     ///
-    /// **The selection wins when there is one**, because it is the more
-    /// transient of the two: you drag a selection out to look at something, and
-    /// a loop you set ten minutes ago should not override what you just did.
-    /// With no selection the loop is the only passage the user has named, and
-    /// zooming to it is obviously what was meant — the alternative, which is
-    /// what this used to do, was nothing at all, on the one key whose whole job
-    /// is "show me the bit I care about".
-    ///
-    /// The loop counts whether or not it is *engaged*: its range is a marked
-    /// passage either way, and refusing to zoom to a loop you can plainly see
-    /// because playback is not currently cycling it would be a distinction
-    /// without a difference.
-    public func zoomToSelection() {
+    /// The loop counts whether or not it is *engaged*: its range is the marked
+    /// passage either way — the only range there is since the selection went
+    /// (2026-11) — and refusing to zoom to a loop you can plainly see because
+    /// playback is not currently cycling it would be a distinction without a
+    /// difference.
+    public func zoomToLoop() {
         guard hasTrack, let range = zoomTarget else { return }
         viewport.zoom(to: range)
         refresh()
@@ -156,9 +189,7 @@ extension ViewerModel {
     /// the command acts on, rather than on a second copy of the rule that can
     /// drift from it.
     public var zoomTarget: FrameRange? {
-        if !selection.isEmpty { return selection.range }
-        if !loop.range.isEmpty { return loop.range }
-        return nil
+        loop.range.isEmpty ? nil : loop.range
     }
 
     public func scrollLeft() { scroll(byPoints: -panStep) }
