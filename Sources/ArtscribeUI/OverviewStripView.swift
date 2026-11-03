@@ -3,7 +3,8 @@ import SwiftUI
 
 /// The whole file at constant scale, with the visible window drawn as a lens:
 /// everything outside it is veiled, and the window itself carries accent edges.
-/// Dragging anywhere on the strip moves the window there.
+/// Dragging anywhere on the strip moves the window there; a tap or click also
+/// moves the playhead (`ViewerModel.overviewReleased`).
 struct OverviewStripView: View {
     let model: ViewerModel
     @Environment(\.palette) private var palette
@@ -94,7 +95,12 @@ struct OverviewStripView: View {
             }
             // Cleared on the way out, so the next touch takes hold of wherever
             // the lens has ended up rather than of where this one grabbed it.
-            .onEnded { _ in scrub = nil }
+            .onEnded { value in
+                scrub = nil
+                model.overviewReleased(
+                    startPixel: value.startLocation.x, endPixel: value.location.x,
+                    stripWidth: max(model.overviewFrame.width, overviewWidth))
+            }
     }
 
     private func lensCentre(in state: OverlayState, width: Double) -> Double {

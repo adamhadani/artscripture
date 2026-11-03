@@ -250,7 +250,9 @@ extension AcceptanceRun {
             for name in [
                 "a real drag on the ruler zooms", "the ruler drag holds its anchor",
                 "a real plain drag in the lanes selects", "a real Option-drag zooms",
-                "and an Option-drag makes no selection"
+                "and an Option-drag makes no selection",
+                "a real click on the overview strip moves the playhead there",
+                "a real drag on the strip carries the view"
             ] {
                 log.skip(name, because: reason)
             }
@@ -259,6 +261,7 @@ extension AcceptanceRun {
 
         await checkRulerPointerDrag(model: model, ruler: ruler, log: &log)
         await checkLanePointerDrags(model: model, lanes: lanes, log: &log)
+        await checkOverviewClick(model: model, log: &log)
     }
 
     @MainActor

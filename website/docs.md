@@ -225,7 +225,7 @@ routing belongs to the system, via Control Centre.
 All three nudge amounts are configurable in **Settings ▸ Playback**.
 
 With the pointer: pinch to zoom, two-finger scroll to pan, and drag the overview
-strip to move the visible window. **Drag down on the time ruler** — or ⌥-drag in
+strip to move the visible window — or click (or tap) it to move the playhead there. **Drag down on the time ruler** — or ⌥-drag in
 the waveform — to zoom in smoothly. **Settings ▸ Playback ▸ Invert zoom
 direction** reverses that and the scroll wheel together.
 
