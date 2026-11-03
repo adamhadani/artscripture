@@ -52,13 +52,13 @@ Or grab a signed, notarised build from [**Releases**](https://github.com/adamhad
 | Key | Does |
 |---|---|
 | `Space` | Play / pause (with preroll) |
-| `⇧Space` | Play from the start of the loop, selection or track |
+| `⇧Space` | Play from the start of the loop, or of the track |
 | `A` `S` | Set loop in / out at the playhead |
 | `D` | Loop on / off |
 | `Q` `W` | Slower / faster |
 | `1` `2` `3` `4` | 100% · 75% · 50% · 33% |
 | `Z` `X` | Nudge back / forward |
-| `⌘9` `⌘0` | Zoom to selection (or loop) · fit whole file |
+| `⌘9` `⌘0` | Zoom to the loop · fit whole file |
 | `⌘/` | The full shortcut reference |
 
 ## 🔍 Alternatives
@@ -588,7 +588,7 @@ its URL stops being readable when the app restarts.
 | Key | Action |
 |---|---|
 | `Space` | Play / pause. Resuming rolls back by the **preroll** — 2 s by default, configurable in Settings ▸ Playback — so you hear the note you stopped on in context |
-| `⇧Space` | Play from start — of the selection, else of an active loop, else of the file. No preroll: it already has an explicit target |
+| `⇧Space` | Play from start — of the loop's range (looping or not), else of the file. No preroll: it already has an explicit target |
 | `H` | Preroll on / off — flips the mode without forgetting the amount |
 | `Q` / `W` | Slower / faster (5%) |
 | `⇧Q` / `⇧W` | Slower / faster (1%) |
@@ -610,7 +610,7 @@ phrase. `⇧Space` never prerolls.
 it remembers your seconds. It is also a **Playback** menu item and a transport-bar button
 beside the loop, both of which show the current state.
 
-### Selection, looping and view
+### Looping and view
 
 | Key | Action |
 |---|---|
@@ -618,28 +618,29 @@ beside the loop, both of which show the current state.
 | `A` / `S` | Set loop in / out at the playhead |
 | `D` | Toggle looping |
 | `F` | Restart the loop |
-| `G` | Turn the selection into the loop |
 | `R` / `E` | Zoom in / out, anchored on the playhead |
 | `Z` / `X` | Nudge the playhead back / forward (2 s, configurable) — `←` / `→` do the same |
 | `⇧Z` / `⇧X` | Nudge finely (50 ms) — `⌥Z` / `⌥X` (or `⌥←` / `⌥→`) rewind and skip (10 s) |
-| `⌘A` | Select the whole file |
-| `⇧←` / `⇧→` | Extend the selection |
-| `C` / `V` | Move the whole selection left / right (250 ms, configurable) |
+| `⌘A` | The whole file becomes the loop's range |
+| `⇧←` / `⇧→` | Extend the range (or start one at the playhead) |
+| `C` / `V` | Move the whole loop left / right (250 ms, configurable; `⇧C` / `⇧V` too) |
 | `⌥C` / `⌥V` | Move it further (2 s, configurable) |
-| `⌘0` / `⌘9` | Fit the whole file / zoom to selection |
-| `Esc` | Clear the selection |
+| `⌘0` / `⌘9` | Fit the whole file / zoom to the loop |
+| `Esc` | Clear the loop |
 | `⇧A` `⇧S` / `⇧D` `⇧F` | Move the loop's in / out point (add `⌥` for the bigger step) |
-| `⇧C` / `⇧V` | Move the whole loop, keeping its length |
 | `⌘S` / `⇧⌘S` | Save the session sidecar / save it elsewhere |
 | `⌘P` | Show or hide the Practice window — the ramping loop |
 | `⌥P` | Start / stop the speed ramp |
 | `⌘/` | Show or hide the keyboard shortcut window |
 | `⌘,` | Settings — preroll, nudge and move amounts, zoom direction, theme. A window on macOS, a sheet on iPad, where the **gear in the header** is the route without a keyboard |
 
-Drag in the lanes to select, shift-drag to extend, click to place the playhead, double-click
-to place it and play from there (`⌘A` is still Select All). Pinch to zoom, two-finger scroll
+Drag in the lanes to mark a passage — that passage *is* the loop, and `D` or the Loop button
+repeats it; a drag while looping replaces the loop and keeps it looping. Drag a loop edge (its
+grip tab marks it) to adjust it, shift-drag to extend, click to place the playhead, double-click
+to place it and play from there (`⌘A` is still Select All). On iPhone and iPad, Clear Loop is in
+the ⋯ menu and on a long press of the Loop button. Pinch to zoom, two-finger scroll
 to pan. Dragging the overview strip
-moves the visible window. **Drag down** on the time ruler — or ⌥-drag in the waveform — to
+moves the visible window; tapping it moves the playhead there. **Drag down** on the time ruler — or ⌥-drag in the waveform — to
 zoom in smoothly; Settings ▸ Playback ▸ *Invert zoom direction* reverses that and the scroll
 wheel together.
 
