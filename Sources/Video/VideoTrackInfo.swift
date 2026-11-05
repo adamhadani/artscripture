@@ -31,7 +31,7 @@ public struct VideoTrackInfo: Equatable, Sendable {
     /// What a track that does not state its frame rate is taken to have.
     static let fallbackFrameRate = 30.0
 
-    init(
+    public init(
         naturalSize: CGSize, transform: CGAffineTransform = .identity,
         frameRate: Double, start: Double = 0, duration: Double
     ) {

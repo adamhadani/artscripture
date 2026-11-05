@@ -86,6 +86,15 @@ extension ViewerModel {
         }
     }
 
+    /// Gives back the claim on the open document, if there was one.
+    ///
+    /// Idempotent, and safe to call when there is nothing to release, so every
+    /// path out of a document can simply call it.
+    func releaseSecurityScope() {
+        scopedURL?.stopAccessingSecurityScopedResource()
+        scopedURL = nil
+    }
+
     public func dismissError() {
         errorMessage = nil
     }
@@ -132,6 +141,7 @@ extension ViewerModel {
         releaseSecurityScope()
         loadTask?.cancel()
         loadToken += 1
+        closePicture()
         audio = nil
         pyramid = nil
         fileName = nil
@@ -155,6 +165,7 @@ extension ViewerModel {
         teardownSession()
         audio = loaded.audio
         pyramid = loaded.pyramid
+        adoptPicture(loaded.picture)
         fileName = url.lastPathComponent
         generation += 1
         resetLaneGesture()

@@ -212,6 +212,9 @@ public final class ViewerModel {
     /// marker lane is not redrawn every time the playhead moves.
     public let markers = CueMarkers()
 
+    /// The open file's picture, if it has one. See `ViewerModel+Video`.
+    public internal(set) var video: VideoState?
+
     public var sampleRate: Double { audio?.sampleRate ?? 0 }
     public var channels: Int { audio?.channels ?? 0 }
     public var totalFrames: FrameIndex { audio?.frameCount ?? 0 }
@@ -266,14 +269,6 @@ public final class ViewerModel {
     /// opened.
     @ObservationIgnored var scopedURL: URL?
 
-    /// Gives back the claim on the open document, if there was one.
-    ///
-    /// Idempotent, and safe to call when there is nothing to release, so every
-    /// path out of a document can simply call it.
-    func releaseSecurityScope() {
-        scopedURL?.stopAccessingSecurityScopedResource()
-        scopedURL = nil
-    }
     /// Identifies the in-flight load. A load cancelled mid-flight can already be
     /// past its cancellation check and merely waiting for the main actor, so the
     /// token — not the `Task`— is what decides whose result is still wanted.

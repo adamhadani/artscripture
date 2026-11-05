@@ -122,6 +122,9 @@ extension ViewerModel {
 
     func tickPlayback(now: Double) {
         guard let session else { return }
+        // Every tick, paused as well as playing, and after the playhead below
+        // is final: a click or a nudge while paused moves the picture too.
+        defer { driveVideo() }
         pollDegradation(session)
         // Once a second, not once a frame: switching output device from the menu
         // succeeds silently, and the new device may run at a different rate. The
