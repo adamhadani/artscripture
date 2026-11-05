@@ -3,6 +3,10 @@ import Foundation
 import Observation
 import Video
 
+#if !os(macOS)
+import AVKit
+#endif
+
 /// The open file's picture, as the views see it.
 ///
 /// A child `@Observable`, like `CueMarkers`: the panel reads it, and nothing
@@ -72,14 +76,14 @@ extension ViewerModel {
     }
 }
 
-/// Whether this build has a mini player to offer. The Mac's floating panel
-/// lands first; iOS's Picture in Picture follows, and until it does the menu
-/// item is disabled there rather than a key that does nothing.
+/// Whether this device has a mini player to offer: always on the Mac (its own
+/// panel), and wherever the system supports Picture in Picture on iOS.
+@MainActor
 enum MiniPlayerSupport {
     #if os(macOS)
     static let isAvailable = true
     #else
-    static let isAvailable = false
+    static var isAvailable: Bool { AVPictureInPictureController.isPictureInPictureSupported() }
     #endif
 }
 

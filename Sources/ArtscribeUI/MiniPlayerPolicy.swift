@@ -71,3 +71,27 @@ public enum MiniPlayerPolicy {
         }
     }
 }
+
+/// What iOS's Picture in Picture asks of the app, answered without AVKit so it
+/// is tested in `make check`. The AVKit delegate only forwards to these.
+public enum PictureInPictureBridge {
+    /// The window's play button says which state it wants. A request that is
+    /// already true changes nothing: the system repeats itself, and passing a
+    /// repeat on as a toggle would undo it.
+    public static func shouldToggle(requestedPlaying: Bool, isPlaying: Bool) -> Bool {
+        requestedPlaying != isPlaying
+    }
+
+    /// Whether the system may float the picture by itself when the app goes
+    /// to the background — the Mac's rule, less "playing", which the system
+    /// checks for itself.
+    public static func startsAutomatically(_ state: MiniPlayerState) -> Bool {
+        state.hasVideo && state.isPanelShown && state.floatsWhenInactive
+    }
+
+    /// The window's ± skip, in frames for the model's seek.
+    public static func frames(forSkip seconds: Double, sampleRate: Double) -> Int64 {
+        guard sampleRate > 0 else { return 0 }
+        return Int64((seconds * sampleRate).rounded())
+    }
+}

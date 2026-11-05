@@ -23,7 +23,7 @@ struct TimelineAndPictureView: View {
             timeline: { timeline },
             picture: {
                 if let video = model.video {
-                    VideoPanelView(video: video) { miniPlayer.toggleByUser() }
+                    VideoPanelView(video: video, miniPlayer: miniPlayer)
                 }
             })
     }

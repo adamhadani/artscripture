@@ -3,6 +3,9 @@ import SwiftUI
 
 #if os(macOS)
 import AppKit
+#else
+import AVKit
+import UIKit
 #endif
 
 /// The picture in a small window of its own, floating over other apps.
@@ -16,14 +19,21 @@ import AppKit
 /// **On the Mac it is our own panel**, not the system's Picture in Picture: a
 /// spike on macOS 27.2 found sample-buffer PiP still draws the layer at its own
 /// size into a smaller window, cutting off the top and right of the frame.
+/// **On iOS it is the system's**, the only way to float over another app; see
+/// `MiniPlayerController+iOS`.
 @MainActor
 public final class MiniPlayerController {
-    private let model: ViewerModel
-    private var state = MiniPlayerState()
+    let model: ViewerModel
+    var state = MiniPlayerState()
 
     #if os(macOS)
     private var panel: MiniPlayerPanel?
     private var observers: [NSObjectProtocol] = []
+    #else
+    var pip: AVPictureInPictureController?
+    var pipDelegate: PictureInPictureDelegate?
+    weak var pipSurface: VideoSurfaceView?
+    var observers: [NSObjectProtocol] = []
     #endif
 
     public init(model: ViewerModel) {
@@ -38,8 +48,31 @@ public final class MiniPlayerController {
                 forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main
             ) { [weak self] _ in MainActor.assumeIsolated { self?.handle(.appActivated) } }
         ]
+        #else
+        // Only coming back: going away is the system's to act on, through
+        // `canStartPictureInPictureAutomaticallyFromInline`.
+        observers = [
+            NotificationCenter.default.addObserver(
+                forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main
+            ) { [weak self] _ in MainActor.assumeIsolated { self?.handle(.appActivated) } }
+        ]
+        observePlaying()
         #endif
         observeTrack()
+    }
+
+    /// The main panel's surface, which iOS's Picture in Picture takes its
+    /// picture from. A no-op on the Mac, whose mini player has its own.
+    public func adopt(surface: VideoSurfaceView) {
+        #if !os(macOS)
+        adoptPictureInPictureSource(surface)
+        #endif
+    }
+
+    public func release(surface: VideoSurfaceView) {
+        #if !os(macOS)
+        releasePictureInPictureSource(surface)
+        #endif
     }
 
     public var isShowing: Bool { state.isShowing }
@@ -51,6 +84,9 @@ public final class MiniPlayerController {
         refreshFacts()
         let (showing, byUser) = MiniPlayerPolicy.next(state, on: event)
         state.openedByUser = byUser
+        #if !os(macOS)
+        updateAutomaticStart()
+        #endif
         guard showing != state.isShowing else { return }
         state.isShowing = showing
         model.video?.isFloating = showing
@@ -61,7 +97,7 @@ public final class MiniPlayerController {
     /// Playing behave exactly as they do from the keyboard.
     func playPause() { model.togglePlayPause() }
 
-    private func refreshFacts() {
+    func refreshFacts() {
         state.hasVideo = model.hasVideo
         state.isPlaying = model.isPlaying
         state.isPanelShown = model.prefs.video.shown
@@ -72,6 +108,7 @@ public final class MiniPlayerController {
     private func observeTrack() {
         withObservationTracking {
             _ = model.video
+            _ = model.prefs.video
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -99,11 +136,6 @@ public final class MiniPlayerController {
     private func dismiss() {
         panel?.hide()
     }
-    #else
-    // iOS: the system's Picture in Picture arrives in the iOS pass; until then
-    // `MiniPlayerSupport.isAvailable` keeps the menu item disabled there.
-    private func present() {}
-    private func dismiss() {}
     #endif
 }
 

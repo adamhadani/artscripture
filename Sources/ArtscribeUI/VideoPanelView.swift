@@ -5,21 +5,28 @@ import Video
 /// there is nothing to show.
 struct VideoPanelView: View {
     let video: VideoState
-    /// The corner button: the picture into its floating window.
-    let onPictureInPicture: () -> Void
+    /// The corner button's target — and, on iOS, the owner of the system
+    /// Picture in Picture that takes its picture from this panel's layer.
+    let miniPlayer: MiniPlayerController
     @State private var hovering = false
 
     var body: some View {
         ZStack {
             Color.black
+            if let presenter = video.presenter {
+                // Kept while floating, not removed: on iOS this very layer is
+                // what Picture in Picture shows, and dismantling it would end it.
+                VideoSurfaceRepresentable(presenter: presenter, pictureInPicture: miniPlayer)
+            }
             if video.isFloating {
                 // Like every Apple player: say where the picture went, rather
                 // than draw it twice.
-                Label("Playing in the mini player", systemImage: "pip")
-                    .font(.callout)
-                    .foregroundStyle(.white.opacity(0.6))
-            } else if let presenter = video.presenter {
-                VideoSurfaceRepresentable(presenter: presenter)
+                ZStack {
+                    Color.black
+                    Label("Playing in the mini player", systemImage: "pip")
+                        .font(.callout)
+                        .foregroundStyle(.white.opacity(0.6))
+                }
             }
             if let failure = video.failure {
                 Text("This video's picture can't be shown. \(failure)")
@@ -42,7 +49,7 @@ struct VideoPanelView: View {
     private var pictureInPictureButton: some View {
         if MiniPlayerSupport.isAvailable, video.presenter != nil {
             let touch = ControlMetrics.current.target >= 44
-            Button(action: onPictureInPicture) {
+            Button(action: miniPlayer.toggleByUser) {
                 Image(systemName: video.isFloating ? "pip.exit" : "pip.enter")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.white)
@@ -63,15 +70,23 @@ struct VideoPanelView: View {
 /// presenter for exactly as long as it is on screen.
 struct VideoSurfaceRepresentable {
     let presenter: VideoPresenter
+    /// Told about the surface so iOS's Picture in Picture can take its layer.
+    /// `nil` only for the Mac mini player's own surface, which is not a source.
+    var pictureInPicture: MiniPlayerController?
 
     final class Coordinator {
         var presenter: VideoPresenter?
+        weak var pictureInPicture: MiniPlayerController?
     }
 
     func makeCoordinator() -> Coordinator { Coordinator() }
 
     @MainActor
     private func connect(_ view: VideoSurfaceView, _ coordinator: Coordinator) {
+        if coordinator.pictureInPicture == nil, let pictureInPicture {
+            coordinator.pictureInPicture = pictureInPicture
+            pictureInPicture.adopt(surface: view)
+        }
         guard coordinator.presenter !== presenter else { return }
         coordinator.presenter?.detach(view)
         coordinator.presenter = presenter
@@ -93,6 +108,7 @@ extension VideoSurfaceRepresentable: NSViewRepresentable {
 
     static func dismantleNSView(_ view: VideoSurfaceView, coordinator: Coordinator) {
         coordinator.presenter?.detach(view)
+        coordinator.pictureInPicture?.release(surface: view)
     }
 }
 #else
@@ -109,6 +125,7 @@ extension VideoSurfaceRepresentable: UIViewRepresentable {
 
     static func dismantleUIView(_ view: VideoSurfaceView, coordinator: Coordinator) {
         coordinator.presenter?.detach(view)
+        coordinator.pictureInPicture?.release(surface: view)
     }
 }
 #endif

@@ -146,13 +146,11 @@ struct VideoSettingsTab: View {
                 ) {
                     ForEach(VideoPlacement.allCases) { Text($0.title).tag($0) }
                 }
-                #if os(macOS)
                 Toggle(
                     "Float video when switching apps",
                     isOn: Binding(
                         get: { prefs.video.floatsWhenInactive },
                         set: { prefs.setFloatVideoWhenInactive($0) }))
-                #endif
             } footer: {
                 Text(Self.footer)
                     .font(.caption)
@@ -172,6 +170,7 @@ struct VideoSettingsTab: View {
     #else
     private static let footer =
         "For video files. Drag the line between the video and the waveform to resize it; "
-        + "double-tap it to restore."
+        + "double-tap it to restore. When you leave the app, a playing video carries on "
+        + "in Picture in Picture."
     #endif
 }
