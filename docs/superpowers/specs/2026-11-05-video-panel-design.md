@@ -1,6 +1,6 @@
 # Video panel — design
 
-**Date:** 2026-11-05 · **Status:** for approval · **Extends:** spec §6.2 (two actions), §8
+**Date:** 2026-11-05 · **Status:** built (branch `feat/video-panel`) · **Extends:** spec §6.2 (two actions), §8
 (one notice), and the "video files open for their soundtrack" rule in `CLAUDE.md`.
 
 ## Why
@@ -100,11 +100,12 @@ Spec §6.2 is the source of truth for actions, so both are added there:
 
 | Action | Title | Key | Menu | Enablement |
 |---|---|---|---|---|
-| `view.video.toggle` | Video | `V` | View (toggle, ✓) | track **with video** |
-| `view.video.pictureInPicture` | Picture in Picture | `⇧V` | View | track with video (Mac until the iOS pass) |
+| `view.video.toggle` | Video | `I` | View (toggle, ✓) | track **with video** |
+| `view.video.pictureInPicture` | Picture in Picture | `⇧I` | View | track with video, where PiP is supported |
 
-- `V` is unbound on every layer today. This needs a new enablement case, `trackVideo`, next to
-  `track`, so that audio files show both items disabled rather than as dead keys.
+- **`I`, not `V`** (built 2026-11-05): every `V` chord is the loop's — `C`/`V` move it, with
+  ⇧, ⌥ and ⇧⌥ tiers — and `I` is free on every layer. A new enablement case, `trackVideo`,
+  sits next to `track`, so audio files show both items disabled rather than as dead keys.
 - **Transport bar:** a toggle button with the video glyph, at the trailing end, **present only
   when the track has video**. It takes part in `TransportDensity` packing like any other
   button.
@@ -118,7 +119,7 @@ tested like `AudioSessionPolicy`. It floats when the app stops being frontmost, 
 shown, the track is **playing**, and **Settings ▸ Float video when switching apps** is on
 (the default). It goes away when the app comes back. Requiring "playing" matches what iOS
 does for every video app, and avoids a window appearing every time you click away from a
-paused track. *My call; easy to change.* **View ▸ Picture in Picture** (`⇧V`) opens it by
+paused track. *My call; easy to change.* **View ▸ Picture in Picture** (`⇧I`) opens it by
 hand. One opened that way stays until it is closed, rather than going away when the app
 comes back.
 
@@ -165,8 +166,11 @@ start it when the app goes to the background. This needs the `audio` background 
 `Info.plist` already has. `AVPictureInPictureSampleBufferPlaybackDelegate`'s `setPlaying`
 calls the transport as above, and skip ± calls the existing seek.
 
-**Not yet verified on a device or simulator.** Check it at the start of the iPad pass. The
-scaling bug above was reported for macOS only.
+**Verified on an iPad simulator (iOS 27.0), 2026-11-05:** playing, switching to Settings
+floats the reel at the right scale, its frames advance there, and coming back returns the
+picture to the panel with playback uninterrupted. The macOS scaling bug does not occur on iOS.
+The content is presented as *live* (an infinite time range): the position jumps back at every
+loop wrap, so a scrubber would misreport it.
 
 ## How the picture is produced
 
