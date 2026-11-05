@@ -49,10 +49,13 @@ struct VideoSplitView<Timeline: View, Picture: View>: View {
             }
         }
         .coordinateSpace(.named(Self.space))
-        .onGeometryChange(for: CGFloat.self) { proxy in
-            placement.axis == .horizontal ? proxy.size.width : proxy.size.height
-        } action: {
-            available = $0
+        // The size only, then the axis on the main actor: the measuring closure
+        // runs off it, and capturing `self` there captures the generic halves'
+        // metatypes, which Swift 6.2 rejects as non-Sendable.
+        .onGeometryChange(for: CGSize.self) {
+            $0.size
+        } action: { size in
+            available = placement.axis == .horizontal ? size.width : size.height
         }
     }
 
