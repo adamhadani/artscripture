@@ -250,6 +250,17 @@ extension ActionCatalog {
             .viewTrackMarksToggle, "Track Marks", .view,
             chords: [.key("t")], menu: .view, enablement: .track, kind: .toggle,
             note: "Where each track starts, from the album's .cue sheet"),
+        // The video file's picture, beside the timeline. A `.toggle` like Track
+        // Marks. `I` for image: every `V` chord is the loop's (C/V move it,
+        // with ⇧, ⌥ and ⇧⌥ tiers), and `I` is free on every layer.
+        ActionEntry(
+            .viewVideoToggle, "Video", .view,
+            chords: [.key("i")], menu: .view, enablement: .trackVideo, kind: .toggle,
+            note: "A video file's picture, beside the waveform"),
+        ActionEntry(
+            .viewVideoPictureInPicture, "Picture in Picture", .view,
+            chords: [.key("i", .shift)], menu: .view, enablement: .trackVideo,
+            note: "The video in a small window that stays on top of other apps"),
         ActionEntry(
             .helpShortcuts, "Keyboard Shortcuts", .view,
             chords: [.key("/", .command)], menu: .view),

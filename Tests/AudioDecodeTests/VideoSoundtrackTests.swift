@@ -78,3 +78,18 @@ func decodesTheSoundtrackOfAVideo(name: String) async throws {
         _ = try await AudioFileDecoder.decode(url: fixture("silent_video.mp4"))
     }
 }
+
+/// The video panel converts the playhead to movie time as `frame / sampleRate`,
+/// which holds only if decoded audio frame 0 *is* movie time 0. A soundtrack
+/// that starts late is stored behind an empty edit, and the reader fills that
+/// with silence — so it does hold, and this pins it: decoding `late_sound.mp4`
+/// (tone from 0.5 s under a 3 s picture) gives the full 3 s, silent first.
+/// If it ever came back 2.5 s long, the picture would run 0.5 s ahead.
+@Test func aLateSoundtrackStillStartsAtTheMoviesStart() async throws {
+    let audio = try await AudioFileDecoder.decode(url: fixture("late_sound.mp4"))
+    let seconds = Double(audio.frameCount) / audio.sampleRate
+    #expect(abs(seconds - 3.0) < 0.05, "decoded \(seconds) s")
+    let samples = audio.channel(0)
+    let early = (0..<Int(audio.sampleRate * 0.25)).map { abs(samples[$0]) }.max() ?? 1
+    #expect(early < 0.01, "the first quarter-second should be the empty edit's silence")
+}

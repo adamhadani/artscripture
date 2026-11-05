@@ -69,7 +69,10 @@ final class ArtscribeAppDelegate: NSObject, NSApplicationDelegate {
 @main
 struct ArtscribeAppMain: App {
     @NSApplicationDelegateAdaptor(ArtscribeAppDelegate.self) private var delegate
-    @State private var model = ViewerModel()
+    @State private var model: ViewerModel
+    /// The video's floating window, built around the model it drives. Here,
+    /// with the model, because it lives as long as the app does.
+    @State private var miniPlayer: MiniPlayerController
     /// Owns the output-device selection for the whole app. It exists before any
     /// track is loaded and outlives every `AudioOutput`, which is why the
     /// selection lives here rather than inside the audio graph.
@@ -95,6 +98,7 @@ struct ArtscribeAppMain: App {
     /// How far a `Space` resume rolls back, persisted the same way again — its
     /// own store because its floor differs (see `PrerollSettings`).
     @State private var preroll = PrerollSettings()
+    @State private var video = VideoSettings()
     /// Reads and writes the `.artscripture` sidecar (spec §7). Application state
     /// like the rest of these: it outlives every loaded track, and it holds
     /// nothing but where the read-only-volume fallback lives.
@@ -124,10 +128,13 @@ struct ArtscribeAppMain: App {
         MenuContext(
             model: model, recents: recents, devices: devices, shortcuts: shortcuts,
             practice: practice, about: about, settings: settingsSheet, welcome: welcome,
-            theme: theme)
+            theme: theme, miniPlayer: miniPlayer)
     }
 
     init() {
+        let model = ViewerModel()
+        _model = State(initialValue: model)
+        _miniPlayer = State(initialValue: MiniPlayerController(model: model))
         // A SwiftPM executable is not an app bundle, so AppKit starts it as an
         // accessory with no menu bar and no way to take keyboard focus. Asking
         // for the regular activation policy up front fixes both.
@@ -223,6 +230,7 @@ struct ArtscribeAppMain: App {
         model.prefs.adopt(nudge: nudge)
         model.prefs.adopt(interaction: interaction)
         model.prefs.adopt(preroll: preroll)
+        model.prefs.adopt(video: video)
         model.attach(sessions: sessions)
         model.attach(practice: practiceSettings)
         // Hands the delegate somewhere to send a file, and replays one that

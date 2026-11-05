@@ -212,6 +212,9 @@ public final class ViewerModel {
     /// marker lane is not redrawn every time the playhead moves.
     public let markers = CueMarkers()
 
+    /// The open file's picture, if it has one. See `ViewerModel+Video`.
+    public internal(set) var video: VideoState?
+
     public var sampleRate: Double { audio?.sampleRate ?? 0 }
     public var channels: Int { audio?.channels ?? 0 }
     public var totalFrames: FrameIndex { audio?.frameCount ?? 0 }
@@ -265,15 +268,8 @@ public final class ViewerModel {
     /// depends on it and a menu should not be invalidated by a file being
     /// opened.
     @ObservationIgnored var scopedURL: URL?
+    @ObservationIgnored var pendingScopedURL: URL?  // a load's, until it lands
 
-    /// Gives back the claim on the open document, if there was one.
-    ///
-    /// Idempotent, and safe to call when there is nothing to release, so every
-    /// path out of a document can simply call it.
-    func releaseSecurityScope() {
-        scopedURL?.stopAccessingSecurityScopedResource()
-        scopedURL = nil
-    }
     /// Identifies the in-flight load. A load cancelled mid-flight can already be
     /// past its cancellation check and merely waiting for the main actor, so the
     /// token — not the `Task`— is what decides whose result is still wanted.
@@ -359,7 +355,11 @@ public final class ViewerModel {
         laneSize = size
         cache.scale = Swift.max(1, scale)
         guard changed else { return }
+        // A view of the whole file stays one: the lanes narrow when a video's
+        // picture appears, which happens just after the viewport is made.
+        let wasFitted = zoomFactor <= 1.000_1 && viewport.startFrame == 0
         viewport.resize(widthPixels: lanePointWidth)
+        if wasFitted { viewport.fit() }
         refresh()
     }
 

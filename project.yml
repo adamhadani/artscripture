@@ -48,7 +48,7 @@ settings:
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
     SWIFT_TREAT_WARNINGS_AS_ERRORS: YES
-    MARKETING_VERSION: "1.2"
+    MARKETING_VERSION: "1.3"
     # The build number, and it has to *move*. App Store Connect refuses a second
     # upload carrying a build number it has already seen, so a tracked literal
     # works exactly once and then fails at the least convenient moment — after
@@ -225,6 +225,7 @@ targets:
       - path: Tests/WaveformTests
       - path: Tests/TimeStretchTests
       - path: Tests/PlaybackTests
+      - path: Tests/VideoTests
       - path: Tests/Fixtures
         buildPhase: resources
     dependencies:
@@ -238,6 +239,8 @@ targets:
         product: TimeStretch
       - package: Artscribe
         product: Playback
+      - package: Artscribe
+        product: Video
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.artscribe.ArtscribePortableTests

@@ -133,6 +133,17 @@ struct TitleBarView: View {
                         "Keyboard Shortcuts", systemImage: "keyboard",
                         action: auxiliary.shortcuts)
                     Button("Practice", systemImage: "metronome", action: auxiliary.practice)
+                    // Only for a video file, like the transport's Video button:
+                    // without a hardware keyboard there is no View menu.
+                    if model.hasVideo {
+                        Toggle(
+                            isOn: Binding(
+                                get: { model.prefs.video.shown },
+                                set: { _ in model.toggleVideo() })
+                        ) {
+                            Label("Video", systemImage: "film")
+                        }
+                    }
                     Divider()
                     // A phone has no menu bar, so this and the Loop button's
                     // long press are its only ways to remove a loop.

@@ -73,7 +73,11 @@ public enum ActionTitle {
 @MainActor
 enum ActionAvailability {
     static func isEnabled(_ id: ActionID, _ context: MenuContext, documentIsKey: Bool) -> Bool {
-        let model = context.model
+        isEnabled(id, model: context.model, documentIsKey: documentIsKey)
+    }
+
+    /// The rule itself, which only ever needed the model.
+    static func isEnabled(_ id: ActionID, model: ViewerModel, documentIsKey: Bool) -> Bool {
         let ready = model.hasTrack && documentIsKey
         switch ActionCatalog.entry(id).enablement {
         case .always: return true
@@ -82,6 +86,10 @@ enum ActionAvailability {
         case .trackPlaying: return ready && model.isPlaying
         case .trackLoopToggle: return ready && !(model.loop.range.isEmpty && !model.loop.isEnabled)
         case .trackLoop: return ready && !model.loop.range.isEmpty
+        case .trackVideo:
+            guard ready, model.hasVideo else { return false }
+            guard id == .viewVideoPictureInPicture else { return true }
+            return MiniPlayerSupport.isAvailable && model.videoPresenter != nil
         }
     }
 }

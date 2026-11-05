@@ -27,9 +27,10 @@ the passage you are working on stays where you put it.
 |---|---|
 | 🔁 **Seamless looping** | The stretcher is never reset at a loop boundary, so a repeat is *inaudible* — verified as byte-identical to a continuous render, not just "sounds fine" |
 | 🐢 **Studio-grade slowdown** | Two interchangeable backends — Rubber Band R3 "Finer" on macOS, Signalsmith (MIT) on iPadOS. **~0.00** and **<0.05 cents** of pitch error at half speed |
-| ⌨️ **Keyboard-first** | 71 actions, all rebindable-by-design, with a searchable shortcut window (`⌘/`) |
+| ⌨️ **Keyboard-first** | 73 actions, all rebindable-by-design, with a searchable shortcut window (`⌘/`) |
 | 🎯 **Preroll** | A resume rolls back a couple of seconds, so you land *before* the note you stopped on |
 | 📈 **Practice ramp** | Loop a phrase from slow to tempo automatically |
+| 🎬 **Video, frame-locked** | A video file's picture beside the waveform — slowed, looped and paused with the sound, and floating in a mini player when you switch apps |
 | 💿 **CUE track markers** | One-file albums show where each track begins |
 | 📝 **Visible session files** | A plain `.artscripture` sidecar you can read and hand-edit |
 
@@ -59,6 +60,7 @@ Or grab a signed, notarised build from [**Releases**](https://github.com/adamhad
 | `1` `2` `3` `4` | 100% · 75% · 50% · 33% |
 | `Z` `X` | Nudge back / forward |
 | `⌘9` `⌘0` | Zoom to the loop · fit whole file |
+| `I` `⇧I` | Show / hide a video's picture · Picture in Picture |
 | `⌘/` | The full shortcut reference |
 
 ## 🔍 Alternatives
@@ -713,11 +715,16 @@ looping in **Loop**, the transport, speed, volume and output device in **Playbac
 Everything is decoded natively by macOS — no ffmpeg, no bundled codecs:
 MP3, AAC, M4A/MP4, ALAC, FLAC (including 24-bit), WAV, AIFF, CAF, **Ogg Vorbis**, and **Opus**.
 
-**Video files open for their soundtrack** — MP4, MOV and M4V, on every platform. The audio
-track is decoded and the picture is ignored, so a lesson filmed on a phone or a concert clip
-loops and slows down like any other track. When a movie carries more than one soundtrack, the
-one it marks as the default is used. MKV, WebM and AVI are not offered: Apple's frameworks do
-not read them.
+**Video files open with their picture** — MP4, MOV and M4V, on every platform. The soundtrack
+is decoded and plays through the same engine as any track; the picture sits beside the
+waveform (or above it — Settings ▸ Video) and always shows the frame you are *hearing*: at
+half speed it moves at half speed, at a loop's end it jumps back with the sound, and paused it
+shows the frame at the playhead, so a click or a nudge steps through a fast run. Drag the
+divider's grip to give the picture more room once a loop is set. `I` hides it. Switch to
+another app while it plays and it floats in a small window with a play button — the Mac's own
+panel, iOS's Picture in Picture. When a movie carries more than one soundtrack, the one it
+marks as the default is used. MKV, WebM and AVI are not offered: Apple's frameworks do not
+read them.
 
 ## Building
 

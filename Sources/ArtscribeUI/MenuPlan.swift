@@ -96,6 +96,8 @@ public enum MenuPlan {
         // the waveform shows, like the zoom items it follows, while Practice and
         // Keyboard Shortcuts open windows.
         .action(.viewTrackMarksToggle),
+        .action(.viewVideoToggle),
+        .action(.viewVideoPictureInPicture),
         .separator,
         .action(.practiceShow),
         .action(.helpShortcuts)

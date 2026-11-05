@@ -61,6 +61,7 @@ struct TransportBarView: View {
     @ScaledMetric(relativeTo: .body) private var pitchLabelFloor: CGFloat = 40
 
     private var state: TransportState { model.transportState }
+    private var visibleGroups: [[TransportControl]] { TransportControl.visibleGroups(in: state) }
 
     /// The width this bar has been given. Measured off a frame pinned to the
     /// proposal, so it is what the *container* offers and never what the
@@ -92,9 +93,9 @@ struct TransportBarView: View {
     /// This bar's shape, handed to the arithmetic in `TransportDensity`.
     private var row: TransportDensity.Row {
         TransportDensity.Row(
-            buttons: TransportControl.allCases.count,
-            groups: TransportControl.groups.count,
-            gaps: TransportControl.groups.reduce(0) { $0 + max(0, $1.count - 1) },
+            buttons: visibleGroups.reduce(0) { $0 + $1.count },
+            groups: visibleGroups.count,
+            gaps: visibleGroups.reduce(0) { $0 + max(0, $1.count - 1) },
             speedPreferred: speedWidth, speedFloor: speedFloor,
             sliderPreferred: sliderWidth, sliderFloor: sliderFloor,
             labelPreferred: pitchLabelWidth, labelFloor: pitchLabelFloor,
@@ -112,7 +113,7 @@ struct TransportBarView: View {
 
     private func bar(buttonWidth: CGFloat, readouts: ReadoutWidth) -> some View {
         HStack(spacing: 0) {
-            ForEach(Array(TransportControl.groups.enumerated()), id: \.offset) { index, controls in
+            ForEach(Array(visibleGroups.enumerated()), id: \.offset) { index, controls in
                 if index > 0 { separator }
                 row(controls, buttonWidth: buttonWidth, readouts: readouts)
             }

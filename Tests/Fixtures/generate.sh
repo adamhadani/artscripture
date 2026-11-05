@@ -105,3 +105,28 @@ ffmpeg -y -loglevel error -f lavfi -i "color=c=black:s=16x16:r=2:d=1" \
   -map 0:v -map 1:a -map 2:a -c:v libx264 -pix_fmt yuv420p -c:a aac -b:a 64k \
   -af "volume=15dB" -disposition:a:0 0 -disposition:a:1 default \
   two_soundtracks.mov
+
+# --- The picture of a video: frames that say which frame they are. ---
+# Each frame is a flat grey whose luma is 16 + 7n, n being the frame number, so
+# a test reads the index straight off any pixel: n = round((Y - 16) / 7). In
+# video range (16...235) that fits 30 frames: 3 s at 10 fps. A 1 s GOP and
+# x264's default B-frames, because YouTube's H.264 has both -- decode order is
+# not presentation order, and a seek has to decode forward from a keyframe.
+# 48x32, not square, so a rotated copy is told apart by its shape.
+ffmpeg -y -loglevel error \
+  -f lavfi -i "nullsrc=s=48x32:r=10:d=3,geq=lum='16+7*N':cb=128:cr=128" \
+  -f lavfi -i "sine=frequency=440:duration=3:sample_rate=44100" \
+  -map 0:v -map 1:a -c:v libx264 -g 10 -pix_fmt yuv420p -c:a aac -b:a 32k \
+  -shortest frame_index.mp4
+# The same stream, untouched, with a 90-degree display matrix: a phone held
+# upright records a landscape picture plus "turn this", and AVAssetReader hands
+# back the unturned frames.
+ffmpeg -y -loglevel error -display_rotation 90 -i frame_index.mp4 -c copy frame_index_rotated.mov
+
+# A soundtrack that starts 0.5 s into a 3 s picture. Stored as an empty edit,
+# which the reader fills with silence — so decoded audio frame 0 is still movie
+# time 0, the assumption the video panel's playhead-to-picture mapping rests on.
+ffmpeg -y -loglevel error \
+  -f lavfi -i "nullsrc=s=48x32:r=10:d=3,geq=lum='16+7*N':cb=128:cr=128" \
+  -itsoffset 0.5 -f lavfi -i "sine=frequency=440:duration=2.5:sample_rate=44100" \
+  -map 0:v -map 1:a -c:v libx264 -g 10 -pix_fmt yuv420p -c:a aac -b:a 32k late_sound.mp4

@@ -26,6 +26,9 @@ public enum ActionEnablement: Hashable, Sendable {
     case trackLoopToggle
     /// A track, and a loop region that is not empty.
     case trackLoop
+    /// A track that has a picture: a video file. Disabled for audio, so the
+    /// key is not a dead key there but a visibly unavailable one.
+    case trackVideo
 }
 
 /// Whether the menu draws a button or a checkmark for this action.

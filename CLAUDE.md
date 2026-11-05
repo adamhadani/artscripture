@@ -404,6 +404,7 @@ a proposal to check, not an answer.
 ```
 ArtscribeKit ← AudioDecode / Waveform / TimeStretch ← Playback ← ArtscribeUI ← ArtscribeApp
                                                                             ← ArtscribeAcceptance
+ArtscribeKit ← Video ←──────────────────────────────────────── ArtscribeUI   (the picture)
 ```
 
 `ArtscribeKit` imports **nothing** — not even Foundation. If a type needs an upward import,
@@ -650,6 +651,33 @@ allowed types were audio. Three things to keep:
 - **The decoder takes the first *enabled* audio track, not the first.** A movie with a
   second language or a commentary marks its default as enabled, and it need not come first
   in the file; `two_soundtracks.mov` is built so that `tracks.first` reads the wrong tone.
+
+## Video — the picture of a video file
+
+`Video` (a module beside `AudioDecode`, built for iOS too) shows a video file's picture
+frame-locked to the sound. Design: `docs/superpowers/specs/2026-11-05-video-panel-design.md`.
+
+- **The picture is a function of the audible playhead, not a second player.** Every
+  `PlayheadClock` tick — paused too — hands `VideoPresenter` the position; it shows the
+  decoded frame that covers it. No video clock exists, so nothing drifts. `AVPlayer` slaved to
+  the engine was rejected: its own clock, a seek (into a long GOP) at every loop wrap, and PiP
+  buttons that drive *it* rather than our transport.
+- **The loop wrap is seamless the way the audio's is:** the loop's first quarter-second stays
+  decoded (`FramePlan.loopHead`), and the reader that read it *parks* there and becomes the main
+  reader at the wrap. Never let the plan reach behind the position: one frame behind a wrap
+  is before the loop, which nothing decodes — that turned every repetition into a seek.
+- **The Mac's mini player is our own `NSPanel`; iOS's is the system's Picture in Picture.**
+  Spiked on macOS 27.2, sample-buffer PiP draws the layer at its own size into a smaller
+  window — a sublayer showed a zoomed corner, the backing layer still cut off the top and
+  right. iOS scales correctly. On iOS PiP takes the **main panel's** layer, so the panel keeps
+  its surface while floating and covers it; removing it would end PiP.
+- **`VideoSurfaceView`'s display layer is its *backing* layer**, never a sublayer.
+- **`ViewerModel.swift` sits at swiftlint's 400-line cap.** New model state belongs on a child
+  `@Observable` (`VideoState`, `CueMarkers`), which is also the "given, not ignored" shape the
+  `recents` lesson asks for.
+- **To see a window that opened on another Space, do not grab focus**: render the view with
+  `ImageRenderer` in a throwaway test, or open it with `open -g`. iOS: stage a file in the app's
+  data container and launch with a temporary `SIMCTL_CHILD_` hook; remove it after.
 
 ## Test media
 

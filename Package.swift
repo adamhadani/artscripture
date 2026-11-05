@@ -37,6 +37,7 @@ let package = Package(
         .library(name: "AudioDecode", targets: ["AudioDecode"]),
         .library(name: "Waveform", targets: ["Waveform"]),
         .library(name: "TimeStretch", targets: ["TimeStretch"]),
+        .library(name: "Video", targets: ["Video"]),
         .executable(name: "artscribe-cli", targets: ["ArtscribeCLI"])
     ],
     targets: [
@@ -93,6 +94,21 @@ let package = Package(
             dependencies: ["Waveform"],
             swiftSettings: sharedSwiftSettings
         ),
+        // The picture of a video file, frame-locked to the audible position.
+        // Beside `AudioDecode` rather than above `Playback`: it reads the
+        // playhead the UI already polls and never touches the audio graph, so
+        // it has no business importing it. Builds for iOS, like everything
+        // below the UI.
+        .target(
+            name: "Video",
+            dependencies: ["ArtscribeKit"],
+            swiftSettings: sharedSwiftSettings
+        ),
+        .testTarget(
+            name: "VideoTests",
+            dependencies: ["Video"],
+            swiftSettings: sharedSwiftSettings
+        ),
         // Rubber Band comes from Homebrew, which builds a macOS dylib and
         // nothing else, so the dependency is macOS-only and
         // `RubberBandStretcher.swift` is behind `#if canImport(CRubberBand)`.
@@ -128,7 +144,7 @@ let package = Package(
         ),
         .target(
             name: "ArtscribeUI",
-            dependencies: ["ArtscribeKit", "AudioDecode", "Waveform", "Playback"],
+            dependencies: ["ArtscribeKit", "AudioDecode", "Waveform", "Playback", "Video"],
             // The bundled sample track. `.copy` rather than `.process`: it is
             // already the exact bytes to ship, and `.process` would let the
             // toolchain re-encode audio it decided it knew better about.

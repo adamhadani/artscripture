@@ -2,6 +2,7 @@ import ArtscribeKit
 import AudioDecode
 import Foundation
 import Synchronization
+import Video
 import Waveform
 
 /// A decoded file and everything derived from it that the viewer needs.
@@ -11,6 +12,20 @@ import Waveform
 struct LoadedTrack: Sendable {
     let audio: DecodedAudio
     let pyramid: PeakPyramid
+    /// The file's picture, when it has one. `nil` for audio — and for a movie
+    /// whose picture could not even be probed, which is then simply its sound.
+    var picture: LoadedPicture?
+}
+
+/// A video file's picture, opened alongside its sound.
+///
+/// `source` is `nil` exactly when `failure` is not: the file has a picture,
+/// and this machine cannot decode it. The sound plays regardless, and the
+/// panel says why it is empty rather than sitting black.
+struct LoadedPicture: Sendable {
+    let info: VideoTrackInfo
+    let source: VideoFrameSource?
+    let failure: String?
 }
 
 /// Turns a file URL into a `LoadedTrack`, off the main actor.
@@ -30,7 +45,24 @@ enum TrackLoader {
         let audio = try await AudioFileDecoder.decode(url: url, progress: reporter.callback)
         try Task.checkCancellation()
         onPhaseChange(.buildingWaveform)
-        return LoadedTrack(audio: audio, pyramid: PeakPyramid.build(audio))
+        let pyramid = PeakPyramid.build(audio)
+        // After the sound, not beside it: the probe is milliseconds, and a file
+        // whose sound cannot be decoded has no use for its picture.
+        let picture = await loadPicture(url: url)
+        try Task.checkCancellation()
+        return LoadedTrack(audio: audio, pyramid: pyramid, picture: picture)
+    }
+
+    /// The picture's facts and a decoder for it, or `nil` for a file with no
+    /// picture. Never throws: a picture that fails must not cost the sound.
+    nonisolated static func loadPicture(url: URL) async -> LoadedPicture? {
+        guard let info = try? await VideoTrackInfo.probe(url: url) else { return nil }
+        do {
+            let source = try await VideoFrameSource.open(url: url, info: info)
+            return LoadedPicture(info: info, source: source, failure: nil)
+        } catch {
+            return LoadedPicture(info: info, source: nil, failure: message(for: error))
+        }
     }
 
     /// The text the inline banner shows. `DecodeError` supplies a real reason;

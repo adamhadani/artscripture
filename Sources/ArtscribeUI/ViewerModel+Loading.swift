@@ -35,11 +35,15 @@ extension ViewerModel {
     /// track coming from a File Provider — iCloud Drive, Dropbox — is exactly
     /// where it would not.
     public func open(url: URL, securityScoped: Bool = false) {
-        // Release the previous document's claim before taking a new one. Doing
-        // it here rather than in a `deinit` matters: these are per-file grants
-        // and the process is allowed a limited number of them.
-        releaseSecurityScope()
-        if securityScoped { scopedURL = url }
+        // The new file's claim is held as *pending* until its load lands; the
+        // open document keeps its own until then. It used to be released here,
+        // which was harmless while a track lived wholly in memory — but a
+        // video's picture is read from the file for as long as it is open, so
+        // a failed or cancelled open must not leave the current one unreadable.
+        // A previous load that never landed gives its claim back now: these
+        // are per-file grants, and the process is allowed a limited number.
+        releasePendingScope()
+        if securityScoped { pendingScopedURL = url }
         // **Nothing is written here, deliberately.** Opening a track is not an
         // edit, and this method used to flush the outgoing session at exactly
         // this point — which meant reopening a track rewrote its sidecar
@@ -84,6 +88,23 @@ extension ViewerModel {
                 await self?.fail(with: TrackLoader.message(for: error), token: token)
             }
         }
+    }
+
+    /// Gives back the claim on the open document, if there was one.
+    ///
+    /// Idempotent, and safe to call when there is nothing to release, so every
+    /// path out of a document can simply call it.
+    func releaseSecurityScope() {
+        scopedURL?.stopAccessingSecurityScopedResource()
+        scopedURL = nil
+        releasePendingScope()
+    }
+
+    /// Gives back the claim of a load that did not land (failed, cancelled, or
+    /// replaced by another).
+    func releasePendingScope() {
+        pendingScopedURL?.stopAccessingSecurityScopedResource()
+        pendingScopedURL = nil
     }
 
     public func dismissError() {
@@ -132,6 +153,7 @@ extension ViewerModel {
         releaseSecurityScope()
         loadTask?.cancel()
         loadToken += 1
+        closePicture()
         audio = nil
         pyramid = nil
         fileName = nil
@@ -152,9 +174,15 @@ extension ViewerModel {
 
     func adopt(_ loaded: LoadedTrack, url: URL, startedAt: Date, token: Int) {
         guard token == loadToken else { return }
+        // The new document is in: its claim replaces the old one's.
+        let incoming = pendingScopedURL
+        pendingScopedURL = nil
+        releaseSecurityScope()
+        scopedURL = incoming
         teardownSession()
         audio = loaded.audio
         pyramid = loaded.pyramid
+        adoptPicture(loaded.picture)
         fileName = url.lastPathComponent
         generation += 1
         resetLaneGesture()
@@ -194,6 +222,7 @@ extension ViewerModel {
 
     func cancelLoading(token: Int) {
         guard token == loadToken else { return }
+        releasePendingScope()
         isLoading = false
         loadPhase = nil
     }
@@ -202,6 +231,7 @@ extension ViewerModel {
     /// untouched — a failed open must not throw away what you were working on.
     func fail(with message: String, token: Int) {
         guard token == loadToken else { return }
+        releasePendingScope()
         isLoading = false
         loadPhase = nil
         errorMessage = message

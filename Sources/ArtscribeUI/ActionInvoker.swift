@@ -37,6 +37,8 @@ public struct MenuContext {
     /// therefore has to be able to build them — and they take a theme. On macOS
     /// the scenes still pass it directly.
     public let theme: ThemeController
+    /// The video's floating window — View ▸ Picture in Picture and `⇧I`.
+    public let miniPlayer: MiniPlayerController
 
     public init(
         model: ViewerModel,
@@ -47,7 +49,8 @@ public struct MenuContext {
         about: AboutWindowController,
         settings: SettingsWindowController,
         welcome: WelcomeState,
-        theme: ThemeController
+        theme: ThemeController,
+        miniPlayer: MiniPlayerController
     ) {
         self.model = model
         self.recents = recents
@@ -58,6 +61,7 @@ public struct MenuContext {
         self.settings = settings
         self.welcome = welcome
         self.theme = theme
+        self.miniPlayer = miniPlayer
     }
 
     #if !os(macOS)
@@ -136,6 +140,7 @@ public enum ActionInvoker {
         // fresh one from the top.
         case .practiceRampToggle: return model.ramp.isRunning
         case .viewTrackMarksToggle: return model.markers.isVisible
+        case .viewVideoToggle: return model.prefs.video.shown
         default:
             guard let ratio = presetRatio(id) else { return nil }
             return SpeedStepping.isActive(preset: ratio, ratio: model.speed.ratio)

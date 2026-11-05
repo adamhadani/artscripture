@@ -144,15 +144,10 @@ public struct DocumentView: View {
             if model.hasTrack {
                 OverviewStripView(model: model)
                     .frame(height: Self.overviewHeight)
-                TimeRulerView(model: model)
-                // Only when the file has a cue sheet and the user has not put
-                // the lane away, so a track with no markers costs no height at
-                // all — which is most of them.
-                if model.showsTrackMarks {
-                    CueMarkerLaneView(model: model, appearance: appearance)
-                }
-                WaveformLanesView(model: model)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // The ruler, marks and lanes — and, for a video file, its
+                // picture beside them.
+                TimelineAndPictureView(
+                    model: model, appearance: appearance, miniPlayer: context.miniPlayer)
             } else {
                 EmptyStateView(model: model, recents: context.recents, about: context.about)
             }
@@ -329,6 +324,9 @@ public struct DocumentView: View {
             #if os(macOS)
             trackpad.stop()
             #endif
+            // Nor a floating mini player, frozen on a frame, whose play button
+            // would reach a session that is about to be torn down.
+            context.miniPlayer.handle(.closed)
             // Closing the window must not leave the audio graph running, the
             // display link ticking against a window nobody can see, or the
             // track it was playing on the lock screen.

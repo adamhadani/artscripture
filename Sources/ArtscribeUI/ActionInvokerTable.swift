@@ -68,7 +68,9 @@ extension ActionInvoker {
         .pitchUpFine: { $0.model.adjustPitch(byCents: ViewerModel.centStep) },
         .pitchDownFine: { $0.model.adjustPitch(byCents: -ViewerModel.centStep) },
         .pitchReset: { $0.model.resetPitch() },
-        .viewTrackMarksToggle: { $0.model.toggleTrackMarks() }
+        .viewTrackMarksToggle: { $0.model.toggleTrackMarks() },
+        .viewVideoToggle: { $0.model.toggleVideo() },
+        .viewVideoPictureInPicture: { $0.miniPlayer.toggleByUser() }
     ]
 
     private static func loopMove(
