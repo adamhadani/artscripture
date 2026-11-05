@@ -95,6 +95,7 @@ struct ArtscribeAppMain: App {
     /// How far a `Space` resume rolls back, persisted the same way again — its
     /// own store because its floor differs (see `PrerollSettings`).
     @State private var preroll = PrerollSettings()
+    @State private var video = VideoSettings()
     /// Reads and writes the `.artscripture` sidecar (spec §7). Application state
     /// like the rest of these: it outlives every loaded track, and it holds
     /// nothing but where the read-only-volume fallback lives.
@@ -223,6 +224,7 @@ struct ArtscribeAppMain: App {
         model.prefs.adopt(nudge: nudge)
         model.prefs.adopt(interaction: interaction)
         model.prefs.adopt(preroll: preroll)
+        model.prefs.adopt(video: video)
         model.attach(sessions: sessions)
         model.attach(practice: practiceSettings)
         // Hands the delegate somewhere to send a file, and replays one that

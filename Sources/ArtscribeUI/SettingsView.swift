@@ -47,6 +47,8 @@ public struct SettingsView: View {
                 .tabItem { Label("Playback", systemImage: "waveform") }
             AppearanceSettingsTab(theme: theme)
                 .tabItem { Label("Appearance", systemImage: "circle.lefthalf.filled") }
+            VideoSettingsTab(prefs: model.prefs)
+                .tabItem { Label("Video", systemImage: "film") }
             // Absent on the App Store, where its one button would be a way for a
             // real user to throw away their recents by accident. See the type.
             if installEnvironment != .appStore {

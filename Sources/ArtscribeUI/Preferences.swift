@@ -63,6 +63,9 @@ public final class Preferences {
     /// holds two zoom conventions at once.
     public internal(set) var invertZoomDrag = false
 
+    /// The picture's preferences: shown, where, how big. See `VideoSettings`.
+    public internal(set) var video = VideoPreferences.defaults
+
     // MARK: - Backing stores
     //
     // `@ObservationIgnored` throughout: these are plumbing installed once at
@@ -72,6 +75,7 @@ public final class Preferences {
     @ObservationIgnored private var nudgeStore: NudgeSettings?
     @ObservationIgnored private var interactionStore: InteractionSettings?
     @ObservationIgnored private var prerollStore: PrerollSettings?
+    @ObservationIgnored var videoStore: VideoSettings?
 
     public init() {}
 

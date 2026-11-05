@@ -354,7 +354,11 @@ public final class ViewerModel {
         laneSize = size
         cache.scale = Swift.max(1, scale)
         guard changed else { return }
+        // A view of the whole file stays one: the lanes narrow when a video's
+        // picture appears, which happens just after the viewport is made.
+        let wasFitted = zoomFactor <= 1.000_1 && viewport.startFrame == 0
         viewport.resize(widthPixels: lanePointWidth)
+        if wasFitted { viewport.fit() }
         refresh()
     }
 

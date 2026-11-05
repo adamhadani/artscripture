@@ -49,6 +49,7 @@ struct IPadAppMain: App {
     @State private var nudge = NudgeSettings()
     @State private var interaction = InteractionSettings()
     @State private var preroll = PrerollSettings()
+    @State private var video = VideoSettings()
     @State private var sessions = SessionStore()
     @State private var shortcuts = ShortcutWindowController()
     @State private var practice = PracticeWindowController()
@@ -132,6 +133,7 @@ struct IPadAppMain: App {
         model.prefs.adopt(nudge: nudge)
         model.prefs.adopt(interaction: interaction)
         model.prefs.adopt(preroll: preroll)
+        model.prefs.adopt(video: video)
         model.attach(sessions: sessions)
         model.attach(practice: practiceSettings)
     }

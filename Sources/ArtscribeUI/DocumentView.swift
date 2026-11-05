@@ -144,15 +144,9 @@ public struct DocumentView: View {
             if model.hasTrack {
                 OverviewStripView(model: model)
                     .frame(height: Self.overviewHeight)
-                TimeRulerView(model: model)
-                // Only when the file has a cue sheet and the user has not put
-                // the lane away, so a track with no markers costs no height at
-                // all — which is most of them.
-                if model.showsTrackMarks {
-                    CueMarkerLaneView(model: model, appearance: appearance)
-                }
-                WaveformLanesView(model: model)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // The ruler, marks and lanes — and, for a video file, its
+                // picture beside them.
+                TimelineAndPictureView(model: model, appearance: appearance)
             } else {
                 EmptyStateView(model: model, recents: context.recents, about: context.about)
             }

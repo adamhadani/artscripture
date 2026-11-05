@@ -91,3 +91,36 @@ struct ViewerModelVideoTests {
         #expect(picture.source?.frame(at: 0) == nil)
     }
 }
+
+/// The lanes change width when the picture appears, when it is toggled, and
+/// when the divider moves. A view of the whole file should still be one.
+@MainActor
+@Suite("Lane resize keeps a fitted view fitted")
+struct LaneResizeFitTests {
+    private func model() -> ViewerModel {
+        let frames: FrameIndex = 441_000
+        let storage = AudioStorage(channels: 1, capacityFrames: Int(frames))
+        let audio = DecodedAudio(
+            channels: 1, sampleRate: 44_100, frameCount: frames, storage: storage)
+        let model = ViewerModel()
+        model.loadForTesting(audio: audio, pyramid: PeakPyramid.build(audio), widthPixels: 1000)
+        model.setLaneSize(CGSize(width: 1000, height: 300), scale: 2)
+        return model
+    }
+
+    @Test func aFittedViewStaysFittedWhenTheLanesNarrow() {
+        let model = model()
+        #expect(model.zoomFactor == 1)
+        model.setLaneSize(CGSize(width: 640, height: 300), scale: 2)
+        #expect(abs(model.zoomFactor - 1) < 0.001)
+        #expect(model.viewport.startFrame == 0)
+    }
+
+    @Test func aZoomedViewKeepsItsScale() {
+        let model = model()
+        model.zoomIn()
+        let scale = model.framesPerPixel
+        model.setLaneSize(CGSize(width: 640, height: 300), scale: 2)
+        #expect(model.framesPerPixel == scale)
+    }
+}
