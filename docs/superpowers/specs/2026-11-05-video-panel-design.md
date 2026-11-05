@@ -101,7 +101,7 @@ Spec §6.2 is the source of truth for actions, so both are added there:
 | Action | Title | Key | Menu | Enablement |
 |---|---|---|---|---|
 | `view.video.toggle` | Video | `V` | View (toggle, ✓) | track **with video** |
-| `view.video.pictureInPicture` | Picture in Picture | `⇧V` | View | track with video, panel shown |
+| `view.video.pictureInPicture` | Picture in Picture | `⇧V` | View | track with video (Mac until the iOS pass) |
 
 - `V` is unbound on every layer today. This needs a new enablement case, `trackVideo`, next to
   `track`, so that audio files show both items disabled rather than as dead keys.
