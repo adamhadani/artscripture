@@ -12,6 +12,12 @@ public struct DecodedFrame: @unchecked Sendable {
     public let pts: Double
     public let duration: Double
     public let pixelBuffer: CVPixelBuffer
+
+    public init(pts: Double, duration: Double, pixelBuffer: CVPixelBuffer) {
+        self.pts = pts
+        self.duration = duration
+        self.pixelBuffer = pixelBuffer
+    }
 }
 
 /// Decodes the picture a `FramePlan` asks for, ahead of when it is shown.
