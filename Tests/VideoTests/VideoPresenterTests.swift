@@ -34,6 +34,21 @@ struct VideoPresenterTests {
         #expect(source.counters.framesDecoded == 0)
     }
 
+    /// Suspended — iOS in the background with no Picture in Picture — the
+    /// presenter decodes nothing even with a surface attached.
+    @Test func aSuspendedPresenterDecodesNothing() async throws {
+        let (presenter, source) = try await presenter()
+        // Held here: the presenter keeps surfaces weakly, and one that went
+        // away would make this pass for the wrong reason.
+        let surface = RecordingSurface()
+        presenter.attach(surface)
+        presenter.isSuspended = true
+        for step in 0..<10 { presenter.update(paused(Double(step) / 5)) }
+        await source.idle()
+        #expect(source.counters.framesDecoded == 0)
+        #expect(surface.shown.isEmpty)
+    }
+
     @Test func theSameFrameIsNotSentTwice() async throws {
         let (presenter, source) = try await presenter()
         let surface = RecordingSurface()

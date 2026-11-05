@@ -77,6 +77,43 @@ struct ViewerModelVideoTests {
         #expect(model.videoPresenter == nil)
     }
 
+    /// Review finding #2, the model's half: a failure the decoder meets later
+    /// reaches the panel, which reads `VideoState.failure`.
+    @Test func aLaterDecodeFailureReachesThePanel() async throws {
+        let model = model()
+        let copy = FileManager.default.temporaryDirectory
+            .appendingPathComponent("vanishing-\(UUID().uuidString).mp4")
+        try FileManager.default.copyItem(at: Self.fixture("frame_index.mp4"), to: copy)
+        model.adoptPicture(await TrackLoader.loadPicture(url: copy))
+        // Truncated in place, not unlinked: an asset keeps its file open, so
+        // a deleted file still reads. Truncating takes the samples away.
+        let handle = try FileHandle(forWritingTo: copy)
+        try handle.truncate(atOffset: 2048)
+        try handle.close()
+        let surface = CountingSurface()
+        model.videoPresenter?.attach(surface)
+        #expect(model.video?.failure == nil)
+        model.driveVideo()
+        await model.videoPresenter?.idle()
+        model.driveVideo()
+        #expect(model.video?.failure != nil)
+    }
+
+    /// Review finding #5. With no audio output there is no session, but the
+    /// picture still follows a click or a nudge: "the waveform is still
+    /// usable", and so is the video.
+    @Test func thePictureFollowsThePlayheadWithoutASession() async throws {
+        let model = model()
+        model.adoptPicture(await TrackLoader.loadPicture(url: Self.fixture("frame_index.mp4")))
+        let surface = CountingSurface()
+        model.videoPresenter?.attach(surface)
+        model.seek(to: 48_000)
+        model.tickPlayback(now: 1)
+        await model.videoPresenter?.idle()
+        model.tickPlayback(now: 2)
+        #expect(surface.count == 1)
+    }
+
     @Test func closingTheTrackClosesThePresenter() async throws {
         let model = model()
         let picture = try #require(
@@ -122,5 +159,35 @@ struct LaneResizeFitTests {
         let scale = model.framesPerPixel
         model.setLaneSize(CGSize(width: 640, height: 300), scale: 2)
         #expect(model.framesPerPixel == scale)
+    }
+}
+
+@MainActor
+private final class CountingSurface: VideoSurface {
+    var count = 0
+    func show(_ frame: DecodedFrame) { count += 1 }
+}
+
+/// Review finding #3. The video decoder reads the open file for as long as it
+/// is open, so the document's security scope must outlive a *failed* attempt
+/// to open another one — on iPad, a file picked from Files is unreadable
+/// without it, and every seek opens a new reader.
+@MainActor
+@Suite("Security scope across a failed open")
+struct SecurityScopeHandoffTests {
+    @Test func theOpenDocumentKeepsItsScopeUntilAnotherLands() async throws {
+        let model = ViewerModel()
+        let current = URL(fileURLWithPath: "/tmp/artscripture-current.mp4")
+        model.scopedURL = current
+        let missing = FileManager.default.temporaryDirectory
+            .appendingPathComponent("missing-\(UUID().uuidString).wav")
+        model.open(url: missing, securityScoped: true)
+        #expect(model.scopedURL == current)
+        for _ in 0..<200 where model.errorMessage == nil {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        #expect(model.errorMessage != nil)
+        #expect(model.scopedURL == current)
+        #expect(model.pendingScopedURL == nil)
     }
 }

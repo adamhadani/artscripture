@@ -149,8 +149,8 @@ struct SplitGripTab: View {
             Rectangle()
                 .fill(palette.background.color(opacity: 0.85))
                 .frame(
-                    width: axis == .horizontal ? 1 : lineLength,
-                    height: axis == .horizontal ? lineLength : 1)
+                    width: axis == .horizontal ? Metrics.hairline : lineLength,
+                    height: axis == .horizontal ? lineLength : Metrics.hairline)
         }
         Capsule()
             .fill(palette.text.color(opacity: lit ? 1 : 0.6))
@@ -158,9 +158,9 @@ struct SplitGripTab: View {
             .frame(width: size.width, height: size.height)
             .overlay {
                 if axis == .horizontal {
-                    HStack(spacing: 2) { lines }
+                    HStack(spacing: Metrics.xxs) { lines }
                 } else {
-                    VStack(spacing: 2) { lines }
+                    VStack(spacing: Metrics.xxs) { lines }
                 }
             }
     }

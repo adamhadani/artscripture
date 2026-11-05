@@ -23,30 +23,36 @@ struct MiniPlayerView: View {
         .ignoresSafeArea()
     }
 
+    /// The hover controls' sizes: a pointer target over a small window.
+    private static let button: CGFloat = 36
+    private static let playGlyph: CGFloat = 18
+    private static let backGlyph: CGFloat = 15
+    private static let gap: CGFloat = 18
+
     private var controls: some View {
-        HStack(spacing: 18) {
+        HStack(spacing: Self.gap) {
             Button(action: playPause) {
                 Image(systemName: model.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .frame(width: 36, height: 36)
+                    .font(.system(size: Self.playGlyph, weight: .semibold))
+                    .frame(width: Self.button, height: Self.button)
             }
             .help(model.isPlaying ? "Pause" : "Play")
             Button {
                 NSApp.activate(ignoringOtherApps: true)
             } label: {
                 Image(systemName: "arrow.up.backward.and.arrow.down.forward")
-                    .font(.system(size: 15, weight: .semibold))
-                    .frame(width: 36, height: 36)
+                    .font(.system(size: Self.backGlyph, weight: .semibold))
+                    .frame(width: Self.button, height: Self.button)
             }
             .help("Show Artscripture")
         }
         .buttonStyle(.plain)
         .foregroundStyle(.white)
-        .padding(.horizontal, 14)
-        .padding(.vertical, 6)
+        .padding(.horizontal, Metrics.xxl)
+        .padding(.vertical, Metrics.sm)
         .background(.ultraThinMaterial, in: Capsule())
         .environment(\.colorScheme, .dark)
-        .padding(.bottom, 12)
+        .padding(.bottom, Metrics.xl)
     }
 }
 #endif

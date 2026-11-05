@@ -95,7 +95,7 @@ extension Preferences {
         if loaded != video { video = loaded }
     }
 
-    /// `V`, the transport button, and View ▸ Video.
+    /// `I`, the transport button, View ▸ Video and the iPad's More menu.
     public func toggleVideoShown() {
         applyVideo { $0.shown.toggle() }
     }

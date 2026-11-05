@@ -301,7 +301,7 @@ is a fresh resume from wherever the playhead now is.
 | `view.theme` | — | Light / Dark / System; **in Settings ▸ Appearance**, consolidated there from the View menu |
 | `view.video.toggle` | `I` | **Video**: show or hide a video file's picture beside the timeline (a toggle, ✓). Disabled for audio, and its transport button and iPad More-menu entry exist only for video. `I` for image: every `V` chord is the loop's. See `2026-11-05-video-panel-design.md` |
 | `view.video.pictureInPicture` | `⇧I` | **Picture in Picture**: the picture in a small window that floats over other apps — the Mac's own floating panel, iOS's system Picture in Picture |
-| `view.video.position` | — | Right / Top; **in Settings ▸ Video**, with "Float video when switching apps" (Mac) |
+| `view.video.position` | — | Right / Top; **in Settings ▸ Video**, with "Float video when switching apps" (the Mac's panel; iOS's automatic Picture in Picture) |
 | `practice.show` | `⌘P` | Open the **Practice** window — the ramping loop (Task 21). A separate, resizable window whose frame is remembered, closable on its own, for a sharper version of `help.shortcuts`'s reason: it is watched *alongside* the waveform, so it must cost the waveform no width. `⌘P` is free — this app has no Print command |
 | `practice.ramp.toggle` | `⌥P` | Start / stop the speed ramp, in **Loop ▸ Speed Ramp**, without leaving the waveform. Pairs with the window's `⌘P` on the same letter: `⌘` opens the thing, `⌥` runs it |
 | `help.shortcuts` | `⌘/` | Open the **Keyboard Shortcuts** window — a separate, resizable window whose frame is remembered, closable on its own. Not a toggle: it has a close button and answers ⌘W |

@@ -89,6 +89,12 @@ public enum PictureInPictureBridge {
         state.hasVideo && state.isPanelShown && state.floatsWhenInactive
     }
 
+    /// Whether to stop decoding: in the background the picture is only for
+    /// Picture in Picture.
+    public static func suspendsDecoding(inBackground: Bool, floating: Bool) -> Bool {
+        inBackground && !floating
+    }
+
     /// The window's ± skip, in frames for the model's seek.
     public static func frames(forSkip seconds: Double, sampleRate: Double) -> Int64 {
         guard sampleRate > 0 else { return 0 }

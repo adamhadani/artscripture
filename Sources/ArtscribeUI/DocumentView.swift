@@ -324,6 +324,9 @@ public struct DocumentView: View {
             #if os(macOS)
             trackpad.stop()
             #endif
+            // Nor a floating mini player, frozen on a frame, whose play button
+            // would reach a session that is about to be torn down.
+            context.miniPlayer.handle(.closed)
             // Closing the window must not leave the audio graph running, the
             // display link ticking against a window nobody can see, or the
             // track it was playing on the lock screen.

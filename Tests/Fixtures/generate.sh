@@ -122,3 +122,11 @@ ffmpeg -y -loglevel error \
 # upright records a landscape picture plus "turn this", and AVAssetReader hands
 # back the unturned frames.
 ffmpeg -y -loglevel error -display_rotation 90 -i frame_index.mp4 -c copy frame_index_rotated.mov
+
+# A soundtrack that starts 0.5 s into a 3 s picture. Stored as an empty edit,
+# which the reader fills with silence — so decoded audio frame 0 is still movie
+# time 0, the assumption the video panel's playhead-to-picture mapping rests on.
+ffmpeg -y -loglevel error \
+  -f lavfi -i "nullsrc=s=48x32:r=10:d=3,geq=lum='16+7*N':cb=128:cr=128" \
+  -itsoffset 0.5 -f lavfi -i "sine=frequency=440:duration=2.5:sample_rate=44100" \
+  -map 0:v -map 1:a -c:v libx264 -g 10 -pix_fmt yuv420p -c:a aac -b:a 32k late_sound.mp4

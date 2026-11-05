@@ -43,6 +43,11 @@ struct VideoPanelView: View {
         .accessibilityLabel("Video")
     }
 
+    /// The corner button over the picture: big enough to find over a moving
+    /// image, small enough not to cover the hands.
+    private static let cornerButton: CGFloat = 30
+    private static let cornerGlyph: CGFloat = 14
+
     /// Shown on hover with a pointer, always on touch — where there is no
     /// hover to reveal it.
     @ViewBuilder
@@ -51,10 +56,13 @@ struct VideoPanelView: View {
             let touch = ControlMetrics.current.target >= 44
             Button(action: miniPlayer.toggleByUser) {
                 Image(systemName: video.isFloating ? "pip.exit" : "pip.enter")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.system(size: Self.cornerGlyph, weight: .semibold))
                     .foregroundStyle(.white)
-                    .frame(width: 30, height: 30)
-                    .background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 7))
+                    .frame(width: Self.cornerButton, height: Self.cornerButton)
+                    .background(
+                        .black.opacity(0.55),
+                        in: RoundedRectangle(cornerRadius: Metrics.Radius.control)
+                    )
                     .contentShape(.rect)
             }
             .buttonStyle(.plain)

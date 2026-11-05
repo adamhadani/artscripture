@@ -58,6 +58,10 @@ extension ViewerModel {
         } catch {
             session = nil
             isResampling = false
+            // The clock still runs: a video's picture follows a click or a
+            // nudge without any sound. Started first, so the notice below —
+            // the one that matters — is what stays on screen.
+            startClock()
             playbackNotice =
                 "Audio output is unavailable: \(TrackLoader.message(for: error)) "
                 + "The waveform is still usable, but nothing will play."
@@ -121,10 +125,11 @@ extension ViewerModel {
     // One tick per display refresh. This is the entire render-thread → UI path.
 
     func tickPlayback(now: Double) {
-        guard let session else { return }
         // Every tick, paused as well as playing, and after the playhead below
-        // is final: a click or a nudge while paused moves the picture too.
+        // is final: a click or a nudge while paused moves the picture too —
+        // with no audio output as well, where the picture is still usable.
         defer { driveVideo() }
+        guard let session else { return }
         pollDegradation(session)
         // Once a second, not once a frame: switching output device from the menu
         // succeeds silently, and the new device may run at a different rate. The

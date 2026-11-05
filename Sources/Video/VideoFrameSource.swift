@@ -43,6 +43,7 @@ public final class VideoFrameSource: @unchecked Sendable {
     struct Counters: Equatable, Sendable {
         var framesDecoded = 0
         var readersCreated = 0
+        var readerAttempts = 0
         var handoffs = 0
         var cached = 0
     }
@@ -62,7 +63,7 @@ public final class VideoFrameSource: @unchecked Sendable {
     /// Only for a turned track: renders the frames upright, so nothing above
     /// this has to know a phone was held sideways.
     private let composition: AVVideoComposition?
-    private let frameBudget: Int
+    private let budget: Int
     private let shared = Mutex(Shared())
     private let queue = DispatchQueue(label: "com.artscribe.video.decode", qos: .userInitiated)
 
@@ -78,16 +79,24 @@ public final class VideoFrameSource: @unchecked Sendable {
         self.track = track
         self.composition = composition
         self.info = info
-        self.frameBudget = max(2, frameBudget)
+        self.budget = max(2, frameBudget)
     }
 
-    /// The default budget: about 150 MB of 1080p frames, and far more than a
-    /// plan at normal speeds asks for (a quarter-second each side at 60 fps is
-    /// 30). The cap is for 2× on a 60 fps 4K clip, not for the common case.
-    public static let defaultFrameBudget = 48
+    /// How much decoded picture to keep, in bytes. A count would not do: a
+    /// 4K frame is four times a 1080p one, and 48 of them are about 600 MB —
+    /// which iOS ends an app for, in the background with Picture in Picture
+    /// above all.
+    public static let memoryBudget = 128_000_000.0
+
+    /// Frames that fit `memoryBudget` at this picture's size (4:2:0, a byte
+    /// and a half a pixel), between 8 — enough to play from at all — and 48.
+    public static func frameBudget(for info: VideoTrackInfo) -> Int {
+        let bytes = max(1, info.displaySize.width * info.displaySize.height * 1.5)
+        return min(48, max(8, Int(memoryBudget / Double(bytes))))
+    }
 
     public static func open(
-        url: URL, info: VideoTrackInfo, frameBudget: Int = defaultFrameBudget
+        url: URL, info: VideoTrackInfo, frameBudget: Int? = nil
     ) async throws -> VideoFrameSource {
         let asset = AVURLAsset(url: url)
         guard let track = try await VideoTrackInfo.firstEnabledVideoTrack(of: asset) else {
@@ -99,7 +108,7 @@ public final class VideoFrameSource: @unchecked Sendable {
             : nil
         return VideoFrameSource(
             asset: asset, track: track, composition: composition, info: info,
-            frameBudget: frameBudget)
+            frameBudget: frameBudget ?? Self.frameBudget(for: info))
     }
 
     // MARK: - The caller's side
@@ -138,6 +147,19 @@ public final class VideoFrameSource: @unchecked Sendable {
     public func close() {
         shared.withLock { state in
             state.isClosed = true
+            state.pending = nil
+            state.cache.removeAll()
+        }
+        queue.async {
+            self.main = nil
+            self.head = nil
+        }
+    }
+
+    /// Lets every decoded frame go, and the readers with them: nothing is
+    /// showing the picture. The next request starts afresh.
+    public func release() {
+        shared.withLock { state in
             state.pending = nil
             state.cache.removeAll()
         }
@@ -189,6 +211,9 @@ public final class VideoFrameSource: @unchecked Sendable {
 
     private func work(on plan: FramePlan) {
         shared.withLock { $0.cache.evict(outside: plan.all) }
+        // A picture that failed stays failed: the reason is on screen, and a
+        // new reader per plan would fail the same way 60 times a second.
+        guard shared.withLock({ $0.failure == nil }) else { return }
         // What is on screen next comes first. A window after the loop's end is
         // the loop head's to provide, and it is decoded below.
         if let window = plan.main.first { fill(window) }
@@ -203,7 +228,10 @@ public final class VideoFrameSource: @unchecked Sendable {
     private func fill(_ window: Range<Double>) {
         guard let gap = firstGap(in: window) else { return }
         let reader: Reader
-        if let main, main.isAt(gap, interval: info.frameInterval) {
+        if let main, main.canReach(gap, interval: info.frameInterval, within: Self.catchUp) {
+            // Behind is fine: reading forward costs a frame's decode per frame,
+            // where a new reader decodes from the keyframe — and on a long GOP,
+            // replacing a reader that is behind on every tick never catches up.
             reader = main
         } else if let head, head.isAt(gap, interval: info.frameInterval) {
             // The wrap: the parked head reader is exactly where the picture
@@ -218,15 +246,19 @@ public final class VideoFrameSource: @unchecked Sendable {
         } else {
             return
         }
-        pull(reader, until: window.upperBound)
+        pull(reader, from: window.lowerBound, until: window.upperBound)
     }
+
+    /// How far behind the main reader may be and still be read forward rather
+    /// than replaced: about a GOP, the cost of the replacement.
+    static let catchUp = 2.0
 
     private func prime(_ window: Range<Double>) {
         let isForThisLoop = head.map {
             abs($0.origin - window.lowerBound) <= FrameCache<Int>.tolerance
         }
         if isForThisLoop != true { head = makeReader(at: window.lowerBound) }
-        if let head { pull(head, until: window.upperBound) }
+        if let head { pull(head, from: window.lowerBound, until: window.upperBound) }
     }
 
     /// Where `window` stops being decoded, or `nil` when all of it is.
@@ -239,18 +271,35 @@ public final class VideoFrameSource: @unchecked Sendable {
         }
     }
 
-    private func pull(_ reader: Reader, until end: Double) {
+    /// Reads `reader` forward until it passes `end`. Frames that finish
+    /// before `start` — read on the way, catching up — are not kept: they
+    /// would only fill the budget with pictures nobody will see.
+    private func pull(_ reader: Reader, from start: Double, until end: Double) {
         while reader.cursor < end - FrameCache<Int>.tolerance, !reader.isFinished {
             guard !isSuperseded else { return }
-            let full = shared.withLock { $0.cache.count >= frameBudget }
+            let full = shared.withLock { $0.cache.count >= budget }
             guard !full else { return }
             switch reader.next(fallbackDuration: info.frameInterval) {
             case .frame(let frame):
+                guard frame.pts + frame.duration > start + FrameCache<Int>.tolerance else {
+                    shared.withLock { $0.counters.framesDecoded += 1 }
+                    continue
+                }
                 shared.withLock { state in
                     state.cache.insert(pts: frame.pts, duration: frame.duration, frame.pixelBuffer)
                     state.counters.framesDecoded += 1
                 }
             case .end:
+                // Ending without a single frame, inside the picture, is not the
+                // end of the file but a stretch that cannot be read — a damaged
+                // or incomplete file. iOS reports it this way rather than as a
+                // failure; without this every plan would open another reader
+                // that ends the same way.
+                if reader.framesRead == 0, reader.origin < info.end - info.frameInterval {
+                    shared.withLock {
+                        $0.failure = "The file may be damaged or incomplete from here on."
+                    }
+                }
                 return
             case .failed(let reason):
                 shared.withLock { $0.failure = reason }
@@ -261,6 +310,7 @@ public final class VideoFrameSource: @unchecked Sendable {
 
     private func makeReader(at time: Double) -> Reader? {
         let start = min(max(time, info.start), info.end - info.frameInterval / 2)
+        shared.withLock { $0.counters.readerAttempts += 1 }
         do {
             let reader = try Reader(
                 asset: asset, track: track, composition: composition,
@@ -277,81 +327,4 @@ public final class VideoFrameSource: @unchecked Sendable {
 public enum VideoSourceError: Error, Equatable {
     case noPicture
     case couldNotStart(String)
-}
-
-/// One `AVAssetReader` reading forward from `origin`. Confined to the source's
-/// queue.
-private final class Reader {
-    enum Next {
-        case frame(DecodedFrame)
-        case end
-        case failed(String)
-    }
-
-    let origin: Double
-    /// The end of the latest frame read: where this reader's picture runs out.
-    private(set) var cursor: Double
-    private(set) var isFinished = false
-    private let reader: AVAssetReader
-    private let output: AVAssetReaderOutput
-
-    /// Decoded straight to the format the display layer takes without a copy:
-    /// bi-planar 4:2:0 in video range, IOSurface-backed.
-    private static var settings: [String: Any] {
-        [
-            kCVPixelBufferPixelFormatTypeKey as String:
-                kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
-            kCVPixelBufferIOSurfacePropertiesKey as String: [String: Any]()
-        ]
-    }
-
-    init(
-        asset: AVAsset, track: AVAssetTrack, composition: AVVideoComposition?,
-        range: Range<Double>
-    ) throws {
-        reader = try AVAssetReader(asset: asset)
-        reader.timeRange = CMTimeRange(
-            start: CMTime(seconds: range.lowerBound, preferredTimescale: 90_000),
-            end: CMTime(seconds: range.upperBound, preferredTimescale: 90_000))
-        if let composition {
-            let output = AVAssetReaderVideoCompositionOutput(
-                videoTracks: [track], videoSettings: Self.settings)
-            output.videoComposition = composition
-            self.output = output
-        } else {
-            self.output = AVAssetReaderTrackOutput(track: track, outputSettings: Self.settings)
-        }
-        output.alwaysCopiesSampleData = false
-        reader.add(output)
-        guard reader.startReading() else {
-            throw VideoSourceError.couldNotStart(
-                reader.error?.localizedDescription ?? "The video could not be read.")
-        }
-        origin = range.lowerBound
-        cursor = range.lowerBound
-    }
-
-    /// Whether this reader's next frame is the one that starts at `time`.
-    func isAt(_ time: Double, interval: Double) -> Bool {
-        !isFinished && abs(cursor - time) < interval / 2
-    }
-
-    func next(fallbackDuration: Double) -> Next {
-        guard let sample = output.copyNextSampleBuffer() else {
-            isFinished = true
-            if reader.status == .failed {
-                return .failed(
-                    reader.error?.localizedDescription ?? "The video could not be decoded.")
-            }
-            return .end
-        }
-        guard let image = CMSampleBufferGetImageBuffer(sample) else {
-            return next(fallbackDuration: fallbackDuration)
-        }
-        let pts = CMSampleBufferGetPresentationTimeStamp(sample).seconds
-        let stated = CMSampleBufferGetDuration(sample)
-        let duration = stated.isValid && stated.seconds > 0 ? stated.seconds : fallbackDuration
-        cursor = max(cursor, pts + duration)
-        return .frame(DecodedFrame(pts: pts, duration: duration, pixelBuffer: image))
-    }
 }

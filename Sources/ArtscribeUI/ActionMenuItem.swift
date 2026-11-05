@@ -88,7 +88,8 @@ enum ActionAvailability {
         case .trackLoop: return ready && !model.loop.range.isEmpty
         case .trackVideo:
             guard ready, model.hasVideo else { return false }
-            return id != .viewVideoPictureInPicture || MiniPlayerSupport.isAvailable
+            guard id == .viewVideoPictureInPicture else { return true }
+            return MiniPlayerSupport.isAvailable && model.videoPresenter != nil
         }
     }
 }

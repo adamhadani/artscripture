@@ -6,10 +6,17 @@ import Testing
 /// The picture's app-wide preferences, and where they are kept.
 @MainActor
 @Suite("Video settings")
-struct VideoSettingsTests {
+final class VideoSettingsTests {
+    /// One suite per test, removed when it ends: a suite left behind is a
+    /// plist in ~/Library/Preferences for every run of `make check`.
+    private let suiteName = "video-settings-\(UUID().uuidString)"
+
+    deinit {
+        UserDefaults().removePersistentDomain(forName: suiteName)
+    }
 
     private func defaults() throws -> UserDefaults {
-        try #require(UserDefaults(suiteName: "video-settings-\(UUID().uuidString)"))
+        try #require(UserDefaults(suiteName: suiteName))
     }
 
     @Test func defaultsWhenNothingStored() throws {

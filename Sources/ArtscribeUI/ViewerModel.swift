@@ -268,6 +268,7 @@ public final class ViewerModel {
     /// depends on it and a menu should not be invalidated by a file being
     /// opened.
     @ObservationIgnored var scopedURL: URL?
+    @ObservationIgnored var pendingScopedURL: URL?  // a load's, until it lands
 
     /// Identifies the in-flight load. A load cancelled mid-flight can already be
     /// past its cancellation check and merely waiting for the main actor, so the

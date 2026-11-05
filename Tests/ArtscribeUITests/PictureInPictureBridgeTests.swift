@@ -40,4 +40,14 @@ struct PictureInPictureBridgeTests {
         #expect(PictureInPictureBridge.frames(forSkip: -15, sampleRate: 44_100) == -661_500)
         #expect(PictureInPictureBridge.frames(forSkip: 10, sampleRate: 0) == 0)
     }
+
+    /// Review finding #7. In the background the picture is decoded only for
+    /// Picture in Picture; otherwise nobody can see it, and the background
+    /// audio mode would keep the decoder running on battery.
+    @Test func backgroundDecodingOnlyForPictureInPicture() {
+        #expect(!PictureInPictureBridge.suspendsDecoding(inBackground: false, floating: false))
+        #expect(!PictureInPictureBridge.suspendsDecoding(inBackground: false, floating: true))
+        #expect(PictureInPictureBridge.suspendsDecoding(inBackground: true, floating: false))
+        #expect(!PictureInPictureBridge.suspendsDecoding(inBackground: true, floating: true))
+    }
 }

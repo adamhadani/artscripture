@@ -72,3 +72,23 @@ struct MiniPlayerPolicyTests {
         #expect(!next(gone, .trackChanged).isShowing)
     }
 }
+
+#if os(macOS)
+import AppKit
+
+/// Review finding #9: a clip of another shape reshapes the remembered window
+/// rather than being squeezed into it.
+@Suite("Mini player window shape")
+struct MiniPlayerShapeTests {
+    @Test func aPortraitClipReshapesALandscapeWindow() {
+        let saved = NSRect(x: 100, y: 500, width: 400, height: 225)
+        let portrait = MiniPlayerPanel.reshaped(saved, to: CGSize(width: 9, height: 16))
+        #expect(portrait.height > portrait.width)
+        #expect(abs(portrait.width / portrait.height - 9.0 / 16) < 0.001)
+        // Same corner, same overall size.
+        #expect(portrait.minX == saved.minX)
+        #expect(abs(portrait.maxY - saved.maxY) < 0.001)
+        #expect(abs(portrait.width * portrait.height - saved.width * saved.height) < 1)
+    }
+}
+#endif

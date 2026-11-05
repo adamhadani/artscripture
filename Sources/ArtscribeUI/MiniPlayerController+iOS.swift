@@ -62,12 +62,25 @@ extension MiniPlayerController {
     func pictureInPictureBegan() {
         state.isShowing = true
         model.video?.isFloating = true
+        updateSuspension()
     }
 
     func pictureInPictureEnded() {
         state.isShowing = false
         state.openedByUser = false
         model.video?.isFloating = false
+        updateSuspension()
+    }
+
+    func setInBackground(_ inBackground: Bool) {
+        isInBackground = inBackground
+        updateSuspension()
+    }
+
+    /// In the background the picture is decoded only while it floats.
+    private func updateSuspension() {
+        model.videoPresenter?.isSuspended = PictureInPictureBridge.suspendsDecoding(
+            inBackground: isInBackground, floating: state.isShowing)
     }
 
     func setPlaying(_ playing: Bool) {

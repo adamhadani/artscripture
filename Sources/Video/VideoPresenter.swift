@@ -27,6 +27,17 @@ public final class VideoPresenter {
     /// The presentation time of the frame on screen, for tests and the harness.
     public private(set) var shownPTS: Double?
 
+    /// No decoding while set: iOS in the background with no Picture in
+    /// Picture, where nobody can see the picture and the audio background
+    /// mode would otherwise keep the decoder running on battery.
+    public var isSuspended = false {
+        didSet {
+            guard isSuspended, !oldValue else { return }
+            lastPlan = nil
+            source.release()
+        }
+    }
+
     public init(source: VideoFrameSource) {
         self.source = source
         self.info = source.info
@@ -35,11 +46,14 @@ public final class VideoPresenter {
     /// Why the picture cannot be shown, when it cannot.
     public var failure: String? { source.failure }
 
+    /// Resolves once the decoder has caught up with every request so far.
+    public func idle() async { await source.idle() }
+
     public func update(_ snapshot: PlaybackSnapshot) {
         surfaces.removeAll { $0.surface == nil }
         // Nothing is showing the picture, so nothing is decoded: a hidden panel
         // costs no CPU.
-        guard !isClosed, !surfaces.isEmpty else { return }
+        guard !isClosed, !isSuspended, !surfaces.isEmpty else { return }
         let plan = FramePlan.make(snapshot, info: info)
         if plan != lastPlan {
             lastPlan = plan
@@ -65,6 +79,12 @@ public final class VideoPresenter {
 
     public func detach(_ surface: VideoSurface) {
         surfaces.removeAll { $0.surface == nil || $0.surface === surface }
+        // The last one gone: nothing shows the picture, so nothing need be
+        // held for it. The next surface starts the plan afresh.
+        if surfaces.isEmpty {
+            lastPlan = nil
+            source.release()
+        }
     }
 
     /// For good: the decoder stops and no surface is shown anything more, so a

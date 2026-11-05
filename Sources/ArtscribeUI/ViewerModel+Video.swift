@@ -72,7 +72,12 @@ extension ViewerModel {
 
     /// One tick of the picture: the frame for where the sound is now.
     func driveVideo() {
-        videoPresenter?.update(videoSnapshot)
+        guard let video, let presenter = video.presenter else { return }
+        presenter.update(videoSnapshot)
+        // A failure the decoder meets after opening — a file that vanished, a
+        // corrupt stretch — reaches the panel, which says why it froze.
+        let failure = presenter.failure
+        if failure != video.failure { video.failure = failure }
     }
 }
 

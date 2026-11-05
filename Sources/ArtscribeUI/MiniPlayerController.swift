@@ -25,6 +25,9 @@ import UIKit
 public final class MiniPlayerController {
     let model: ViewerModel
     var state = MiniPlayerState()
+    /// `false` only in unit tests, where a real floating window would cross
+    /// every Space on the developer's screen for each run of `make check`.
+    private let showsWindows: Bool
 
     #if os(macOS)
     private var panel: MiniPlayerPanel?
@@ -34,10 +37,12 @@ public final class MiniPlayerController {
     var pipDelegate: PictureInPictureDelegate?
     weak var pipSurface: VideoSurfaceView?
     var observers: [NSObjectProtocol] = []
+    var isInBackground = false
     #endif
 
-    public init(model: ViewerModel) {
+    public init(model: ViewerModel, showsWindows: Bool = true) {
         self.model = model
+        self.showsWindows = showsWindows
         #if os(macOS)
         let center = NotificationCenter.default
         observers = [
@@ -51,10 +56,17 @@ public final class MiniPlayerController {
         #else
         // Only coming back: going away is the system's to act on, through
         // `canStartPictureInPictureAutomaticallyFromInline`.
+        let center = NotificationCenter.default
         observers = [
-            NotificationCenter.default.addObserver(
+            center.addObserver(
                 forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main
-            ) { [weak self] _ in MainActor.assumeIsolated { self?.handle(.appActivated) } }
+            ) { [weak self] _ in MainActor.assumeIsolated { self?.handle(.appActivated) } },
+            center.addObserver(
+                forName: UIApplication.didEnterBackgroundNotification, object: nil, queue: .main
+            ) { [weak self] _ in MainActor.assumeIsolated { self?.setInBackground(true) } },
+            center.addObserver(
+                forName: UIApplication.willEnterForegroundNotification, object: nil, queue: .main
+            ) { [weak self] _ in MainActor.assumeIsolated { self?.setInBackground(false) } }
         ]
         observePlaying()
         #endif
@@ -90,6 +102,7 @@ public final class MiniPlayerController {
         guard showing != state.isShowing else { return }
         state.isShowing = showing
         model.video?.isFloating = showing
+        guard showsWindows else { return }
         if showing { present() } else { dismiss() }
     }
 
@@ -97,8 +110,14 @@ public final class MiniPlayerController {
     /// Playing behave exactly as they do from the keyboard.
     func playPause() { model.togglePlayPause() }
 
+    isolated deinit {
+        observers.forEach(NotificationCenter.default.removeObserver)
+    }
+
     func refreshFacts() {
-        state.hasVideo = model.hasVideo
+        // A picture that could not be opened has nothing to float: the panel
+        // shows its reason, and a mini player would be an empty black window.
+        state.hasVideo = model.videoPresenter != nil
         state.isPlaying = model.isPlaying
         state.isPanelShown = model.prefs.video.shown
         state.floatsWhenInactive = model.prefs.video.floatsWhenInactive
@@ -151,11 +170,14 @@ final class MiniPlayerPanel: NSPanel {
     private static let autosaveName = "MiniPlayer"
     /// The long side of a first-time window, before the user resizes it.
     private static let defaultLongSide: CGFloat = 400
+    /// A first-time window's distance from the screen's top-right corner.
+    private static let screenMargin: CGFloat = 20
 
     init(onClose: @escaping () -> Void) {
         self.onClose = onClose
         super.init(
-            contentRect: NSRect(x: 0, y: 0, width: 400, height: 225),
+            contentRect: NSRect(
+                x: 0, y: 0, width: Self.defaultLongSide, height: Self.defaultLongSide * 9 / 16),
             styleMask: [.nonactivatingPanel, .titled, .closable, .resizable, .fullSizeContentView],
             backing: .buffered, defer: true)
         isFloatingPanel = true
@@ -177,9 +199,12 @@ final class MiniPlayerPanel: NSPanel {
 
     func show(_ content: some View, aspect: CGSize?) {
         contentView = FirstMouseHostingView(rootView: AnyView(content))
-        fit(to: aspect)
+        if let aspect, aspect.width > 0, aspect.height > 0 { contentAspectRatio = aspect }
+        // Where the user left it, then the shape of *this* clip — in that
+        // order, or a landscape clip's saved frame squashes a portrait one.
         if !setFrameUsingName(Self.autosaveName) { placeAtTopRight() }
         setFrameAutosaveName(Self.autosaveName)
+        fit(to: aspect)
         orderFrontRegardless()
     }
 
@@ -187,9 +212,17 @@ final class MiniPlayerPanel: NSPanel {
     func fit(to aspect: CGSize?) {
         guard let aspect, aspect.width > 0, aspect.height > 0 else { return }
         contentAspectRatio = aspect
-        var frame = self.frame
-        frame.size.height = frame.width * aspect.height / aspect.width
-        setFrame(frame, display: true)
+        setFrame(Self.reshaped(frame, to: aspect), display: true)
+    }
+
+    /// `frame` given `aspect`, keeping its area and its top-left corner — so
+    /// a window moves neither its position nor its overall size when a clip
+    /// of another shape arrives.
+    static func reshaped(_ frame: NSRect, to aspect: CGSize) -> NSRect {
+        let area = frame.width * frame.height
+        let width = (area * aspect.width / aspect.height).squareRoot()
+        let height = width * aspect.height / aspect.width
+        return NSRect(x: frame.minX, y: frame.maxY - height, width: width, height: height)
     }
 
     func hide() {
@@ -211,10 +244,10 @@ final class MiniPlayerPanel: NSPanel {
         let width =
             landscape ? Self.defaultLongSide : Self.defaultLongSide * aspect.width / aspect.height
         let height = width * aspect.height / max(aspect.width, 1)
-        let margin: CGFloat = 20
         setFrame(
             NSRect(
-                x: screen.maxX - width - margin, y: screen.maxY - height - margin,
+                x: screen.maxX - width - Self.screenMargin,
+                y: screen.maxY - height - Self.screenMargin,
                 width: width, height: height),
             display: true)
     }
