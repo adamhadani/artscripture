@@ -35,7 +35,7 @@ struct FramePlanTests {
     @Test func playingLooksAheadInWallTime() {
         let plan = FramePlan.make(snapshot(1.0, speed: 0.5), info: info)
         #expect(plan.main.count == 1)
-        #expect(close(plan.main[0], 0.9..<(1.0 + FramePlan.aheadWallSeconds * 0.5)))
+        #expect(close(plan.main[0], 1.0..<(1.0 + FramePlan.aheadWallSeconds * 0.5)))
     }
 
     /// The picture after a loop's end is its start, exactly as the stretcher
@@ -43,7 +43,7 @@ struct FramePlanTests {
     @Test func aWindowThatCrossesTheLoopEndContinuesAtItsStart() {
         let plan = FramePlan.make(snapshot(1.9, loop: 1.0..<2.0), info: info)
         #expect(plan.main.count == 2)
-        #expect(close(plan.main[0], 1.8..<2.0))
+        #expect(close(plan.main[0], 1.9..<2.0))
         #expect(close(plan.main[1], 1.0..<1.15))
     }
 
@@ -51,7 +51,7 @@ struct FramePlanTests {
     @Test func aLoopShorterThanTheHorizonIsCapped() {
         let plan = FramePlan.make(snapshot(1.05, speed: 2, loop: 1.0..<1.2), info: info)
         #expect(plan.main.count == 2)
-        #expect(close(plan.main[0], 0.95..<1.2))
+        #expect(close(plan.main[0], 1.05..<1.2))
         #expect(close(plan.main[1], 1.0..<1.2))
     }
 
@@ -72,7 +72,7 @@ struct FramePlanTests {
     /// Nothing outside the picture is ever asked for, whichever end.
     @Test func windowsAreClippedToThePicture() {
         let atEnd = FramePlan.make(snapshot(2.95), info: info)
-        #expect(close(atEnd.main[0], 2.85..<3.0))
+        #expect(close(atEnd.main[0], 2.95..<3.0))
         let atStart = FramePlan.make(snapshot(0.0), info: info)
         #expect(close(atStart.main[0], 0.0..<0.25))
     }
@@ -82,6 +82,24 @@ struct FramePlanTests {
     @Test func overlappingWindowsMergeInAll() {
         let plan = FramePlan.make(snapshot(1.05, loop: 1.0..<2.0), info: info)
         #expect(plan.all.count == 1)
-        #expect(close(plan.all[0], 0.95..<1.3))
+        #expect(close(plan.all[0], 1.0..<1.3))
+    }
+
+    /// Just after a wrap the window must lie inside the pinned loop head.
+    /// Reaching a frame behind the position would reach *before the loop*,
+    /// which is not decoded, and turn every wrap into a seek.
+    @Test func justAfterAWrapTheWindowIsInsideTheLoopHead() throws {
+        let plan = FramePlan.make(snapshot(1.01, loop: 1.0..<2.0), info: info)
+        let head = try #require(plan.loopHead)
+        #expect(plan.main.allSatisfy { $0.lowerBound >= head.lowerBound })
+    }
+
+    /// The sound can run past the picture (or start before it). The picture
+    /// then holds its last (or first) frame rather than planning nothing.
+    @Test func positionsAreClampedIntoThePicture() {
+        let late = FramePlan.make(snapshot(9, playing: false), info: info)
+        #expect(close(late.main[0], 2.95..<3.0))
+        let early = FramePlan.make(snapshot(-1, playing: false), info: info)
+        #expect(close(early.main[0], 0.0..<0.1))
     }
 }

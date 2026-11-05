@@ -50,14 +50,22 @@ public struct VideoTrackInfo: Equatable, Sendable {
     /// first enabled audio track: a file can carry alternates, and the flag is
     /// how it says which one a player should use.
     public static func probe(url: URL) async throws -> VideoTrackInfo? {
-        let asset = AVURLAsset(url: url)
-        for track in try await asset.loadTracks(withMediaType: .video) {
-            guard try await track.load(.isEnabled) else { continue }
-            let (size, transform, rate, range) = try await track.load(
-                .naturalSize, .preferredTransform, .nominalFrameRate, .timeRange)
-            return VideoTrackInfo(
-                naturalSize: size, transform: transform, frameRate: Double(rate),
-                start: range.start.seconds, duration: range.duration.seconds)
+        guard let track = try await firstEnabledVideoTrack(of: AVURLAsset(url: url)) else {
+            return nil
+        }
+        let (size, transform, rate, range) = try await track.load(
+            .naturalSize, .preferredTransform, .nominalFrameRate, .timeRange)
+        return VideoTrackInfo(
+            naturalSize: size, transform: transform, frameRate: Double(rate),
+            start: range.start.seconds, duration: range.duration.seconds)
+    }
+
+    /// The one rule for which picture a file has; the probe and the decoder
+    /// both ask here, so they cannot disagree about it.
+    static func firstEnabledVideoTrack(of asset: AVAsset) async throws -> AVAssetTrack? {
+        for track in try await asset.loadTracks(withMediaType: .video)
+        where try await track.load(.isEnabled) {
+            return track
         }
         return nil
     }

@@ -58,13 +58,19 @@ public struct FramePlan: Equatable, Sendable {
 
     public static func make(_ snapshot: PlaybackSnapshot, info: VideoTrackInfo) -> FramePlan {
         let picture = info.start..<info.end
+        // The sound can run past the picture, or start before it. Clamped, the
+        // picture holds its first or last frame; unclamped, it would plan
+        // nothing at all and the panel would keep whatever it last showed.
+        var snapshot = snapshot
+        snapshot.position = min(
+            max(snapshot.position, info.start), info.end - info.frameInterval / 2)
         let loop = snapshot.loop.flatMap { $0.isEmpty ? nil : $0 }
         let head = loop.map {
             $0.lowerBound..<min($0.upperBound, $0.lowerBound + loopHeadWallSeconds * snapshot.speed)
         }
         let main: [Range<Double>]
         if snapshot.isPlaying {
-            main = ahead(of: snapshot, loop: loop, frameInterval: info.frameInterval)
+            main = ahead(of: snapshot, loop: loop)
         } else {
             main = [snapshot.position..<(snapshot.position + info.frameInterval)]
         }
@@ -73,12 +79,17 @@ public struct FramePlan: Equatable, Sendable {
             loopHead: head.flatMap { clip($0, to: picture) })
     }
 
-    /// One frame behind (the one on screen) to `aheadWallSeconds` ahead, cut at
-    /// the loop's end and continued from its start.
+    /// From the position to `aheadWallSeconds` ahead, cut at the loop's end
+    /// and continued from its start.
+    ///
+    /// **Not one frame behind.** The frame on screen already intersects a
+    /// window that starts at the position, so it is kept without a margin —
+    /// and a margin would, just after a wrap, reach back *before the loop*,
+    /// which nothing has decoded, and turn every repetition into a seek.
     private static func ahead(
-        of snapshot: PlaybackSnapshot, loop: Range<Double>?, frameInterval: Double
+        of snapshot: PlaybackSnapshot, loop: Range<Double>?
     ) -> [Range<Double>] {
-        let start = snapshot.position - frameInterval
+        let start = snapshot.position
         let end = snapshot.position + aheadWallSeconds * snapshot.speed
         guard let loop, snapshot.position < loop.upperBound, end > loop.upperBound else {
             return [start..<end]
