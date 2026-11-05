@@ -218,7 +218,7 @@ final class MiniPlayerPanel: NSPanel {
     /// `frame` given `aspect`, keeping its area and its top-left corner — so
     /// a window moves neither its position nor its overall size when a clip
     /// of another shape arrives.
-    static func reshaped(_ frame: NSRect, to aspect: CGSize) -> NSRect {
+    nonisolated static func reshaped(_ frame: NSRect, to aspect: CGSize) -> NSRect {
         let area = frame.width * frame.height
         let width = (area * aspect.width / aspect.height).squareRoot()
         let height = width * aspect.height / aspect.width
