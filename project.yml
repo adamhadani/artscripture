@@ -225,6 +225,7 @@ targets:
       - path: Tests/WaveformTests
       - path: Tests/TimeStretchTests
       - path: Tests/PlaybackTests
+      - path: Tests/VideoTests
       - path: Tests/Fixtures
         buildPhase: resources
     dependencies:
@@ -238,6 +239,8 @@ targets:
         product: TimeStretch
       - package: Artscribe
         product: Playback
+      - package: Artscribe
+        product: Video
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.artscribe.ArtscribePortableTests
