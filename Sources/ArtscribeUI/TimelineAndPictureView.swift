@@ -9,6 +9,7 @@ import SwiftUI
 struct TimelineAndPictureView: View {
     let model: ViewerModel
     let appearance: Appearance
+    let miniPlayer: MiniPlayerController
 
     var body: some View {
         let preferences = model.prefs.video
@@ -21,7 +22,9 @@ struct TimelineAndPictureView: View {
             onReset: { model.prefs.restoreVideoFraction(for: placement) },
             timeline: { timeline },
             picture: {
-                if let video = model.video { VideoPanelView(video: video) }
+                if let video = model.video {
+                    VideoPanelView(video: video) { miniPlayer.toggleByUser() }
+                }
             })
     }
 

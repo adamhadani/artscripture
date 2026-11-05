@@ -18,6 +18,9 @@ public final class VideoState {
     /// observed: it is driven from the clock, never from a `body`, and a view
     /// that needs it reads it from the `VideoState` it was given.
     @ObservationIgnored public let presenter: VideoPresenter?
+    /// The picture is in the mini player, so the panel shows a placeholder
+    /// instead of drawing it twice.
+    public internal(set) var isFloating = false
 
     init(info: VideoTrackInfo, failure: String?, presenter: VideoPresenter?) {
         self.info = info

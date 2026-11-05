@@ -19,7 +19,10 @@ import SwiftUI
 /// ```
 @main
 struct AcceptanceMain: App {
-    @State private var model = ViewerModel()
+    @State private var model: ViewerModel
+    /// The video's floating window, built around the model it drives. Here,
+    /// with the model, because it lives as long as the app does.
+    @State private var miniPlayer: MiniPlayerController
     @State private var devices = OutputDeviceController(source: PlatformAudio.makeDeviceSource())
     /// Both on their own defaults suite: an acceptance run must not rewrite the
     /// theme the user left the real app in, nor drop its test file into their
@@ -82,7 +85,7 @@ struct AcceptanceMain: App {
         MenuContext(
             model: model, recents: recents, devices: devices, shortcuts: shortcuts,
             practice: practice, about: about, settings: settingsSheet, welcome: welcome,
-            theme: theme)
+            theme: theme, miniPlayer: miniPlayer)
     }
 
     static let sessionFallbackDirectory = URL(fileURLWithPath: NSTemporaryDirectory())
@@ -97,6 +100,9 @@ struct AcceptanceMain: App {
         // does this a second time on the run path so a future entry point cannot
         // lose it.
         AcceptanceRun.silenceOutput()
+        let model = ViewerModel()
+        _model = State(initialValue: model)
+        _miniPlayer = State(initialValue: MiniPlayerController(model: model))
         // Same reasoning as `ArtscribeAppMain`: an unbundled SwiftPM executable
         // otherwise starts as an accessory with no menu bar and no keyboard focus.
         NSApplication.shared.setActivationPolicy(.regular)

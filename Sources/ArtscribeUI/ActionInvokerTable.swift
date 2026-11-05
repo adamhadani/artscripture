@@ -70,8 +70,7 @@ extension ActionInvoker {
         .pitchReset: { $0.model.resetPitch() },
         .viewTrackMarksToggle: { $0.model.toggleTrackMarks() },
         .viewVideoToggle: { $0.model.toggleVideo() },
-        // Wired to the mini player in Task 8; the table must be total.
-        .viewVideoPictureInPicture: { _ in }
+        .viewVideoPictureInPicture: { $0.miniPlayer.toggleByUser() }
     ]
 
     private static func loopMove(

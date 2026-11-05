@@ -33,7 +33,10 @@ import SwiftUI
 /// work.
 @main
 struct IPadAppMain: App {
-    @State private var model = ViewerModel()
+    @State private var model: ViewerModel
+    /// The video's floating window, built around the model it drives. Here,
+    /// with the model, because it lives as long as the app does.
+    @State private var miniPlayer: MiniPlayerController
     /// Present for the same reason it is on macOS — it owns the output-device
     /// selection and outlives every `AudioOutput`. On iPad it resolves to
     /// `CurrentRouteDeviceSource`, which reports the one route the system chose;
@@ -63,11 +66,17 @@ struct IPadAppMain: App {
     @State private var settingsSheet = SettingsWindowController()
     @State private var welcome = WelcomeState(defaults: FirstRunReset.readyDefaults)
 
+    init() {
+        let model = ViewerModel()
+        _model = State(initialValue: model)
+        _miniPlayer = State(initialValue: MiniPlayerController(model: model))
+    }
+
     private var context: MenuContext {
         MenuContext(
             model: model, recents: recents, devices: devices, shortcuts: shortcuts,
             practice: practice, about: about, settings: settingsSheet, welcome: welcome,
-            theme: theme)
+            theme: theme, miniPlayer: miniPlayer)
     }
 
     var body: some Scene {

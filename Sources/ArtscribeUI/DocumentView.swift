@@ -146,7 +146,8 @@ public struct DocumentView: View {
                     .frame(height: Self.overviewHeight)
                 // The ruler, marks and lanes — and, for a video file, its
                 // picture beside them.
-                TimelineAndPictureView(model: model, appearance: appearance)
+                TimelineAndPictureView(
+                    model: model, appearance: appearance, miniPlayer: context.miniPlayer)
             } else {
                 EmptyStateView(model: model, recents: context.recents, about: context.about)
             }
