@@ -68,7 +68,10 @@ extension ActionInvoker {
         .pitchUpFine: { $0.model.adjustPitch(byCents: ViewerModel.centStep) },
         .pitchDownFine: { $0.model.adjustPitch(byCents: -ViewerModel.centStep) },
         .pitchReset: { $0.model.resetPitch() },
-        .viewTrackMarksToggle: { $0.model.toggleTrackMarks() }
+        .viewTrackMarksToggle: { $0.model.toggleTrackMarks() },
+        .viewVideoToggle: { $0.model.toggleVideo() },
+        // Wired to the mini player in Task 8; the table must be total.
+        .viewVideoPictureInPicture: { _ in }
     ]
 
     private static func loopMove(

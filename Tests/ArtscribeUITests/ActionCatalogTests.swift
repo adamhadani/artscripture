@@ -136,7 +136,9 @@ struct ActionCatalogTests {
             // Spec §6.2's own. `view.toggleInspector` sat beside it until Task
             // 25 cut the inspector; §6.2 no longer lists it either.
             .helpShortcuts: "⌘/",
-            .appSettings: "⌘,"
+            .appSettings: "⌘,",
+            // The video panel's (2026-11-05).
+            .viewVideoToggle: "I", .viewVideoPictureInPicture: "⇧I"
         ]
         for (id, display) in expected {
             let actual = ActionCatalog.chord(id)?.display ?? "unbound"

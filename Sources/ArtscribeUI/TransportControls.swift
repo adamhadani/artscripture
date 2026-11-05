@@ -16,6 +16,9 @@ public struct TransportState: Equatable, Sendable {
     public var loopIsEnabled = false
     public var prerollIsEnabled = true
     public var speedRatio = 1.0
+    /// The file has a picture, so the bar carries the Video button at all.
+    public var hasVideo = false
+    public var videoIsShown = true
 
     public init() {}
 
@@ -56,6 +59,9 @@ public enum TransportControl: String, CaseIterable, Sendable, Hashable {
     case faster
     case zoomOut
     case zoomIn
+    /// Shows and hides a video file's picture. **Only on the bar for a video
+    /// file** (`visibleGroups`): an audio file's bar is exactly what it was.
+    case video
 
     /// The bar's layout, in order, separated by rules. Flattening this must give
     /// `allCases` back, which is asserted rather than assumed.
@@ -64,8 +70,16 @@ public enum TransportControl: String, CaseIterable, Sendable, Hashable {
         [.playFromStart],
         [.loop, .preroll],
         [.slower, .faster],
-        [.zoomOut, .zoomIn]
+        [.zoomOut, .zoomIn],
+        [.video]
     ]
+
+    /// The groups the bar draws for `state`: all of them for a video file, and
+    /// without the Video button — and its separator — for audio.
+    public static func visibleGroups(in state: TransportState) -> [[TransportControl]] {
+        guard !state.hasVideo else { return groups }
+        return groups.map { $0.filter { $0 != .video } }.filter { !$0.isEmpty }
+    }
 
     /// What one button says and draws in its resting state.
     ///
@@ -97,7 +111,8 @@ public enum TransportControl: String, CaseIterable, Sendable, Hashable {
         .slower: Face(shortcut: "Q", title: "Slower", symbol: "minus"),
         .faster: Face(shortcut: "W", title: "Faster", symbol: "plus"),
         .zoomOut: Face(shortcut: "E", title: "Zoom Out", symbol: "minus.magnifyingglass"),
-        .zoomIn: Face(shortcut: "R", title: "Zoom In", symbol: "plus.magnifyingglass")
+        .zoomIn: Face(shortcut: "R", title: "Zoom In", symbol: "plus.magnifyingglass"),
+        .video: Face(shortcut: "I", title: "Video", symbol: "film")
     ]
 
     private var face: Face {
@@ -128,6 +143,7 @@ public enum TransportControl: String, CaseIterable, Sendable, Hashable {
         case .loop: return state.loopIsEnabled ? "Looping — Turn Off" : "Loop"
         case .preroll:
             return state.prerollIsEnabled ? "Preroll On — Turn Off" : "Preroll Off — Turn On"
+        case .video: return state.videoIsShown ? "Hide Video" : "Show Video"
         default: return face.title
         }
     }
@@ -172,6 +188,7 @@ public enum TransportControl: String, CaseIterable, Sendable, Hashable {
         switch self {
         case .loop: return state.loopIsEnabled
         case .preroll: return state.prerollIsEnabled
+        case .video: return state.videoIsShown
         default: return false
         }
     }
@@ -196,6 +213,8 @@ extension ViewerModel {
         state.loopIsEnabled = loop.isEnabled
         state.prerollIsEnabled = prefs.prerollEnabled
         state.speedRatio = speed.ratio
+        state.hasVideo = hasVideo
+        state.videoIsShown = prefs.video.shown
         return state
     }
 
@@ -236,6 +255,7 @@ extension ViewerModel {
         case .faster: faster(fine: false)
         case .zoomOut: zoomOut()
         case .zoomIn: zoomIn()
+        case .video: toggleVideo()
         case .rewind, .nudgeBackward, .playPause, .nudgeForward, .skip, .playFromStart:
             preconditionFailure("\(control) is handled by perform(_:) and cannot reach here")
         }

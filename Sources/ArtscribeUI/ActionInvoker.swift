@@ -136,6 +136,7 @@ public enum ActionInvoker {
         // fresh one from the top.
         case .practiceRampToggle: return model.ramp.isRunning
         case .viewTrackMarksToggle: return model.markers.isVisible
+        case .viewVideoToggle: return model.prefs.video.shown
         default:
             guard let ratio = presetRatio(id) else { return nil }
             return SpeedStepping.isActive(preset: ratio, ratio: model.speed.ratio)

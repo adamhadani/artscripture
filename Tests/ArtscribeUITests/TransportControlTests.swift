@@ -123,10 +123,11 @@ struct TransportControlTests {
         #expect(TransportControl.loop.isEnabled(in: state))
     }
 
-    /// The loop and the preroll are the bar's only *modes*; everything else is
-    /// momentary. Listing them here rather than testing each in isolation is
-    /// what makes a third mode added without an on-state fail this test.
-    static let modes: Set<TransportControl> = [.loop, .preroll]
+    /// The loop, the preroll and the video are the bar's only *modes*;
+    /// everything else is momentary. Listing them here rather than testing each
+    /// in isolation is what makes a fourth mode added without an on-state fail
+    /// this test.
+    static let modes: Set<TransportControl> = [.loop, .preroll, .video]
 
     @Test("only the mode buttons carry an on-state")
     func onlyModesCarryAnOnState() {
@@ -301,8 +302,9 @@ struct TransportControlTests {
         #expect(flattened == TransportControl.allCases)
         #expect(Set(flattened).count == flattened.count)
         // The layout the plan asks for: transport cluster, play-from-start,
-        // loop, speed, zoom.
-        #expect(TransportControl.groups.count == 5)
+        // loop, speed, zoom — and video, last, which only a video file shows.
+        #expect(TransportControl.groups.count == 6)
+        #expect(TransportControl.groups.last == [.video])
         #expect(
             TransportControl.groups[0] == [
                 .rewind, .nudgeBackward, .playPause, .nudgeForward, .skip

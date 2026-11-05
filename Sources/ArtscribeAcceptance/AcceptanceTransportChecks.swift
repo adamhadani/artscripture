@@ -20,9 +20,11 @@ extension AcceptanceRun {
     ) async {
         await settle(seconds: 0.3)
         let frames = model.transportFrames
+        // The Video button is on the bar only for a video file.
+        let shown = TransportControl.visibleGroups(in: model.transportState).joined()
         log.check(
-            "every transport control laid out (\(frames.count)/\(TransportControl.allCases.count))",
-            frames.count == TransportControl.allCases.count)
+            "every transport control laid out (\(frames.count)/\(shown.count))",
+            frames.count == shown.count)
         let lanes = model.laneFrame
         guard !frames.isEmpty, !lanes.isEmpty else {
             log.check("the transport bar has a geometry to click", false)
@@ -31,7 +33,7 @@ extension AcceptanceRun {
         log.note("transport buttons in the accessibility tree", accessibilityButtons())
         log.note(
             "transport layout",
-            TransportControl.allCases.map {
+            shown.map {
                 "\($0)@\(frames[$0].map { rounded($0.midX) } ?? "—")"
             }.joined(separator: " "))
         // Directly above the status bar, and below the lanes — the position the

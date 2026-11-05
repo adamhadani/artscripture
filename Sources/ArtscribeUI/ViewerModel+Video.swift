@@ -68,3 +68,24 @@ extension ViewerModel {
         videoPresenter?.update(videoSnapshot)
     }
 }
+
+/// Whether this build has a mini player to offer. The Mac's floating panel
+/// lands first; iOS's Picture in Picture follows, and until it does the menu
+/// item is disabled there rather than a key that does nothing.
+enum MiniPlayerSupport {
+    #if os(macOS)
+    static let isAvailable = true
+    #else
+    static let isAvailable = false
+    #endif
+}
+
+extension ViewerModel {
+    /// `I`, View ▸ Video, the transport button and the iPad's More menu.
+    /// Nothing to toggle without a picture, and a stray press on an audio file
+    /// must not quietly hide the next video's panel.
+    public func toggleVideo() {
+        guard hasVideo else { return }
+        prefs.toggleVideoShown()
+    }
+}
