@@ -1,4 +1,4 @@
-See the hands as well as hear them. Open a video — a lesson or a clip saved from YouTube or Instagram — and its picture now sits beside the waveform, always showing the moment you are hearing: slow it down and the picture slows with it, loop a passage and it jumps back with the sound, pause and it shows the exact frame at the playhead, so you can step through a fast run and see every chord shape.
+See the hands as well as hear them. Open a video — a lesson or a performance you have on your device — and its picture now sits beside the waveform, always showing the moment you are hearing: slow it down and the picture slows with it, loop a passage and it jumps back with the sound, pause and it shows the exact frame at the playhead, so you can step through a fast run and see every chord shape.
 
 Drag the handle between the video and the waveform to give the picture more room once your loop is set. Prefer it above the waveform? Settings ▸ Video. Tap the film button to hide it.
 
