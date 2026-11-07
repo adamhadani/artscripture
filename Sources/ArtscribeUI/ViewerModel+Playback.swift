@@ -365,6 +365,11 @@ extension ViewerModel {
     public func clearLoop() {
         guard hasTrack else { return }
         rangeAnchor = nil
+        // No region, no wraps: a running ramp would sit on its repetition for
+        // ever, and the header's readout with it. Here and not in `applyLoop`,
+        // which an edge dragged across its partner passes through at zero
+        // length mid-gesture — that is not the user putting the loop away.
+        stopRamp()
         applyLoop(LoopRegion())
     }
 

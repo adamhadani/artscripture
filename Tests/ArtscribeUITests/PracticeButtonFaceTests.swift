@@ -19,10 +19,16 @@ struct PracticeButtonFaceTests {
         return ramp
     }
 
+    /// The face as the header computes it right after a wrap, when the model's
+    /// speed is the schedule's.
+    private static func face(_ ramp: SpeedRamp, compact: Bool = false) -> PracticeButtonFace {
+        PracticeButtonFace.face(for: ramp, speed: ramp.currentRatio, compact: compact)
+    }
+
     @Test("at rest it is the filled invitation, with nothing to stop")
     func idleIsTheInvitation() {
         for compact in [false, true] {
-            let face = PracticeButtonFace.face(for: Self.ramp(started: false), compact: compact)
+            let face = Self.face(Self.ramp(started: false), compact: compact)
             #expect(face.style == .invitation)
             #expect(face.title == "Practice")
             #expect(face.progress == nil)
@@ -34,7 +40,7 @@ struct PracticeButtonFaceTests {
     @Test("while running it names the repetition and the speed being played")
     func runningReadsOut() {
         let ramp = Self.ramp(advancedBy: 2)
-        let face = PracticeButtonFace.face(for: ramp, compact: false)
+        let face = Self.face(ramp, compact: false)
         #expect(face.style == .progress)
         #expect(face.title == "Rep 3 of 5 · 75%")
         #expect(face.stopSymbol == "stop.fill")
@@ -45,7 +51,7 @@ struct PracticeButtonFaceTests {
     /// The phone drops the word, never the numbers.
     @Test("compact keeps both numbers and drops the word")
     func compactKeepsTheNumbers() {
-        let face = PracticeButtonFace.face(for: Self.ramp(advancedBy: 2), compact: true)
+        let face = Self.face(Self.ramp(advancedBy: 2), compact: true)
         #expect(face.title == "3/5 · 75%")
         // VoiceOver is not short of room: the spoken label is the full one.
         #expect(face.accessibilityLabel == "Practice: repetition 3 of 5, at 75%")
@@ -56,11 +62,11 @@ struct PracticeButtonFaceTests {
     /// it through rather than recomputing `repetition / total`.
     @Test("progress is passes completed: empty on the first, half at the third of five")
     func progressCountsCompletedPasses() {
-        #expect(PracticeButtonFace.face(for: Self.ramp(), compact: false).progress == 0)
+        #expect(Self.face(Self.ramp(), compact: false).progress == 0)
         #expect(
-            PracticeButtonFace.face(for: Self.ramp(advancedBy: 2), compact: false).progress == 0.5)
+            Self.face(Self.ramp(advancedBy: 2), compact: false).progress == 0.5)
         #expect(
-            PracticeButtonFace.face(for: Self.ramp(advancedBy: 4), compact: false).progress == 1)
+            Self.face(Self.ramp(advancedBy: 4), compact: false).progress == 1)
     }
 
     /// A finished ramp holds its last speed (see `SpeedRamp`), so the readout
@@ -70,19 +76,66 @@ struct PracticeButtonFaceTests {
     func completeHolds() {
         let ramp = Self.ramp(advancedBy: 5)
         #expect(ramp.phase == .complete)
-        let face = PracticeButtonFace.face(for: ramp, compact: false)
+        let face = Self.face(ramp, compact: false)
         #expect(face.style == .progress)
         #expect(face.title == "Ramp done · 100%")
         #expect(face.progress == 1)
         #expect(face.stopSymbol == "xmark")
         #expect(face.stopAccessibilityLabel == "Dismiss finished ramp")
-        #expect(PracticeButtonFace.face(for: ramp, compact: true).title == "Done · 100%")
+        #expect(Self.face(ramp, compact: true).title == "Done · 100%")
     }
 
     @Test("stopping returns the button to the invitation")
     func stopRestoresTheInvitation() {
         var ramp = Self.ramp(advancedBy: 1)
         ramp.stop()
-        #expect(PracticeButtonFace.face(for: ramp, compact: false).style == .invitation)
+        #expect(Self.face(ramp, compact: false).style == .invitation)
+    }
+
+    /// `1`–`4` mid-repetition change what is playing until the next wrap puts
+    /// the schedule back; the readout says what is heard, not what was planned.
+    @Test("the speed shown is the one playing, not the schedule's")
+    func speedIsWhatIsPlaying() {
+        let ramp = Self.ramp(advancedBy: 2)
+        let face = PracticeButtonFace.face(for: ramp, speed: 1.0, compact: false)
+        #expect(face.title == "Rep 3 of 5 · 100%")
+        #expect(face.accessibilityLabel == "Practice: repetition 3 of 5, at 100%")
+    }
+
+    /// The button reserves `reservedTitle`'s width so the header holds still as
+    /// the numbers change. In a monospaced face, that holds if no title the
+    /// ramp can show is longer — including at the speed clamp's extremes.
+    @Test("no title is wider than the reserved one, at any repetition or speed")
+    func reservedTitleIsTheWidest() {
+        for total in [1, 9, 10, 99, 100] {
+            for compact in [false, true] {
+                var ramp = SpeedRamp(
+                    schedule: RampSchedule(startRatio: 0.5, endRatio: 1.0, repetitions: total))
+                ramp.start()
+                var reserved: String?
+                while true {
+                    for speed in [SpeedState.minRatio, 0.5, 1.0, SpeedState.maxRatio] {
+                        let face = PracticeButtonFace.face(
+                            for: ramp, speed: speed, compact: compact)
+                        if let reserved { #expect(face.reservedTitle == reserved) }
+                        reserved = face.reservedTitle
+                        #expect(
+                            face.title.count <= face.reservedTitle.count,
+                            "\(face.title) vs \(face.reservedTitle)")
+                    }
+                    guard ramp.phase != .complete else { break }
+                    _ = ramp.advance()
+                }
+            }
+        }
+    }
+
+    @Test("compact is the phone's, and any compact-width window's")
+    func compactFollowsTheRoom() {
+        typealias Face = PracticeButtonFace
+        #expect(Face.prefersCompact(surface: .phone, horizontallyCompact: false))
+        #expect(Face.prefersCompact(surface: .tabletWithDrop, horizontallyCompact: true))
+        #expect(!Face.prefersCompact(surface: .tabletWithDrop, horizontallyCompact: false))
+        #expect(!Face.prefersCompact(surface: .desktop, horizontallyCompact: false))
     }
 }

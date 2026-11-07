@@ -19,6 +19,21 @@ struct AuxiliaryMenuActions {
 struct TitleBarView: View {
     let model: ViewerModel
     let onOpen: () -> Void
+    /// Opens Practice — a window on the Mac, a sheet on iPad and iPhone. The
+    /// button shows only while a track is open, on every platform.
+    ///
+    /// **Required, with no default**, like `restoreFocus` below: a closure that
+    /// may be `nil` is a wire that may not be connected (CLAUDE.md), and a call
+    /// site that forgot this would hide the app's main feature without a word.
+    ///
+    /// `DocumentView` passes `practice.show()`, not the menu's `toggle()`: a
+    /// button labelled Practice should never be the thing that closes it. On
+    /// the Mac a click here has already made the document key, so the two would
+    /// agree anyway; on iPad the sheet covers the button.
+    let onPractice: () -> Void
+    /// Hands the keyboard back to the document after a press. See
+    /// `TransportBarView` for why this is not optional in a keyboard-first app.
+    let restoreFocus: () -> Void
     /// **The only route to the auxiliary surfaces on a touch-only device.**
     ///
     /// iPadOS has a menu bar, but reaching it needs a hardware keyboard — so on
@@ -38,18 +53,12 @@ struct TitleBarView: View {
     /// macOS it is nil: the File menu and ⇧⌘W carry it, and a Mac window does
     /// not have a "back".
     var onClose: (() -> Void)?
-    /// Opens Practice — a window on the Mac, a sheet on iPad and iPhone. The
-    /// button shows only while a track is open, on every platform.
-    ///
-    /// `DocumentView` passes `practice.show()`, not the menu's `toggle()`: a
-    /// button labelled Practice should never be the thing that closes it. On
-    /// the Mac a click here has already made the document key, so the two would
-    /// agree anyway; on iPad the sheet covers the button.
-    var onPractice: (() -> Void)?
-    /// Hands the keyboard back to the document after a press. See
-    /// `TransportBarView` for why this is not optional in a keyboard-first app.
-    var restoreFocus: () -> Void = {}
     @Environment(\.palette) private var palette
+    #if !os(macOS)
+    /// Split View, Slide Over and a narrow Stage Manager window are compact
+    /// on an iPad; see `PracticeButtonFace.prefersCompact`.
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
     /// Follows the user's text-size setting. A plain `CGFloat` scaled by the
     /// body text style, used as a *factor* rather than as a size, because the
     /// base value depends on the surface and `@ScaledMetric` takes a literal.
@@ -140,14 +149,19 @@ struct TitleBarView: View {
                 }
             }
 
-            if let onPractice, model.hasTrack {
+            if model.hasTrack {
                 PracticeButton(
                     face: PracticeButtonFace.face(
-                        for: model.ramp, compact: EmptyStatePrompt.current == .phone),
+                        for: model.ramp, speed: model.speed.ratio, compact: compactPractice),
                     metrics: metrics,
                     onOpen: {
-                        onPractice()
+                        // Focus first, *then* the window or sheet: restoring it
+                        // afterwards would point the keyboard back at the
+                        // document behind a Practice surface that has just
+                        // taken it. Done before, the document is the one that
+                        // has it when Practice is put away again.
                         restoreFocus()
+                        onPractice()
                     },
                     onStop: {
                         model.stopRamp()
@@ -178,10 +192,14 @@ struct TitleBarView: View {
         }
     }
 
-    /// The bordered chrome `⋯` and Open… share — and that Practice shares too,
-    /// filled instead of stroked — so the three read as one family.
-    private var chromeShape: RoundedRectangle {
-        RoundedRectangle(cornerRadius: metrics.cornerRadius)
+    private var compactPractice: Bool {
+        #if os(macOS)
+        let horizontallyCompact = false
+        #else
+        let horizontallyCompact = horizontalSizeClass == .compact
+        #endif
+        return PracticeButtonFace.prefersCompact(
+            surface: EmptyStatePrompt.current, horizontallyCompact: horizontallyCompact)
     }
 
     @ViewBuilder private var auxiliaryMenu: some View {
@@ -224,8 +242,9 @@ struct TitleBarView: View {
                     .font(.system(size: metrics.glyph * 0.85, weight: .semibold))
                     .foregroundStyle(palette.text.color())
                     .frame(width: metrics.chromeHeight, height: metrics.chromeHeight)
-                    .background(chromeShape.fill(palette.panel.color()))
-                    .overlay(chromeShape.stroke(palette.rule.color(), lineWidth: 1))
+                    .controlChrome(
+                        metrics, fill: palette.panel.color(), stroke: palette.rule.color()
+                    )
                     .hitRegion(target: metrics.target, drawn: metrics.chromeHeight)
             }
             .menuStyle(.borderlessButton)
@@ -242,8 +261,7 @@ struct TitleBarView: View {
             .foregroundStyle(palette.text.color())
             .padding(.horizontal, metrics.groupPadding * 1.4)
             .frame(minHeight: metrics.chromeHeight)
-            .background(chromeShape.fill(palette.panel.color()))
-            .overlay(chromeShape.stroke(palette.rule.color(), lineWidth: 1))
+            .controlChrome(metrics, fill: palette.panel.color(), stroke: palette.rule.color())
             .fixedSize()
             .hitRegion(target: metrics.target, drawn: metrics.chromeHeight)
     }

@@ -12,11 +12,11 @@ import SwiftUI
 ///
 /// ## One shape family with its neighbours
 ///
-/// It is drawn at `chromeHeight` with `cornerRadius`, exactly like Open… and
-/// the `⋯` button beside it, so the header's trailing cluster reads as one set
-/// of controls that differ in emphasis rather than as three shapes that happen
-/// to sit together — a pill, a ring and a rounded rectangle was the first
-/// draft's problem. The transport bar below uses the same radius.
+/// It is drawn in `controlChrome` at `chromeHeight`, exactly like Open… and the
+/// `⋯` button beside it, so the header's trailing cluster reads as one set of
+/// controls that differ in emphasis rather than as three shapes that happen to
+/// sit together — a pill, a ring and a rounded rectangle was the first draft's
+/// problem. The transport bar below is drawn in the same chrome.
 ///
 /// ## Focus
 ///
@@ -65,13 +65,10 @@ struct PracticeButton: View {
                 .accessibilityLabel(face.stopAccessibilityLabel ?? "")
             }
         }
-        .background(
-            RoundedRectangle(cornerRadius: radius)
-                .fill(isInvitation ? palette.accent.color() : palette.panel.color())
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: radius)
-                .stroke(isInvitation ? .clear : palette.accent.color(), lineWidth: 1)
+        .controlChrome(
+            metrics,
+            fill: isInvitation ? palette.accent.color() : palette.panel.color(),
+            stroke: isInvitation ? .clear : palette.accent.color()
         )
         // Never truncated: the file name to its left is what gives way.
         .fixedSize()
@@ -88,9 +85,14 @@ struct PracticeButton: View {
                     .fill(palette.accent.color())
                     .frame(width: Self.dot, height: Self.dot)
             }
-            Text(face.title)
-                .font(Typography.readout.weight(.semibold))
-                .monospacedDigit()
+            // The reserved width, drawn invisibly underneath: see
+            // `PracticeButtonFace.reservedTitle`.
+            ZStack(alignment: .leading) {
+                Text(face.reservedTitle).hidden()
+                Text(face.title)
+            }
+            .font(Typography.readout.weight(.semibold))
+            .monospacedDigit()
         }
         // `background` on the filled button, not `text`: the accent is light
         // in the dark palette and dark in the light one, and the window's

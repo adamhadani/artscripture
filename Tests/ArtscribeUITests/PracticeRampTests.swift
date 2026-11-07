@@ -346,4 +346,37 @@ struct PracticeRampTests {
             #expect(model.speed.ratio <= SpeedState.maxRatio)
         }
     }
+
+    // MARK: - A ramp does not outlive its loop
+
+    /// The header's Practice button reads the ramp, so a ramp left running
+    /// after its track went away showed "Rep 2 of 10" over the resting screen —
+    /// and on a phone, with Practice out of the `⋯` menu, nothing could stop it.
+    @Test("closing the track stops a running ramp")
+    func closingStopsTheRamp() {
+        let model = makeLoopedModel()
+        model.startRamp()
+        #expect(model.ramp.isRunning)
+        model.closeTrack()
+        #expect(model.ramp.isIdle)
+    }
+
+    /// No region, no wraps: the readout would sit on its repetition for ever.
+    @Test("clearing the loop stops a running ramp")
+    func clearingTheLoopStopsTheRamp() {
+        let model = makeLoopedModel()
+        model.startRamp()
+        model.clearLoop()
+        #expect(model.ramp.isIdle)
+    }
+
+    /// The other half of the decision: an edge dragged across its partner
+    /// passes through zero length mid-gesture, and that must not end a ramp.
+    @Test("editing the loop under a ramp keeps it running")
+    func editingTheLoopKeepsTheRamp() {
+        let model = makeLoopedModel()
+        model.startRamp()
+        model.applyLoop(LoopRegion(range: FrameRange(start: Self.loopStart, count: 0)))
+        #expect(model.ramp.isRunning)
+    }
 }

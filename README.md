@@ -631,7 +631,7 @@ beside the loop, both of which show the current state.
 | `Esc` | Clear the loop |
 | `⇧A` `⇧S` / `⇧D` `⇧F` | Move the loop's in / out point (add `⌥` for the bigger step) |
 | `⌘S` / `⇧⌘S` | Save the session sidecar / save it elsewhere |
-| `⌘P` | Show or hide Practice — the ramping loop; also the **Practice** button in the header |
+| `⌘P` | Show or hide Practice — the ramping loop. The **Practice** button in the header opens it too |
 | `⌥P` | Start / stop the speed ramp |
 | `⌘/` | Show or hide the keyboard shortcut window |
 | `⌘,` | Settings — preroll, nudge and move amounts, zoom direction, theme. A window on macOS, a sheet on iPad and iPhone, where the header's **⋯** menu is the route without a keyboard |

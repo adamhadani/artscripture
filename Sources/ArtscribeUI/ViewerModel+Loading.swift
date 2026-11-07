@@ -160,6 +160,10 @@ extension ViewerModel {
         trackURL = nil
         generation += 1
         resetLaneGesture()
+        // A ramp is a plan for *this* loop. Left running it outlived the track
+        // — the header's Practice button went on reading "Rep 3 of 5" over
+        // the resting screen, and the next track's first wrap advanced it.
+        stopRamp()
         loop = LoopRegion()
         playhead = 0
         reachedEnd = false
@@ -188,7 +192,9 @@ extension ViewerModel {
         resetLaneGesture()
         // Speed and engine deliberately survive a load — they are a working
         // preference, not a property of the file — but the loop cannot: its
-        // frames mean nothing in a different recording.
+        // frames mean nothing in a different recording. Nor can a ramp that was
+        // counting that loop's repetitions — see `closeTrack()`.
+        stopRamp()
         loop = LoopRegion()
         playhead = 0
         reachedEnd = false

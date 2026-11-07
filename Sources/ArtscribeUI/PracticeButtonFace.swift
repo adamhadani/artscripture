@@ -29,6 +29,11 @@ public struct PracticeButtonFace: Equatable, Sendable {
 
     public let style: Style
     public let title: String
+    /// The widest `title` this ramp can show, in either of its phases. The
+    /// button reserves this width, so the header does not shift as
+    /// "Rep 9 of 10 · 95%" becomes "Rep 10 of 10 · 100%" — a readout is
+    /// supposed to be the thing you can stop looking at.
+    public let reservedTitle: String
     /// 0…1 for the wash behind the readout. `nil` when there is nothing to
     /// measure — the resting button has no progress, not zero progress.
     public let progress: Double?
@@ -40,33 +45,57 @@ public struct PracticeButtonFace: Equatable, Sendable {
     public let accessibilityLabel: String
     public let stopAccessibilityLabel: String?
 
+    /// Whether the header has room for the long wording.
+    ///
+    /// A phone never does. Neither does an iPad window in a compact width —
+    /// Split View, Slide Over, a narrow Stage Manager window — which is why this
+    /// is not just a question about the device. The Mac's window has a minimum
+    /// width the transport bar already sets far above this.
+    public static func prefersCompact(
+        surface: EmptyStatePrompt.Surface, horizontallyCompact: Bool
+    ) -> Bool {
+        surface == .phone || horizontallyCompact
+    }
+
     /// The face for this ramp.
     ///
-    /// `compact` is the phone's: the header there holds a back button, the
-    /// wordmark, the file name, this, the `⋯` menu and Open… across one
-    /// landscape row, and "Rep 3 of 8 · 75%" is the thing that can give way.
-    /// The numbers stay; only the word goes.
-    public static func face(for ramp: SpeedRamp, compact: Bool) -> PracticeButtonFace {
-        let speed = Readout.percent(ramp.currentRatio)
+    /// `speed` is what is **playing** — the model's speed, not the schedule's.
+    /// They agree on every wrap, but `1`–`4` or `Q`/`W` mid-repetition change
+    /// what you hear until the next one, and a readout that says "the speed you
+    /// are hearing" has to say that.
+    ///
+    /// `compact` (see `prefersCompact`): "Rep 3 of 8 · 75%" is the thing in a
+    /// crowded header that can give way. The numbers stay; only the words go.
+    public static func face(
+        for ramp: SpeedRamp, speed ratio: Double, compact: Bool
+    ) -> PracticeButtonFace {
+        let speed = Readout.percent(ratio)
+        let count = { (repetition: Int) in
+            compact ? "\(repetition)/\(ramp.total)" : "Rep \(repetition) of \(ramp.total)"
+        }
+        let done = compact ? "Done" : "Ramp done"
+        // Four characters is the widest a whole-percent speed gets (`100%`;
+        // the clamp stops short of four digits), and the readout font is
+        // monospaced, so this is the widest either phase can draw.
+        let widest =
+            [count(ramp.total), done].map { "\($0) · 100%" }
+            .max { $0.count < $1.count } ?? ""
         switch ramp.phase {
         case .idle:
             return PracticeButtonFace(
-                style: .invitation, title: "Practice", progress: nil, stopSymbol: nil,
+                style: .invitation, title: "Practice", reservedTitle: "Practice",
+                progress: nil, stopSymbol: nil,
                 accessibilityLabel: "Practice", stopAccessibilityLabel: nil)
         case .running:
-            let count =
-                compact
-                ? "\(ramp.repetition)/\(ramp.total)"
-                : "Rep \(ramp.repetition) of \(ramp.total)"
             return PracticeButtonFace(
-                style: .progress, title: "\(count) · \(speed)", progress: ramp.progress,
-                stopSymbol: "stop.fill",
+                style: .progress, title: "\(count(ramp.repetition)) · \(speed)",
+                reservedTitle: widest, progress: ramp.progress, stopSymbol: "stop.fill",
                 accessibilityLabel:
                     "Practice: repetition \(ramp.repetition) of \(ramp.total), at \(speed)",
                 stopAccessibilityLabel: "Stop ramp")
         case .complete:
             return PracticeButtonFace(
-                style: .progress, title: "\(compact ? "Done" : "Ramp done") · \(speed)",
+                style: .progress, title: "\(done) · \(speed)", reservedTitle: widest,
                 progress: 1, stopSymbol: "xmark",
                 accessibilityLabel: "Practice: ramp complete, holding \(speed)",
                 stopAccessibilityLabel: "Dismiss finished ramp")

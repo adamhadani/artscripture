@@ -96,13 +96,13 @@ public struct DocumentView: View {
             TitleBarView(
                 model: model,
                 onOpen: { showingImporter = true },
+                onPractice: { context.practice.show() },
+                restoreFocus: { hasKeyboardFocus = true },
                 auxiliary: AuxiliaryMenuActions(
                     settings: { context.settings.toggle() },
                     shortcuts: { context.shortcuts.toggle() },
                     about: { context.about.toggle() }),
-                onClose: { ViewerActions.closeTrack(model) },
-                onPractice: { context.practice.show() },
-                restoreFocus: { hasKeyboardFocus = true })
+                onClose: { ViewerActions.closeTrack(model) })
             #endif
 
             if let message = model.errorMessage {
