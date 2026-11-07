@@ -262,7 +262,7 @@ on iPad and iPhone, as a sheet.
 
 | Key | Action |
 |---|---|
-| <kbd>⌘P</kbd> | Show / hide Practice (or the **Practice** button in the header) |
+| <kbd>⌘P</kbd> | Show / hide Practice — the **Practice** button in the header opens it too |
 | <kbd>⌥P</kbd> | Start / stop the ramp |
 
 Give it three numbers and it works out the rest:
