@@ -146,8 +146,9 @@ extension WelcomePage {
     /// Where the rest of the app is.
     ///
     /// Practice and the shortcut reference are the two features most likely to
-    /// go unfound — on a Mac they are behind menu items, and on a touch device
-    /// behind the ⋯ menu, which nothing else in the tour points at.
+    /// go unfound. Practice now has a button in the header on every platform;
+    /// the shortcut reference is still behind a menu item on a Mac and behind
+    /// the ⋯ menu on a touch device, which nothing else in the tour points at.
     private static func panelsPage(for surface: EmptyStatePrompt.Surface) -> WelcomePage {
         WelcomePage(
             id: 3,
@@ -166,17 +167,19 @@ extension WelcomePage {
         let practice =
             "Practice repeats your loop while the speed climbs from slow to full, "
             + "advancing when the loop comes round rather than on a timer. "
+        let button = "Press Practice in the header once a track is open. "
         switch surface {
         case .desktop:
-            return practice
-                + "It is in the Playback menu, and every key in the app is listed "
-                + "in the shortcut reference beside it."
+            // The View menu, where both items really are. This said "Playback
+            // menu" from the first version of the tour until the button landed.
+            return practice + button
+                + "Every key in the app is listed in the shortcut reference, "
+                + "in the View menu."
         case .tabletWithDrop, .phone:
             // Naming the glyph rather than a menu path: it is one tap away, and
             // there is no menu bar to walk without a hardware keyboard.
-            return practice
-                + "Open it — with Settings and the shortcut reference — from the "
-                + "⋯ button in the header."
+            return practice + button
+                + "Settings and the shortcut reference are in the ⋯ menu beside it."
         }
     }
 }

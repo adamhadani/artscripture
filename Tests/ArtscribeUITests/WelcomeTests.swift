@@ -165,16 +165,22 @@ struct WelcomeTests {
     }
 
     /// Practice and the shortcut reference are the two things most likely to go
-    /// unfound, and on a touch device the ⋯ menu is the only route to either —
-    /// so the last page has to point at whichever route the device has.
+    /// unfound. Practice has a header button everywhere; the shortcut reference
+    /// is in the View menu on a Mac and the ⋯ menu on a touch device — so the
+    /// last page has to point at whichever route the device has.
     @Test("the last page says where the panels live")
     func lastPageNamesThePanels() {
         for surface in Self.surfaces {
             let last = WelcomePage.pages(for: surface)[3]
             #expect(last.body.contains("Practice"), "\(surface): \(last.body)")
+            #expect(last.body.contains("in the header"), "\(surface): \(last.body)")
             #expect(last.body.contains("shortcut reference"), "\(surface): \(last.body)")
             switch surface {
-            case .desktop: #expect(last.body.contains("Playback menu"))
+            // Not "Playback menu", which is what it said while Practice was
+            // in the View menu all along.
+            case .desktop:
+                #expect(last.body.contains("View menu"))
+                #expect(!last.body.contains("Playback menu"))
             case .tabletWithDrop, .phone: #expect(last.body.contains("⋯"))
             }
         }

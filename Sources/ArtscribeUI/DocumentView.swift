@@ -83,7 +83,11 @@ public struct DocumentView: View {
         // the whole document.
         VStack(spacing: 0) {
             #if os(macOS)
-            TitleBarView(model: model) { ViewerActions.open(model) }
+            TitleBarView(
+                model: model,
+                onOpen: { ViewerActions.open(model) },
+                onPractice: { context.practice.show() },
+                restoreFocus: { hasKeyboardFocus = true })
             #else
             // iPad's document picker is a *presentation*, not a call that
             // returns a URL, so Open belongs to this view rather than to
@@ -95,9 +99,10 @@ public struct DocumentView: View {
                 auxiliary: AuxiliaryMenuActions(
                     settings: { context.settings.toggle() },
                     shortcuts: { context.shortcuts.toggle() },
-                    practice: { context.practice.toggle() },
                     about: { context.about.toggle() }),
-                onClose: { ViewerActions.closeTrack(model) })
+                onClose: { ViewerActions.closeTrack(model) },
+                onPractice: { context.practice.show() },
+                restoreFocus: { hasKeyboardFocus = true })
             #endif
 
             if let message = model.errorMessage {

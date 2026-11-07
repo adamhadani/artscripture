@@ -631,10 +631,10 @@ beside the loop, both of which show the current state.
 | `Esc` | Clear the loop |
 | `⇧A` `⇧S` / `⇧D` `⇧F` | Move the loop's in / out point (add `⌥` for the bigger step) |
 | `⌘S` / `⇧⌘S` | Save the session sidecar / save it elsewhere |
-| `⌘P` | Show or hide the Practice window — the ramping loop |
+| `⌘P` | Show or hide Practice — the ramping loop; also the **Practice** button in the header |
 | `⌥P` | Start / stop the speed ramp |
 | `⌘/` | Show or hide the keyboard shortcut window |
-| `⌘,` | Settings — preroll, nudge and move amounts, zoom direction, theme. A window on macOS, a sheet on iPad, where the **gear in the header** is the route without a keyboard |
+| `⌘,` | Settings — preroll, nudge and move amounts, zoom direction, theme. A window on macOS, a sheet on iPad and iPhone, where the header's **⋯** menu is the route without a keyboard |
 
 Drag in the lanes to mark a passage — that passage *is* the loop, and `D` or the Loop button
 repeats it; a drag while looping replaces the loop and keeps it looping. Drag a loop edge (its
@@ -648,9 +648,10 @@ wheel together.
 
 ### The Practice hub
 
-Press `⌘P` — or **View ▸ Practice** — for a separate window that plays your loop over and
-over while the speed climbs, so you can take a passage from slow to tempo without touching
-anything.
+Press **Practice** in the header — it is there whenever a track is open, on the Mac, iPad and
+iPhone alike — or `⌘P`, or **View ▸ Practice**. It plays your loop over and over while the
+speed climbs, so you can take a passage from slow to tempo without touching anything. On the
+Mac it is a separate window; on iPad and iPhone, a sheet.
 
 Give it three numbers and it works out the rest:
 
@@ -667,6 +668,12 @@ how many are left. **It advances when the loop comes round, not on a timer** —
 drift the moment the loop length or the speed changed underneath it, and the ramp changes the
 speed on purpose.
 
+The header button follows the ramp too. While one runs it becomes a readout —
+*Rep 3 of 10 · 61%*, filling from the left as the passes go by — with a stop button beside
+it, so the panel can be put away (on iPad and iPhone it covers the waveform) and the main
+screen still says where you are. Tap the readout to bring the panel back. When the ramp
+finishes it reads *Ramp done · 100%*, and its ✕ returns it to the plain button.
+
 When the last repetition finishes the ramp **holds the final speed and keeps playing**. It
 does not stop you: a ramp is a speed automation, not a transport, and the end of one is the
 moment you have arrived at the passage, at tempo, in the loop — which is what the whole
@@ -677,9 +684,9 @@ A ramp needs a loop. With none set, the window says so and says how to make one 
 the waveform, or `A` and `S`) rather than offering a Start button that would do nothing.
 Starting a ramp switches looping on for you if the region is set but disabled.
 
-Like the shortcut window it is a separate window rather than a panel, and for a sharper
-reason: this is a thing you watch the waveform while using, so it must cost the waveform no
-width.
+On the Mac, like the shortcut window, it is a separate window rather than a panel, and for a
+sharper reason: this is a thing you watch the waveform while using, so it must cost the
+waveform no width.
 
 ### The shortcut window
 
