@@ -111,8 +111,8 @@ description: >-
   <p class="eyebrow">Practice ramp</p>
   <h2>From slow to tempo, automatically</h2>
   <p>
-    Press <strong>Practice</strong> in the header — or <kbd>⌘P</kbd> — and it plays
-    your loop over and over while the speed climbs. Give it a start speed, an end speed and a number of
+    Press <kbd>⌘P</kbd> for a separate window that plays your loop over and over
+    while the speed climbs. Give it a start speed, an end speed and a number of
     repetitions; it works out the per-repetition step and shows it. It
     <strong>advances when the loop comes round, not on a timer</strong>, so it
     cannot drift when the loop length or the speed changes underneath it. An end

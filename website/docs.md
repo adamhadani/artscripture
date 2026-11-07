@@ -254,15 +254,13 @@ most real albums.
 
 ## Practice mode
 
-Press **Practice** in the header — it is there whenever a track is open, on the
-Mac, iPad and iPhone alike — or <kbd>⌘P</kbd>, or **View ▸ Practice**. It plays
+Press <kbd>⌘P</kbd> — or **View ▸ Practice** — for a separate window that plays
 your loop over and over while the speed climbs, so you can take a passage from
-slow to tempo without touching anything. On the Mac it opens in its own window;
-on iPad and iPhone, as a sheet.
+slow to tempo without touching anything.
 
 | Key | Action |
 |---|---|
-| <kbd>⌘P</kbd> | Show / hide Practice (or the **Practice** button in the header) |
+| <kbd>⌘P</kbd> | Show / hide the Practice window |
 | <kbd>⌥P</kbd> | Start / stop the ramp |
 
 Give it three numbers and it works out the rest:
@@ -280,12 +278,6 @@ While it runs, the window shows which repetition you are on, the speed you are
 hearing, and how many are left. **It advances when the loop comes round, not on a
 timer** — a timer would drift the moment the loop length or the speed changed
 underneath it, and the ramp changes the speed on purpose.
-
-The header button follows along: while a ramp runs it reads *Rep 3 of 10 · 61%*,
-filling from the left as the passes go by, with a stop button beside it. Put the
-panel away and the main screen still tells you where you are; tap the readout to
-bring the panel back. When the ramp finishes it reads *Ramp done · 100%*, and its
-✕ returns it to the plain button.
 
 When the last repetition finishes the ramp **holds the final speed and keeps
 playing**, and the window says *Ramp complete — holding 100%*. A ramp is a speed
