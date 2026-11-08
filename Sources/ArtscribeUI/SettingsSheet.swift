@@ -37,8 +37,12 @@ struct SettingsSheet: View {
                         // and dismissing without putting that back would leave
                         // the next ⌘, toggling it "closed" and appearing dead.
                         // The same defect the shortcut and Practice sheets had.
-                        Button(role: .close) { settings.windowState.isPresented = false }
-                            .keyboardShortcut(.cancelAction)
+                        // `endEditing` first, so a half-typed nudge is kept.
+                        Button(role: .close) {
+                            SheetCloseButton.endEditing()
+                            settings.windowState.isPresented = false
+                        }
+                        .keyboardShortcut(.cancelAction)
                     }
                 }
         }

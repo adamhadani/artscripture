@@ -21,10 +21,10 @@ struct StatusBarView: View {
     /// singleton, which would be a nonisolated `UIDevice`-style trap and
     /// untestable besides.
     ///
-    /// **Only ever the home indicator.** The padding this adds changes the
-    /// height of the view the inset is measured from, and a keyboard over a
-    /// sheet turned that into a layout loop that froze the app (1.4, build
-    /// 185). `HomeIndicatorInset` is the rule that stops it.
+    /// **Only ever the home indicator.** The padding this adds used to change
+    /// the height of the view the inset was measured from, and a keyboard over
+    /// a sheet turned that into a layout loop that froze the app (1.4, build
+    /// 185). `HomeIndicatorInset` explains the fix and the rule.
     var bottomInset: CGFloat = 0
     @Environment(\.palette) private var palette
 

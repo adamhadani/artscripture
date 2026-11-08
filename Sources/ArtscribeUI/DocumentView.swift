@@ -76,11 +76,8 @@ public struct DocumentView: View {
     #endif
 
     public var body: some View {
-        // The system's own strip at the foot of the screen — the home indicator.
-        // Read here, where the window's geometry is, and handed to the one view
-        // whose balance depends on it. `onGeometryChange` rather than wrapping
-        // everything in a `GeometryReader`, which would take over the layout of
-        // the whole document.
+        // The home indicator's inset, for `StatusBarView`: see `HomeIndicatorInset`
+        // for why it is read from a frame the content cannot resize, and filtered.
         VStack(spacing: 0) {
             #if os(macOS)
             TitleBarView(
@@ -163,10 +160,13 @@ public struct DocumentView: View {
             TransportBarView(model: model) { hasKeyboardFocus = true }
             StatusBarView(model: model, bottomInset: bottomInset)
         }
+        #if !os(macOS)
+        // Exactly the space offered, however tall the content. Load-bearing.
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+        #endif
         .onGeometryChange(for: CGFloat.self) {
             $0.safeAreaInsets.bottom
         } action: {
-            // Only ever the home indicator: see `HomeIndicatorInset`.
             let next = HomeIndicatorInset.next(current: bottomInset, measured: $0)
             if next != bottomInset { bottomInset = next }
         }

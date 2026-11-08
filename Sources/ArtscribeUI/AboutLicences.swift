@@ -66,10 +66,13 @@ struct LicenceTextSheet: View {
     let licence: AboutLicence
     let palette: Palette
     @Environment(\.dismiss) private var dismiss
-    @ScaledMetric(relativeTo: .body) private var typeScale: CGFloat = 1
-    private var metrics: ControlMetrics { ControlMetrics.current.scaled(by: typeScale) }
 
     #if os(macOS)
+    @ScaledMetric(relativeTo: .body) private var typeScale: CGFloat = 1
+    private var metrics: ControlMetrics { ControlMetrics.current.scaled(by: typeScale) }
+    /// Done is text, so it sits on the titles' baseline.
+    private static let headerAlignment = VerticalAlignment.firstTextBaseline
+
     /// **The sheet is exactly as wide as the window it hangs from, and no wider.**
     /// The longest line in any of these texts is 78 columns, which at 11 pt
     /// monospace is 530 pt; with the standard gutter either side that is 558, just
@@ -82,24 +85,28 @@ struct LicenceTextSheet: View {
     #else
     /// The system sizes a sheet here, so the margin is free to be generous.
     private static let inset = EdgeInsets(top: 20, leading: 24, bottom: 20, trailing: 24)
+    /// The ✕ is a 44 pt circle, so it is centred on the titles rather than
+    /// hung from their baseline, which left them riding above its middle.
+    private static let headerAlignment = VerticalAlignment.center
     #endif
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .firstTextBaseline, spacing: Metrics.md) {
+            HStack(alignment: Self.headerAlignment, spacing: Metrics.md) {
                 // `dismiss` is right here, unlike in the top-level sheets: this
                 // one is presented from `readingLicence`, which the dismissal
                 // puts back to `nil` itself.
                 #if !os(macOS)
                 SheetCloseButton { dismiss() }
-                    .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] }
                 #endif
-                Text(licence.component)
-                    .font(Typography.readoutEmphasis)
-                    .foregroundStyle(palette.text.color())
-                Text(licence.terms)
-                    .font(Typography.readoutSmall)
-                    .foregroundStyle(palette.accent.color())
+                HStack(alignment: .firstTextBaseline, spacing: Metrics.md) {
+                    Text(licence.component)
+                        .font(Typography.readoutEmphasis)
+                        .foregroundStyle(palette.text.color())
+                    Text(licence.terms)
+                        .font(Typography.readoutSmall)
+                        .foregroundStyle(palette.accent.color())
+                }
                 Spacer(minLength: Metrics.md)
                 // The Mac keeps Done at the trailing end, where a Mac sheet's
                 // button goes; iOS has the Close button at the leading end.

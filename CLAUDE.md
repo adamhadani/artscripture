@@ -267,10 +267,15 @@ document overhangs, and the "inset" becomes the overhang, which the padding chan
 → 151.1 → 162.1 → … about thirty full re-renders on a simulator, **forever on an iPhone 17 Pro**
 — no keyboard, a dead sheet, a `0x8BADF00D` scene-update kill on backgrounding.
 `ignoresSafeArea(.keyboard)` changed nothing at any placement (it is the sheet controller, not
-SwiftUI's keyboard region). The fix is at the input: `HomeIndicatorInset` takes nothing taller
-than a home indicator, in whole points. Two things that found it: the four device crash logs
-each stopped in a *different* view body under one `_keyboardAboutToShow` — a loop, not a stall
-— and logging the geometry every pass, which turned a guess into a table.
+SwiftUI's keyboard region). **Fix the structure, not the values:** on iOS the inset is read from
+a `.frame(minHeight: 0, maxHeight: .infinity)` of exactly the space offered, which content can
+overhang but never resize — one pass, even with every reading accepted. A first attempt filtered
+the readings instead (a ceiling plus whole points); review showed a two-value flip under the
+ceiling loops just the same, and rounding can *create* that flip. The ceiling stayed, as a
+look rule (`HomeIndicatorInset`: the bar does not balance against a keyboard). Two things that
+found it: the four device crash logs each stopped in a *different* view body under one
+`_keyboardAboutToShow` — a loop, not a stall — and logging the geometry every pass, which turned
+a guess into a table.
 
 **Look at the pixels, on each platform, before calling UI done.** Three defects in the welcome
 sheet were invisible to 967 passing tests and to two code reviews, and all three were obvious
