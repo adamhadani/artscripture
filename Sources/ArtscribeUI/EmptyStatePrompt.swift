@@ -57,14 +57,19 @@ public enum EmptyStatePrompt {
     /// … press G"*, and it is shown precisely when someone is stuck — so on a
     /// touch device every instruction it gave was impossible, at the one moment
     /// the user was reading carefully.
+    ///
+    /// **Since 2026-11 a new loop loops** (`ViewerModel.enterLoopIfOutside`), so
+    /// this no longer says "then tap Loop": that would now switch it *off*.
     public static func loopGuidance(for surface: Surface) -> String {
         switch surface {
         case .desktop:
-            return "Drag across the waveform to mark the passage, then press D to loop it. "
-                + "Or put the playhead where it starts and press A, then where it ends and press S."
+            return "Drag across the waveform to mark the passage, and it loops straight away. "
+                + "Or put the playhead where it starts and press A, then where it ends "
+                + "and press S. D switches looping off and on."
         case .tabletWithDrop, .phone:
-            return "Drag across the waveform to mark the passage, then tap Loop in the "
-                + "transport bar. Drag its edges to adjust it, or its middle to move it."
+            return "Drag across the waveform to mark the passage, and it loops straight away. "
+                + "Drag its edges to adjust it, or its middle to move it. "
+                + "Tap Loop in the transport bar to stop it repeating."
         }
     }
 

@@ -138,12 +138,16 @@ struct LoopGuidanceTests {
         }
     }
 
-    /// …and are pointed at the control that actually exists there: the Loop
-    /// button, the one step between a drag and a repeating bar since 2026-11.
-    @Test("touch surfaces are pointed at the Loop button")
-    func touchNamesTheButton() {
-        for surface in [EmptyStatePrompt.Surface.tabletWithDrop, .phone] {
-            #expect(EmptyStatePrompt.loopGuidance(for: surface).contains("tap Loop"))
+    /// …and told that the drag is all it takes. Until 2026-11 the Loop button
+    /// was the step between a drag and a repeating bar, and this said "then
+    /// tap Loop"; a new loop now loops, and that tap would switch it off.
+    @Test("every surface is told a dragged passage loops at once, never to tap Loop to start it")
+    func theDragIsAllItTakes() {
+        for surface in [EmptyStatePrompt.Surface.desktop, .tabletWithDrop, .phone] {
+            let loop = EmptyStatePrompt.loopGuidance(for: surface)
+            #expect(loop.contains("loops straight away"), "\(surface)")
+            #expect(!loop.contains("then tap Loop"), "\(surface)")
+            #expect(!loop.contains("press D to loop"), "\(surface)")
         }
     }
 

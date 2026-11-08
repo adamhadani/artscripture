@@ -184,7 +184,6 @@ struct ViewerModelInteractionTests {
         model.setLoopIn()
         model.seek(to: 900_000)
         model.setLoopOut()
-        model.toggleLoop()
         #expect(model.loop.isActive)
 
         model.dragEnded(startPixel: 600, endPixel: 600, now: 0)

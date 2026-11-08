@@ -153,7 +153,6 @@ extension AcceptanceRun {
         press(.a)
         model.seek(to: model.totalFrames / 4)
         press(.s)
-        press(.d)
         await settle(seconds: 0.1)
         log.check("A/S set a loop and mark the document modified", model.loop.range.count > 0)
         log.check("… reflected in the close button", window.isDocumentEdited)

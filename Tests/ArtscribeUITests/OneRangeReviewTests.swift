@@ -102,12 +102,16 @@ struct OneRangeReviewTests {
         #expect(model.playhead == frame(100))
     }
 
-    @Test("with looping off a new range leaves the playhead alone on touch")
-    func aNewRangeWithLoopingOffDoesNotSeek() {
+    /// Until 2026-11 this was the opposite test: with looping off, a new range
+    /// left the playhead alone, and playback ran on past the passage just
+    /// marked. A new loop now loops, so it is the one you hear either way.
+    @Test("with looping off, a new range loops and brings the playhead into it on touch")
+    func aNewRangeWithLoopingOffStillBringsThePlayheadIn() {
         let model = makeModel(touch: true)
         model.seek(to: frame(550))
         drag(model, from: 100, to: 300)
-        #expect(model.playhead == frame(550))
+        #expect(model.loop.isActive)
+        #expect(model.playhead == frame(100))
     }
 
     @Test("a playhead already inside the new loop stays where it is")
