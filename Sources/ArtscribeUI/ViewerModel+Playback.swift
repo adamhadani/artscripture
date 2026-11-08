@@ -330,12 +330,16 @@ extension ViewerModel {
 
     public func setLoopIn() {
         guard hasTrack else { return }
+        let creates = loop.range.isEmpty
         applyLoop(LoopEditing.settingIn(at: playhead, in: loop, totalFrames: totalFrames))
+        if creates { enterLoopIfOutside() }
     }
 
     public func setLoopOut() {
         guard hasTrack else { return }
+        let creates = loop.range.isEmpty
         applyLoop(LoopEditing.settingOut(at: playhead, in: loop, totalFrames: totalFrames))
+        if creates { enterLoopIfOutside() }
     }
 
     /// Mirrors the menu's `.trackLoopToggle` enablement, which a key handled by

@@ -313,6 +313,8 @@ public final class ViewerModel {
     @ObservationIgnored var rangeAnchor: FrameIndex?
     /// The drawn loop is ahead of the engine's — a drag not yet lifted (`stageLoop`).
     @ObservationIgnored var loopIsStaged = false
+    /// Whether the range being dragged out loops: yes for a new one, as before for a ⇧-extend.
+    @ObservationIgnored var rangeDragLooping = true
     /// `.setLoop` pushes, counted: a test seam for "once, on lift".
     @ObservationIgnored var loopPushes = 0
     @ObservationIgnored var playheadBeforeLaneDrag: FrameIndex?

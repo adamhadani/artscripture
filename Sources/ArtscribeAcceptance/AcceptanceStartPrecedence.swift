@@ -63,10 +63,10 @@ extension AcceptanceRun {
         press(.a)
         model.seek(to: half)
         press(.s)
-        press(.d)
+        // A new loop loops (2026-11), so A and S alone make it active.
         let loopStart = model.loop.range.start
         log.check(
-            "A, S and D really set an active loop (\(loopStart)…\(model.loop.range.end))",
+            "A and S really set an active loop (\(loopStart)…\(model.loop.range.end))",
             model.loop.isActive && loopStart > 0)
         let loopOnly = await aimOfShiftSpace()
         log.check(

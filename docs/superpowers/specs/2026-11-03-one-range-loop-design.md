@@ -24,6 +24,17 @@ selected"*, loop edges that are *"easier to catch"*, and bookmark-style markers 
 3. **A tap keeps the range.** It only places the playhead. Clearing is explicit.
 4. **All platforms.** The waveform code is shared, and so is the behaviour.
 
+> **Changed 2026-11-08: a new loop starts with looping on.** The user, from using 1.4:
+> *"when user creates a loop we should turn on looping mode by default … should be opt out
+> rather than opt in. Otherwise frustrating experience to mark a loop only to see the
+> playback continuing after it."* So decision 2 now holds whether looping was on or not:
+> every new loop — a drag that marks a new passage, `A` or `S` with no loop, `⌘A`, a
+> `⇧`-arrow from a bare playhead — loops, and with the playhead outside it playback goes to
+> its start (the engine captures a loop only on arrival, §5.1). Edits to an existing loop
+> (its edges, its middle, `C`/`V`, `A`/`S` on it, a `⇧`-extend) keep looping as it was, so
+> switching it off holds until the next new loop. `D` and the Loop button are now how you
+> opt out. See `ViewerModel.enterLoopIfOutside`.
+
 ## The model
 
 The range *is* `LoopRegion` — `range` plus `isEnabled` — which already exists, is already

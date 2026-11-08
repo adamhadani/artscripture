@@ -11,13 +11,13 @@ extension ViewerModel {
 
     // MARK: - Marking the range
 
-    /// `⌘A`: the whole file becomes the range. Looping stays as it was — a
-    /// range is something you set, looping is something you switch on.
+    /// `⌘A`: the whole file becomes the loop, and like every new loop it
+    /// loops (see `enterLoopIfOutside` for the rule and its one exception).
     public func loopWholeFile() {
         guard hasTrack else { return }
         rangeAnchor = nil
-        applyLoop(
-            LoopRegion(range: FrameRange(start: 0, count: totalFrames), isEnabled: loop.isEnabled))
+        applyLoop(LoopRegion(range: FrameRange(start: 0, count: totalFrames), isEnabled: true))
+        enterLoopIfOutside()
     }
 
     /// The loop as the lanes should draw it, without telling the engine yet.
@@ -46,6 +46,26 @@ extension ViewerModel {
     func commitStagedLoop() {
         guard loopIsStaged else { return }
         applyLoop(loop)
+        enterLoopIfOutside()
+    }
+
+    /// **A new loop starts with looping on** — a drag that marks a new
+    /// passage, `A` or `S` with no loop yet, `⌘A`, a `⇧`-arrow from a bare
+    /// playhead. Editing a loop that exists (its edges, moving it, `C`/`V`,
+    /// `A`/`S` on it) leaves looping as it was, so switching it off sticks
+    /// until the next new loop.
+    ///
+    /// Until 2026-11 looping was something you switched on separately, and a
+    /// passage marked while playing was played straight past. The user: *"when
+    /// user creates a loop we should turn on looping mode by default … should
+    /// be opt out rather than opt in. Otherwise frustrating experience to mark
+    /// a loop only to see the playback continuing after it."*
+    ///
+    /// And having switched it on, playback has to *reach* it: the engine only
+    /// captures a loop on arrival (spec §5.1), so with the playhead outside the
+    /// new loop this goes to its start. One deliberate seek, never a reset at
+    /// the boundary (CLAUDE.md on looping).
+    func enterLoopIfOutside() {
         guard loop.isActive, !loop.range.contains(playhead) else { return }
         seek(to: loop.range.start)
     }
@@ -104,10 +124,12 @@ extension ViewerModel {
     /// by, so the two arrow gestures agree about how far one press goes.
     ///
     /// With no range, one starts at the playhead, so the key does something
-    /// useful from a bare cursor rather than nothing. Looping is left as it was.
+    /// useful from a bare cursor rather than nothing — and, being a new loop,
+    /// loops. Extending one that exists leaves looping as it was.
     public func extendLoop(_ direction: NudgeDirection) {
         guard hasTrack else { return }
         let range = loop.range
+        let creates = range.isEmpty
         let anchor: FrameIndex
         let head: FrameIndex
         if range.isEmpty {
@@ -128,7 +150,8 @@ extension ViewerModel {
         applyLoop(
             LoopRegion(
                 range: FrameRange(start: low, count: Swift.max(anchor, moved) - low),
-                isEnabled: loop.isEnabled))
+                isEnabled: creates || loop.isEnabled))
+        if creates { enterLoopIfOutside() }
         reveal(moved)
     }
 

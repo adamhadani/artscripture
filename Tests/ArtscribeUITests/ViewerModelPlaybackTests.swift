@@ -153,7 +153,8 @@ struct ViewerModelPlaybackTests {
 
     // MARK: - Loop
 
-    @Test("A and S set the loop edges at the playhead")
+    /// `A` makes a new loop, which loops; `S` then edits it, and keeps it so.
+    @Test("A and S set the loop edges at the playhead, and the new loop loops")
     func loopEdges() {
         let model = makeModel()
         model.seek(to: 100_000)
@@ -161,22 +162,22 @@ struct ViewerModelPlaybackTests {
         model.seek(to: 200_000)
         model.setLoopOut()
         #expect(model.loop.range == FrameRange(start: 100_000, count: 100_000))
-        #expect(!model.loop.isEnabled)
+        #expect(model.loop.isEnabled)
     }
 
-    @Test("a drag defines the loop region, and D toggles looping")
+    @Test("a drag makes a loop that loops, and D switches it off and on")
     func loopFromSelection() {
         let model = makeModel()
         model.dragChanged(startPixel: 100, currentPixel: 100, extending: false)
         model.dragChanged(startPixel: 100, currentPixel: 400, extending: false)
         model.dragEnded(startPixel: 100, endPixel: 400, now: 0)
         #expect(!model.loop.range.isEmpty)
-        #expect(!model.loop.isActive)
+        #expect(model.loop.isActive)
 
         model.toggleLoop()
-        #expect(model.loop.isActive)
-        model.toggleLoop()
         #expect(!model.loop.isActive)
+        model.toggleLoop()
+        #expect(model.loop.isActive)
     }
 
     @Test("F restarts the loop from its in point")
@@ -203,7 +204,6 @@ struct ViewerModelPlaybackTests {
     func clearLoop() {
         let model = makeModel()
         model.loopWholeFile()
-        model.toggleLoop()
         #expect(model.loop.isActive)
         model.clearLoop()
         #expect(model.loop == LoopRegion())

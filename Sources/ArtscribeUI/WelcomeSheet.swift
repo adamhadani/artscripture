@@ -97,20 +97,21 @@ extension WelcomePage {
     }
 
     /// The one page that has to land. Dragging out a passage is the first thing
-    /// anyone does to a waveform, so the tour spends its second page on the two
-    /// buttons that carry someone from that drag to a repeating bar. (Until
-    /// 2026-11 there were three: a drag made a selection, and a *Selection →
+    /// anyone does to a waveform, and since 2026-11 that drag alone gives a
+    /// repeating bar — a new loop loops. (Before that, the Loop button was a
+    /// second step; before *that*, a drag made a selection and a *Selection →
     /// Loop* button stood between it and the loop.)
     private static func loopPage(for surface: EmptyStatePrompt.Surface) -> WelcomePage {
         WelcomePage(
             id: 1,
             symbol: "repeat",
-            title: "Drag out a passage, then loop it",
+            title: "Drag out a passage, and it loops",
             body: EmptyStatePrompt.loopGuidance(for: surface),
             controls: [
                 ControlNote(
                     control: .loop,
-                    meaning: "Repeats the passage you dragged out, with no click at the seam."),
+                    meaning: "Lit while the passage repeats, with no click at the seam. "
+                        + "Tap to stop."),
                 ControlNote(
                     control: .preroll,
                     meaning: "Starts a moment early, so you can come in on time.")
