@@ -145,6 +145,18 @@ public struct AboutWindow: View {
         #else
         .frame(maxWidth: Self.sheetWidth, maxHeight: .infinity)
         .frame(maxWidth: .infinity)
+        // Over the scroll view rather than in it, and outside the width cap:
+        // About has no header row to carry the button, a Close that scrolled
+        // away with the licences would be no way out, and one inside the cap
+        // sat beside the centred column instead of in the sheet's corner. It
+        // stands down from Esc while a licence is open over it, so one Esc
+        // closes one sheet.
+        .overlay(alignment: .topLeading) {
+            SheetCloseButton(escapeCloses: readingLicence == nil) {
+                about.windowState.isPresented = false
+            }
+            .padding(Metrics.xl)
+        }
         #endif
         .background(palette.background.color())
         .environment(\.palette, palette)

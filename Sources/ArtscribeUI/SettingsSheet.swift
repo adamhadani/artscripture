@@ -25,13 +25,24 @@ struct SettingsSheet: View {
                 .navigationTitle("Settings")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
+                    // Close, leading, not Done, trailing: every setting here
+                    // applies as it changes, so there is nothing to confirm,
+                    // and Apple's sheet guidance (March 2026) is that a lone
+                    // Done *"implies that completing the task is the only way
+                    // to exit"*. The same ✕ as the other sheets
+                    // (`SheetCloseButton`), here from the system toolbar.
+                    ToolbarItem(placement: .cancellationAction) {
                         // Closes through the controller, not `dismiss`: the
                         // sheet's presentation *is* `AuxiliaryWindow.isPresented`,
                         // and dismissing without putting that back would leave
                         // the next ⌘, toggling it "closed" and appearing dead.
                         // The same defect the shortcut and Practice sheets had.
-                        Button("Done") { settings.windowState.isPresented = false }
+                        // `endEditing` first, so a half-typed nudge is kept.
+                        Button(role: .close) {
+                            SheetCloseButton.endEditing()
+                            settings.windowState.isPresented = false
+                        }
+                        .keyboardShortcut(.cancelAction)
                     }
                 }
         }

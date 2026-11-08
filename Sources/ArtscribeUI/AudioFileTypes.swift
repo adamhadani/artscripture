@@ -51,7 +51,13 @@ public enum AudioFileTypes {
         return types
     }()
 
-    public static var supported: [UTType] {
+    /// **Computed once.** `UTType(filenameExtension:)` is an XPC round trip to
+    /// Launch Services, and this is read from `DocumentView.body` for the iOS
+    /// file importer — so as a computed property it ran on every render. In the
+    /// Practice freeze (`HomeIndicatorInset`) that put four of these on the main
+    /// thread per pass of a layout loop; one of the crash logs stopped inside
+    /// one. The answer cannot change while the process runs.
+    public static let supported: [UTType] = {
         var types: [UTType] = [.audio, .mpeg4Audio, .mp3, .wav, .aiff] + videoContainers
         for ext in extraExtensions {
             guard let type = UTType(filenameExtension: ext) else { continue }
@@ -59,7 +65,7 @@ public enum AudioFileTypes {
             types.append(type)
         }
         return types
-    }
+    }()
 
     /// Runs the modal open panel and returns the chosen file, or `nil` if the
     /// user cancelled.

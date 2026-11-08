@@ -201,6 +201,14 @@ public struct ShortcutWindow: View {
 
     private func header(query: Binding<String>) -> some View {
         HStack(spacing: Metrics.xl) {
+            #if !os(macOS)
+            // Esc clears a filter before it closes anything, as on the Mac
+            // (`FilterFocus.escape`): the button claims it only once the
+            // filter is empty, and the field takes it until then.
+            SheetCloseButton(escapeCloses: query.wrappedValue.isEmpty) {
+                shortcuts.windowState.isPresented = false
+            }
+            #endif
             Eyebrow("KEYBOARD SHORTCUTS")
 
             HStack(spacing: Metrics.sm) {
@@ -213,6 +221,13 @@ public struct ShortcutWindow: View {
                     .textFieldStyle(.plain)
                     .font(Typography.readout)
                     .foregroundStyle(palette.text.color())
+                    #if !os(macOS)
+                .onKeyPress(.escape) {
+                    guard !query.wrappedValue.isEmpty else { return .ignored }
+                    query.wrappedValue = ""
+                    return .handled
+                }
+                    #endif
                 if !query.wrappedValue.isEmpty {
                     Button {
                         query.wrappedValue = ""
