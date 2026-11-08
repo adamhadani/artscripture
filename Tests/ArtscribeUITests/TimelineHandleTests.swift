@@ -1,5 +1,4 @@
 import ArtscribeKit
-import CoreGraphics
 import Testing
 
 @testable import ArtscribeUI
@@ -18,7 +17,6 @@ struct TimelineHandleTests {
     /// every expectation below can be written in whole points.
     private static let totalFrames: FrameIndex = 2_000_000
     private static let framesPerPoint: FrameIndex = 2000
-    private static let laneHeight: Double = 300
 
     private func viewport() -> Viewport {
         Viewport(totalFrames: Self.totalFrames, widthPixels: 1000)
@@ -35,14 +33,8 @@ struct TimelineHandleTests {
             isEnabled: enabled)
     }
 
-    private func handle(
-        atPoint x: Double,
-        y: Double = laneHeight / 2,
-        loop: LoopRegion = LoopRegion()
-    ) -> TimelineHandle? {
-        TimelineHandles.handle(
-            at: CGPoint(x: x, y: y), laneHeight: Self.laneHeight, loop: loop,
-            viewport: viewport())
+    private func handle(atPoint x: Double, loop: LoopRegion = LoopRegion()) -> TimelineHandle? {
+        TimelineHandles.handle(atPixel: x, loop: loop, viewport: viewport())
     }
 
     // MARK: - Nothing to grab
@@ -71,9 +63,9 @@ struct TimelineHandleTests {
         #expect(handle(atPoint: 200 - radius, loop: loop()) == .loopStart)
         #expect(handle(atPoint: 200 + radius, loop: loop()) == .loopStart)
         #expect(handle(atPoint: 200 - radius - 1, loop: loop()) == nil)
-        // Just inside the loop, past the zone: the body band is only at the top
-        // and bottom, so mid-lane there is nothing here.
-        #expect(handle(atPoint: 200 + radius + 1, loop: loop()) == nil)
+        // Just inside the loop, past the zone: the edge stops and the body —
+        // the whole inside of the loop since 2026-11 — takes over.
+        #expect(handle(atPoint: 200 + radius + 1, loop: loop()) == .loopBody)
     }
 
     /// A loop that exists but is switched off is still drawn, so it is still
@@ -104,50 +96,44 @@ struct TimelineHandleTests {
 
     // MARK: - The loop body
 
-    /// The body handle lives on the bars the loop already draws along the top
-    /// and bottom of the lanes, and nowhere else. That is what keeps a plain
-    /// drag inside the loop doing what it has always done — selecting.
-    @Test("the loop body is grabbable on the top and bottom bars only")
-    func loopBodyIsGrabbableOnTheBars() {
-        #expect(handle(atPoint: 400, y: 2, loop: loop()) == .loopBody)
-        #expect(handle(atPoint: 400, y: Self.laneHeight - 2, loop: loop()) == .loopBody)
-        #expect(handle(atPoint: 400, y: Self.laneHeight / 2, loop: loop()) == nil)
-    }
-
-    @Test("the body band stops at the documented height")
-    func bodyBandHeightIsRespected() {
-        let band = TimelineHandles.bodyBandHeight
-        #expect(handle(atPoint: 400, y: band - 0.5, loop: loop()) == .loopBody)
-        #expect(handle(atPoint: 400, y: band + 0.5, loop: loop()) == nil)
-        #expect(handle(atPoint: 400, y: Self.laneHeight - band + 0.5, loop: loop()) == .loopBody)
-        #expect(handle(atPoint: 400, y: Self.laneHeight - band - 0.5, loop: loop()) == nil)
-    }
-
-    /// A window squeezed down must not lose the plain drag. Two fixed 14 pt
-    /// bands in a 28 pt lane would leave nothing between them, and selecting a
-    /// passage would silently stop working in a small window.
-    @Test("in a very short lane the body band never takes more than half of it")
-    func bodyBandShrinksWithTheLane() {
-        let short: Double = 28
-        let handleAt = { (y: Double) in
-            TimelineHandles.handle(
-                at: CGPoint(x: 400, y: y), laneHeight: short, loop: self.loop(),
-                viewport: self.viewport())
+    /// Until 2026-11 the body was only the bars along the loop's top and
+    /// bottom, and a drag through the middle drew a new loop. The user asked
+    /// for the middle to move it: *"when I drag my finger inside of a looped
+    /// area typically the intent is to move the whole loop along"*.
+    @Test("anywhere inside the loop, clear of its edges, is the loop body")
+    func theInsideOfTheLoopIsTheBody() {
+        for x in stride(from: 210.0, through: 590.0, by: 20) {
+            #expect(handle(atPoint: x, loop: loop()) == .loopBody, "at \(x) pt")
         }
-        #expect(handleAt(1) == .loopBody)
-        #expect(handleAt(short - 1) == .loopBody)
-        // Deliberately off-centre on both sides. Exactly the midpoint passes
-        // even with the band unclamped — the two fixed bands meet there and
-        // neither strict comparison holds — so a test that only probed it would
-        // be one that cannot fail.
-        #expect(handleAt(short * 0.35) == nil)
-        #expect(handleAt(short * 0.6) == nil)
     }
 
-    @Test("the body band does not extend past the loop's own span")
-    func bodyBandIsBoundedByTheLoop() {
-        #expect(handle(atPoint: 100, y: 2, loop: loop()) == nil)
-        #expect(handle(atPoint: 800, y: 2, loop: loop()) == nil)
+    /// Edges are tested first, so the body never swallows the grab that
+    /// resizes — the reach either side of an edge stays the edge's.
+    @Test("an edge's reach inside the loop is still the edge's")
+    func edgesWinInsideTheLoop() {
+        let reach = TimelineHandles.grabRadius
+        #expect(handle(atPoint: 200 + reach, loop: loop()) == .loopStart)
+        #expect(handle(atPoint: 200 + reach + 1, loop: loop()) == .loopBody)
+        #expect(handle(atPoint: 600 - reach, loop: loop()) == .loopEnd)
+        #expect(handle(atPoint: 600 - reach - 1, loop: loop()) == .loopBody)
+    }
+
+    /// The half that must not move: outside the loop a drag still draws a new
+    /// one, which is how a loop is made at all.
+    @Test("outside the loop there is still nothing to grab")
+    func outsideTheLoopIsOpenLane() {
+        let reach = TimelineHandles.grabRadius
+        #expect(handle(atPoint: 200 - reach - 1, loop: loop()) == nil)
+        #expect(handle(atPoint: 600 + reach + 1, loop: loop()) == nil)
+        #expect(handle(atPoint: 100, loop: loop()) == nil)
+        #expect(handle(atPoint: 800, loop: loop()) == nil)
+    }
+
+    @Test("an empty loop has no body")
+    func anEmptyLoopHasNoBody() {
+        let empty = LoopRegion(range: FrameRange(start: frame(atPoint: 400), count: 0))
+        #expect(handle(atPoint: 400, loop: empty) == nil)
+        #expect(handle(atPoint: 100, loop: empty) == nil)
     }
 
     // MARK: - The anchor a drag pivots on
@@ -241,36 +227,37 @@ struct TimelineHandleTests {
     /// Reported from an iPhone: missing a loop edge "by just a tiny bit" started
     /// something else instead of moving the edge. 9 pt either side is a 20 pt
     /// target — fine for a pointer, half the 44 pt a fingertip needs.
-    private func handle(atX x: Double, y: Double, reach: HandleReach) -> TimelineHandle? {
-        TimelineHandles.handle(
-            at: CGPoint(x: x, y: y), laneHeight: Self.laneHeight, loop: loop(),
-            viewport: viewport(), reach: reach)
+    private func handle(atX x: Double, reach: HandleReach) -> TimelineHandle? {
+        TimelineHandles.handle(atPixel: x, loop: loop(), viewport: viewport(), reach: reach)
     }
 
     @Test("a finger catches a loop edge 20 points away")
     func aFingerCatchesAnEdgeTwentyPointsAway() {
         let reach = ControlMetrics.handleReach(on: .phone)
-        #expect(handle(atX: 620, y: Self.laneHeight / 2, reach: reach) == .loopEnd)
-        #expect(handle(atX: 180, y: Self.laneHeight / 2, reach: reach) == .loopStart)
+        #expect(handle(atX: 620, reach: reach) == .loopEnd)
+        #expect(handle(atX: 180, reach: reach) == .loopStart)
     }
 
     @Test("a pointer does not, at the same distance")
     func thePointerDoesNot() {
         let reach = ControlMetrics.handleReach(on: .desktop)
-        #expect(handle(atX: 620, y: Self.laneHeight / 2, reach: reach) == nil)
+        #expect(handle(atX: 620, reach: reach) == nil)
     }
 
-    @Test("a finger's loop-body band is deeper than a pointer's")
-    func touchBodyBandIsDeeper() {
-        #expect(handle(atX: 400, y: 20, reach: ControlMetrics.handleReach(on: .phone)) == .loopBody)
-        #expect(handle(atX: 400, y: 20, reach: ControlMetrics.handleReach(on: .desktop)) == nil)
+    /// A finger's wider reach takes more of the loop for the edges, and the
+    /// body begins where it ends.
+    @Test("on touch the body begins where a finger's edge reach ends")
+    func touchBodyStartsPastTheFingerReach() {
+        let phone = ControlMetrics.handleReach(on: .phone)
+        #expect(handle(atX: 215, reach: phone) == .loopStart)
+        #expect(handle(atX: 230, reach: phone) == .loopBody)
+        #expect(handle(atX: 215, reach: ControlMetrics.handleReach(on: .desktop)) == .loopBody)
     }
 
     @Test("touch reach is a 44 pt target; the Mac keeps its 20 pt one")
     func reachValues() {
-        #expect(ControlMetrics.handleReach(on: .phone) == HandleReach(edge: 22, bodyBand: 22))
-        #expect(
-            ControlMetrics.handleReach(on: .tabletWithDrop) == HandleReach(edge: 22, bodyBand: 22))
-        #expect(ControlMetrics.handleReach(on: .desktop) == HandleReach(edge: 9, bodyBand: 14))
+        #expect(ControlMetrics.handleReach(on: .phone) == HandleReach(edge: 22))
+        #expect(ControlMetrics.handleReach(on: .tabletWithDrop) == HandleReach(edge: 22))
+        #expect(ControlMetrics.handleReach(on: .desktop) == HandleReach(edge: 9))
     }
 }

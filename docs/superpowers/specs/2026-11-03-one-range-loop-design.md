@@ -49,6 +49,13 @@ The precedence rule (`TimelineHandles`), latched at touch-down as today:
 | — | Tap / click | Place the playhead. **The range is kept** |
 | — | Double tap / click | Place the playhead and play (unchanged) |
 
+> **Changed 2026-11-08 (PR after #85):** row 4 is now *anywhere inside the loop's span*, at any
+> height, on every platform — asked for from an iPhone ("when I drag my finger inside of a looped
+> area typically the intent is to move the whole loop along"), and taken for the Mac too. A press
+> there that never moves is still a click (row "Tap / click"), on the Mac as well. Row 5 is
+> therefore *outside the loop*: a new loop can no longer be drawn starting inside the current
+> one. The body band is gone. See `TimelineHandles` for the reasoning.
+
 - **Grab radius by input device**, from `ControlMetrics` keyed on `EmptyStatePrompt.Surface`:
   9 pt either side on the Mac (the 20 pt target it has now), **22 pt** on touch (44 pt, the
   HIG minimum). The body band grows the same way: 14 pt → 22 pt on touch. *My call.*

@@ -63,11 +63,11 @@ extension ViewerModel {
 
     /// The handle under a point in the lanes, for the hover treatment and the
     /// cursor. Answers `nil` with no track, so an empty window offers nothing.
+    /// Only the point's `x` decides it: every handle is full height.
     public func timelineHandle(at point: CGPoint) -> TimelineHandle? {
         guard hasTrack else { return nil }
         return TimelineHandles.handle(
-            at: point, laneHeight: lanePointHeight, loop: loop, viewport: viewport,
-            reach: prefs.handleReach)
+            atPixel: point.x, loop: loop, viewport: viewport, reach: prefs.handleReach)
     }
 
     /// One event of a handle drag.

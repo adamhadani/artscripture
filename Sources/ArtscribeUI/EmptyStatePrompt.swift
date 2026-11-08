@@ -64,7 +64,7 @@ public enum EmptyStatePrompt {
                 + "Or put the playhead where it starts and press A, then where it ends and press S."
         case .tabletWithDrop, .phone:
             return "Drag across the waveform to mark the passage, then tap Loop in the "
-                + "transport bar. Drag its edges to adjust it."
+                + "transport bar. Drag its edges to adjust it, or its middle to move it."
         }
     }
 

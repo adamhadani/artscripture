@@ -22,8 +22,12 @@
 /// `make check` instead of one per platform build.
 public enum LaneDragPolicy {
 
-    /// Whether a press on a loop handle that never moves is a **tap** — seek
+    /// Whether a press on a loop **edge** that never moves is a **tap** — seek
     /// there, and a double tap plays — rather than a grab that did nothing.
+    ///
+    /// Edges only. An unmoved press on the loop's *body* is a click on every
+    /// device, because the body is the whole inside of the loop (2026-11) and
+    /// a click there has always meant the playhead (`laneDragEnded`).
     ///
     /// **With a finger, yes.** A finger's reach is 22 pt either side of an edge
     /// (`ControlMetrics.handleReach`), so over a short loop almost every tap

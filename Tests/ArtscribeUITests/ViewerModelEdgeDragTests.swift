@@ -29,8 +29,6 @@ struct ViewerModelEdgeDragTests {
             channels: 1, sampleRate: 44100, frameCount: Self.totalFrames, storage: storage)
         let model = ViewerModel()
         model.loadForTesting(audio: audio, pyramid: PeakPyramid.build(audio), widthPixels: 1000)
-        // The lanes' height decides where the loop's top and bottom bars are,
-        // so a body drag cannot be tested without it.
         model.laneSize = CGSize(width: 1000, height: Self.laneHeight)
         return model
     }
@@ -131,7 +129,7 @@ struct ViewerModelEdgeDragTests {
 
     // MARK: - The loop body
 
-    @Test("dragging the loop's top bar moves the whole loop, preserving its length")
+    @Test("dragging the loop's top bar still moves the whole loop, preserving its length")
     func loopBodyMoves() {
         let model = makeModel()
         withLoop(model)
@@ -139,7 +137,7 @@ struct ViewerModelEdgeDragTests {
         #expect(model.loop.range == FrameRange(start: frame(300), count: frame(400)))
     }
 
-    @Test("the loop's bottom bar moves it too")
+    @Test("the loop's bottom bar still moves it too")
     func loopBottomBarMoves() {
         let model = makeModel()
         withLoop(model)
@@ -171,13 +169,65 @@ struct ViewerModelEdgeDragTests {
 
     // MARK: - Everything that was already there
 
-    @Test("a plain drag through the middle of the loop replaces it, and it keeps looping")
-    func plainDragInsideTheLoopStillSelects() {
+    /// 2026-11, asked for from an iPhone and taken for the Mac too: a drag
+    /// that starts inside the loop moves it. It used to draw a new loop from
+    /// under the finger.
+    @Test("a plain drag from the middle of the loop moves it, keeping its length and looping")
+    func plainDragInsideTheLoopMovesIt() {
         let model = makeModel()
         withLoop(model)
         drag(model, from: CGPoint(x: 300, y: midLane), toX: 500)
-        #expect(model.loop.range == FrameRange(start: frame(300), count: frame(200)))
+        #expect(model.loop.range == FrameRange(start: frame(400), count: frame(400)))
         #expect(model.loop.isEnabled)
+        #expect(!model.loopIsStaged)
+    }
+
+    @Test("a plain drag that starts outside the loop still replaces it")
+    func plainDragOutsideTheLoopStillDrawsANewOne() {
+        let model = makeModel()
+        withLoop(model)
+        drag(model, from: CGPoint(x: 700, y: midLane), toX: 900)
+        #expect(model.loop.range == FrameRange(start: frame(700), count: frame(200)))
+        #expect(model.loop.isEnabled)
+    }
+
+    /// The Mac seeks on mouse-down in open lane, for instant feedback. Inside
+    /// the loop it must not: the press may be the start of a move, and moving
+    /// the playhead under a playing loop the moment you take hold of it would
+    /// interrupt exactly what you are listening to.
+    @Test("pressing inside the loop and dragging leaves the playhead alone")
+    func movingTheLoopLeavesThePlayhead() {
+        let model = makeModel()
+        withLoop(model)
+        model.seek(to: frame(50))
+        drag(model, from: CGPoint(x: 300, y: midLane), toX: 450)
+        #expect(model.playhead == frame(50))
+    }
+
+    @Test("a double-click inside the loop still plays, and leaves the loop where it was")
+    func doubleClickInsideTheLoopStillPlays() {
+        let model = makeModel()
+        withLoop(model)
+        let loop = model.loop
+        drag(model, from: CGPoint(x: 400, y: midLane), toX: 400, now: 0)
+        #expect(model.playbackNotice == nil)
+        drag(model, from: CGPoint(x: 400, y: midLane), toX: 400, now: 0.1)
+        // With no audio session an attempt to play raises this notice, and
+        // nothing else in the drag path does (see `edgeGrabsDoNotPlay`).
+        #expect(model.playbackNotice != nil)
+        #expect(model.playhead == frame(400))
+        #expect(model.loop == loop)
+    }
+
+    @Test("two moves of the loop in quick succession are not a double-click")
+    func twoBodyMovesDoNotPlay() {
+        let model = makeModel()
+        withLoop(model)
+        drag(model, from: CGPoint(x: 400, y: midLane), toX: 420, now: 0)
+        drag(model, from: CGPoint(x: 420, y: midLane), toX: 440, now: 0.1)
+        #expect(model.playbackNotice == nil)
+        #expect(model.playhead == 0)
+        #expect(model.loop.range == FrameRange(start: frame(240), count: frame(400)))
     }
 
     /// The escape hatch, and the reason a modifier outranks a handle: ⌥ on top
@@ -211,6 +261,8 @@ struct ViewerModelEdgeDragTests {
         #expect(model.loop.range == FrameRange(start: frame(200), count: frame(750)))
     }
 
+    /// Inside the loop, which is the loop's body now: an unmoved press there
+    /// is a click on the Mac too, not a grab that did nothing.
     @Test("a click well away from any edge still places the playhead and keeps the loop")
     func plainClickStillWorks() {
         let model = makeModel()
@@ -257,13 +309,15 @@ struct ViewerModelEdgeDragTests {
 
     // MARK: - Hover
 
-    @Test("the hover hit test answers for the lanes' real height")
-    func hoverHitTestUsesTheLaneHeight() {
+    @Test("the hover hit test: an edge, then the whole inside, then open lane")
+    func hoverHitTestCoversTheWholeLoop() {
         let model = makeModel()
         withLoop(model)
         #expect(model.timelineHandle(at: CGPoint(x: 200, y: midLane)) == .loopStart)
         #expect(model.timelineHandle(at: CGPoint(x: 400, y: 2)) == .loopBody)
-        #expect(model.timelineHandle(at: CGPoint(x: 400, y: midLane)) == nil)
+        #expect(model.timelineHandle(at: CGPoint(x: 400, y: midLane)) == .loopBody)
+        #expect(model.timelineHandle(at: CGPoint(x: 400, y: Self.laneHeight - 2)) == .loopBody)
+        #expect(model.timelineHandle(at: CGPoint(x: 800, y: midLane)) == nil)
     }
 
     @Test("nothing is grabbable with no track loaded")

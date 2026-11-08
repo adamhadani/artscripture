@@ -20,14 +20,19 @@ extension AcceptanceRun {
         "hovering a loop edge changes the cursor",
         "and the cursor goes back to the crosshair over open lane",
         "hovering the loop's bar offers a different cursor again",
+        "hovering inside the loop offers the bar's move cursor too",
         "a real drag on the loop's in point moves it",
         "and leaves the out point exactly where it was",
         "a loop edge drag does not move the playhead",
         "dragging the out point past the in point swaps rather than collapsing",
         "a real drag on the loop's top bar moves the whole loop",
         "and preserves its length exactly",
+        "a real drag from the middle of the loop moves the whole loop",
+        "and preserves its length exactly, from the middle too",
+        "a real click inside the loop places the playhead",
+        "and leaves the loop exactly where it was",
         "a real drag dragged out a range, and its edge then moves",
-        "a plain drag through the middle of a playing loop replaces it",
+        "a plain drag outside a playing loop replaces it",
         "and it keeps looping"
     ]
 
@@ -107,10 +112,13 @@ extension AcceptanceRun {
             return signature(NSCursor.currentSystem)
         }
 
-        let overOpenLane = await read(lanes.minX + 500, lanes.midY)
+        // Open lane is outside the loop: inside it is the loop's body now,
+        // at any height (2026-11), and offers the move cursor.
+        let overOpenLane = await read(lanes.minX + 150, lanes.midY)
         let overEdge = await read(lanes.minX + 300, lanes.midY)
-        let backOverOpenLane = await read(lanes.minX + 500, lanes.midY)
+        let backOverOpenLane = await read(lanes.minX + 150, lanes.midY)
         let overBar = await read(lanes.minX + 500, lanes.minY + 3)
+        let overInside = await read(lanes.minX + 500, lanes.midY)
         CGWarpMouseCursorPosition(
             CGPoint(
                 x: restoreTo.x,
@@ -120,6 +128,7 @@ extension AcceptanceRun {
         log.note("cursor over open lane", overOpenLane ?? "not read")
         log.note("cursor over the loop's in point", overEdge ?? "not read")
         log.note("cursor over the loop's top bar", overBar ?? "not read")
+        log.note("cursor mid-lane inside the loop", overInside ?? "not read")
         // Named against the crosshair rather than merely "different": what the
         // lane offers by default is documented as `rectSelection`, so a reading
         // that matched it would mean the edge announced nothing at all.
@@ -135,6 +144,10 @@ extension AcceptanceRun {
             "hovering the loop's bar offers a different cursor again",
             overBar != nil && overBar != crosshair && overBar != overEdge,
             unless: overBar == nil ? unread : nil)
+        log.check(
+            "hovering inside the loop offers the bar's move cursor too",
+            overInside != nil && overInside == overBar && overInside != crosshair,
+            unless: overInside == nil || overBar == nil ? unread : nil)
     }
 
     // MARK: - The edges
@@ -184,8 +197,8 @@ extension AcceptanceRun {
     ) async {
         setLoop(model, fromPoint: 300, toPoint: 700)
         let lengthBefore = model.loop.range.count
-        // On the bar the loop draws along the top of the lanes, which is where
-        // the body handle lives — mid-lane is still the selection drag's.
+        // On the bar the loop draws along the top of the lanes — the body's
+        // only handle until 2026-11, and still part of it.
         await pointerDrag(
             from: CGPoint(x: lanes.minX + 500, y: lanes.minY + 3),
             to: CGPoint(x: lanes.minX + 600, y: lanes.minY + 3))
@@ -195,6 +208,38 @@ extension AcceptanceRun {
             "a real drag on the loop's top bar moves the whole loop",
             within(model, moved.start, ofPoint: 400))
         log.check("and preserves its length exactly", moved.count == lengthBefore)
+
+        // Mid-lane: the gesture the user asked for. It drew a new loop until
+        // 2026-11.
+        setLoop(model, fromPoint: 300, toPoint: 700)
+        await pointerDrag(
+            from: CGPoint(x: lanes.minX + 500, y: lanes.midY),
+            to: CGPoint(x: lanes.minX + 420, y: lanes.midY))
+        let fromMiddle = model.loop.range
+        log.note("loop after dragging its middle", "\(fromMiddle.start)…\(fromMiddle.end)")
+        log.check(
+            "a real drag from the middle of the loop moves the whole loop",
+            within(model, fromMiddle.start, ofPoint: 220))
+        log.check(
+            "and preserves its length exactly, from the middle too",
+            fromMiddle.count == lengthBefore)
+
+        // And a click there is still a click: the playhead, not a grab.
+        model.seek(to: frame(model, atLanePoint: 100))
+        let loopBefore = model.loop
+        let at = CGPoint(x: lanes.minX + 450, y: lanes.midY)
+        sendMouse(.leftMouseDown, at: at)
+        await settle(seconds: 0.05)
+        sendMouse(.leftMouseUp, at: at)
+        await settle(seconds: 0.15)
+        let landed = model.viewport.pixel(forFrame: model.playhead)
+        log.check(
+            "a real click inside the loop places the playhead (at \(Int(landed)) pt, wanted 450)",
+            within(model, model.playhead, ofPoint: 450))
+        log.check("and leaves the loop exactly where it was", model.loop == loopBefore)
+        // Past the double-click interval, so the next check's first press can
+        // never pair with this click.
+        await settle(seconds: 0.45)
     }
 
     @MainActor
@@ -220,22 +265,22 @@ extension AcceptanceRun {
 
     // MARK: - The regression that would be instantly visible
 
-    /// The eighth gesture must not have eaten the first. A plain drag through
-    /// the middle of a loop region still drags out a passage, because the loop's
-    /// body handle is its bars and not its whole area — and since the one-range
-    /// change that passage *replaces* the loop, which keeps looping.
+    /// The handles must not have eaten the first gesture. A plain drag that
+    /// starts outside the loop still drags out a passage — inside it is the
+    /// loop's body since 2026-11, and moves it — and since the one-range change
+    /// that passage *replaces* the loop, which keeps looping.
     @MainActor
     private static func checkPlainDragSurvives(
         model: ViewerModel, lanes: CGRect, log: inout Logger
     ) async {
-        setLoop(model, fromPoint: 200, toPoint: 900)
+        setLoop(model, fromPoint: 200, toPoint: 450)
         if !model.loop.isEnabled { press(.d) }
-        let expected = PixelMapping.range(fromPixel: 400, toPixel: 600, in: model.viewport)
+        let expected = PixelMapping.range(fromPixel: 600, toPixel: 800, in: model.viewport)
         await pointerDrag(
-            from: CGPoint(x: lanes.minX + 400, y: lanes.midY),
-            to: CGPoint(x: lanes.minX + 600, y: lanes.midY))
+            from: CGPoint(x: lanes.minX + 600, y: lanes.midY),
+            to: CGPoint(x: lanes.minX + 800, y: lanes.midY))
         log.check(
-            "a plain drag through the middle of a playing loop replaces it "
+            "a plain drag outside a playing loop replaces it "
                 + "(\(model.loop.range.start)…\(model.loop.range.end))",
             model.loop.range == expected)
         log.check("and it keeps looping", model.loop.isEnabled)
