@@ -71,7 +71,35 @@ struct EmptyStateView: View {
         return SampleTrack.installedURL()
     }
 
+    /// **Scrolls once it no longer fits, and is centred while it does.**
+    ///
+    /// The block is a fixed stack — drop target, up to five recents, the About
+    /// link — with nothing in it that can shrink. On a landscape iPhone one
+    /// recent fills the ~250 pt it gets (see `dropZoneInset`); the second
+    /// overflowed, and the document's column, which cannot grow, split the
+    /// excess evenly off its top and bottom: the header with Open… went off the
+    /// top of the screen and the status bar off the bottom. Reported from an
+    /// iPhone with two recents, and reproduced on a simulator with four, where
+    /// the header was gone entirely — with or without `DocumentView`'s
+    /// proposal-sized frame, so it was never that frame's doing.
+    ///
+    /// A scroll view takes exactly the space it is offered, so the header, the
+    /// transport bar and the status bar stay put whatever the list holds. The
+    /// content is given at least the visible height, which keeps it centred as
+    /// before when it fits, and `basedOnSize` stops a block that fits from
+    /// bouncing under a finger.
     var body: some View {
+        GeometryReader { proxy in
+            ScrollView(.vertical) {
+                content
+                    .frame(maxWidth: .infinity, minHeight: proxy.size.height)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+        }
+        .background(palette.panel.color())
+    }
+
+    private var content: some View {
         VStack(spacing: Self.blockGap(for: surface)) {
             // The drop target, drawn as one. A dashed outline does two jobs
             // here: it says *this rectangle is where a file goes*, which the
@@ -186,8 +214,6 @@ struct EmptyStateView: View {
             #endif
         }
         .padding(.vertical, Self.screenInset)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(palette.panel.color())
     }
 
     /// See `EmptyStatePrompt` — the wording differs by platform because on a
