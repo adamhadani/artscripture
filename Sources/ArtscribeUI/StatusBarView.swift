@@ -38,14 +38,22 @@ struct StatusBarView: View {
         // A `ForEach`, never literal indices: those named five arrangements
         // over a list whose length follows `dropOrder`, and when the Selection
         // field went (2026-11) the bar trapped "Index out of range" on launch.
+        //
+        // **One line, not two** (2026-11): a label beside each value rather
+        // than above it, so the bar is a single row of text and the transport
+        // above it — what you actually press — gets the height. The user chose
+        // it from four layouts rendered on a phone. The last arrangement gives
+        // up LOADED IN, which a phone has no room for beside the essential
+        // three; DEGRADED is not droppable and keeps its slot in every one.
         ViewThatFits(in: .horizontal) {
             ForEach(StatusBarFields.candidates.indices, id: \.self) { index in
-                row(StatusBarFields.candidates[index])
+                row(StatusBarFields.candidates[index], showsLoadTime: true)
             }
+            row(StatusBarFields.essential, showsLoadTime: false)
         }
         .padding(.horizontal, Metrics.gutter)
-        .padding(.top, Metrics.md + bottomInset / 2)
-        .padding(.bottom, Metrics.md)
+        .padding(.top, Metrics.sm + bottomInset / 2)
+        .padding(.bottom, Metrics.sm)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(palette.panel.color())
         .overlay(alignment: .top) {
@@ -58,17 +66,21 @@ struct StatusBarView: View {
     /// shifting column drags every field to its right along with it. The
     /// position readout is the worst offender of all, changing sixty times a
     /// second.
-    private func row(_ fields: [StatusBarFields.Field]) -> some View {
+    ///
+    /// Each field is a label and a value, and only the *value* has the fixed
+    /// width — the labels are constant, and the two that change reserve the
+    /// longer word (`steadyLabel`), so the whole row is a fixed width too.
+    private func row(_ fields: [StatusBarFields.Field], showsLoadTime: Bool) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: Metrics.gutter) {
             ForEach(fields, id: \.self) { field in
-                view(for: field).frame(width: StatusBarFields.width(of: field), alignment: .leading)
+                view(for: field)
             }
             Spacer(minLength: Metrics.md)
             // Outside the droppable set on purpose. DEGRADED is spec §8 — a
             // stall the user is not told about is the whole thing that rule
             // exists to prevent — so it must survive every width. LOADED IN
             // shares the slot because the two are never both interesting.
-            trailing
+            trailing(showsLoadTime: showsLoadTime)
         }
     }
 
@@ -85,7 +97,9 @@ struct StatusBarView: View {
             // A speed that is not 100% is the one piece of state you can forget
             // you left on, and it changes what you are hearing, so it is the one
             // readout that shouts.
-            self.field("SPEED", speedText, emphasised: SpeedStepping.isAltered(model.speed.ratio))
+            self.field(
+                "SPEED", speedText, width: StatusBarFields.width(of: .speed),
+                emphasised: SpeedStepping.isAltered(model.speed.ratio))
         case .loop:
             // An engaged loop is a mode, and it changes what you are hearing
             // just as much as an altered speed does — so it gets the speed
@@ -98,20 +112,21 @@ struct StatusBarView: View {
             // only by which word is bold. Contrast against the panel is 4.9
             // (dark) and 6.8 (light) — see `Palette`.
             self.field(
-                "LOOP", loopText, emphasised: model.loop.isActive,
+                "LOOP", loopText, width: StatusBarFields.width(of: .loop),
+                emphasised: model.loop.isActive,
                 tint: model.loop.isActive ? palette.loop.color() : nil)
         case .zoom:
-            self.field("ZOOM", zoom)
+            self.field("ZOOM", zoom, width: StatusBarFields.width(of: .zoom))
         case .format:
-            self.field("FORMAT", format)
+            self.field("FORMAT", format, width: StatusBarFields.width(of: .format))
         }
     }
 
     @ViewBuilder
-    private var trailing: some View {
+    private func trailing(showsLoadTime: Bool) -> some View {
         if let warning {
             field("DEGRADED", warning, tint: palette.danger.color())
-        } else if let seconds = model.lastLoadSeconds {
+        } else if showsLoadTime, let seconds = model.lastLoadSeconds {
             field("LOADED IN", String(format: "%.2f s", seconds))
         }
     }
@@ -119,13 +134,15 @@ struct StatusBarView: View {
     /// Position and play state together, because they are read together: the
     /// triangle says whether the number is moving.
     private var transport: some View {
-        VStack(alignment: .leading, spacing: Metrics.xxs) {
-            Eyebrow(model.isPlaying ? "▶ PLAYING" : "■ POSITION")
+        HStack(alignment: .firstTextBaseline, spacing: Metrics.sm) {
+            Eyebrow.steady(model.isPlaying ? "▶ PLAYING" : "■ POSITION", widest: "■ POSITION")
             Text(positionText)
                 .font(Typography.readout)
                 .monospacedDigit()
                 .foregroundStyle(
-                    model.isPlaying ? palette.accent.color() : palette.text.color())
+                    model.isPlaying ? palette.accent.color() : palette.text.color()
+                )
+                .frame(width: StatusBarFields.width(of: .position), alignment: .leading)
         }
     }
 
@@ -138,14 +155,19 @@ struct StatusBarView: View {
     /// over anything wrapped around the field. That is exactly how the spec §8
     /// DEGRADED warning had been rendering in the ordinary text colour, visually
     /// identical to the readout beside it.
+    ///
+    /// `width` is the value's fixed column; `nil` for the trailing slot, the
+    /// one field without one, as before.
     private func field(
-        _ label: String, _ value: String, emphasised: Bool = false, tint: Color? = nil
+        _ label: String, _ value: String, width: CGFloat? = nil, emphasised: Bool = false,
+        tint: Color? = nil
     ) -> some View {
-        VStack(alignment: .leading, spacing: Metrics.xxs) {
+        HStack(alignment: .firstTextBaseline, spacing: Metrics.sm) {
             Eyebrow(label)
             Text(value)
                 .font(emphasised ? Typography.readoutEmphasis : Typography.readout)
                 .lineLimit(1)
+                .frame(width: width, alignment: .leading)
         }
         .foregroundStyle(tint ?? (emphasised ? palette.emphasis.color() : palette.text.color()))
     }

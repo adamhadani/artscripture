@@ -359,10 +359,16 @@ extension AcceptanceRun {
     }
 
     /// The status-bar band, in the same coordinates as the lane frames.
+    ///
+    /// **Inside the bar, never over the transport.** The bar went to one line
+    /// in 2026-11 and is about 28 pt on a Mac; the 40 pt this used to take
+    /// reached into the transport above it, whose preroll button is drawn in
+    /// the same violet as an engaged loop — which would make "a disengaged loop
+    /// shows no violet" fail for a reason that has nothing to do with the loop.
     @MainActor
     static func statusBarRect() -> CGRect {
         guard let window = NSApp.windows.first, let view = window.contentView else { return .zero }
-        let height = 40.0
+        let height = 24.0
         return CGRect(
             x: 0, y: view.bounds.height - height, width: view.bounds.width, height: height)
     }

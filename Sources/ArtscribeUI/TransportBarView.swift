@@ -61,7 +61,9 @@ struct TransportBarView: View {
     @ScaledMetric(relativeTo: .body) private var pitchLabelFloor: CGFloat = 40
 
     private var state: TransportState { model.transportState }
-    private var visibleGroups: [[TransportControl]] { TransportControl.visibleGroups(in: state) }
+    private var visibleGroups: [[TransportControl]] {
+        TransportControl.visibleGroups(in: state, on: EmptyStatePrompt.current)
+    }
 
     /// The width this bar has been given. Measured off a frame pinned to the
     /// proposal, so it is what the *container* offers and never what the
@@ -153,7 +155,11 @@ struct TransportBarView: View {
             restoreFocus()
         } label: {
             Image(systemName: control.symbol(in: state))
-                .font(.system(size: metrics.glyph, weight: .medium))
+                .font(
+                    .system(
+                        size: TransportDensity.glyph(forWidth: width, metrics: metrics),
+                        weight: .medium)
+                )
                 // Whatever width the chosen density settled on — see `body`.
                 // **Height never varies**, because height is the axis a thumb
                 // is actually short of and the axis nothing here competes for.

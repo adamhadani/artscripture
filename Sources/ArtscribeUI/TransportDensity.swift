@@ -77,25 +77,39 @@ struct TransportDensity: Equatable {
     /// The roomiest packing that fits `available`, or the tightest one if none
     /// does.
     ///
+    /// **Between the preferred width and the floor, the widest that fits** —
+    /// not the next of a few fixed steps. With steps (55, 44, 30) a landscape
+    /// phone could not reach 44 and fell all the way to 30, leaving about
+    /// 110 pt of the row empty beside a column of narrow, tall buttons; the
+    /// user asked for the buttons to *"stretch out horizontally a bit so
+    /// doesn't look weird and fills up the space more naturally"*. A row that
+    /// fits its preferred width (an iPad, a Mac) is unchanged.
+    ///
     /// Falling back to the tightest rather than to nothing is deliberate: a bar
     /// that overflows a little is recoverable, and `available` is zero on the
     /// very first layout pass, before any geometry has been measured. Starting
     /// tight and widening on the next pass is the direction to be wrong in —
     /// the other way round draws a row out under the notch for one frame.
     static func fitting(available: CGFloat, row: Row, metrics: ControlMetrics) -> TransportDensity {
-        let candidates: [TransportDensity] = [
-            .init(buttonWidth: metrics.buttonWidth, readoutsAtFloor: false),
-            .init(buttonWidth: metrics.target, readoutsAtFloor: false),
-            .init(buttonWidth: metrics.compactWidth, readoutsAtFloor: false),
-            .init(buttonWidth: metrics.compactWidth, readoutsAtFloor: true)
-        ]
-        for candidate in candidates {
-            let needed = width(
-                buttonWidth: candidate.buttonWidth,
-                readoutsAtFloor: candidate.readoutsAtFloor,
-                row: row, metrics: metrics)
-            if needed <= available { return candidate }
+        let preferred = TransportDensity(buttonWidth: metrics.buttonWidth, readoutsAtFloor: false)
+        let full = width(
+            buttonWidth: preferred.buttonWidth, readoutsAtFloor: false, row: row, metrics: metrics)
+        if full <= available { return preferred }
+        // Everything but the buttons, then what is left shared between them —
+        // rounded down, so the row never ends up a fraction of a point too wide.
+        let rest = width(buttonWidth: 0, readoutsAtFloor: false, row: row, metrics: metrics)
+        let stretched = ((available - rest) / CGFloat(Swift.max(1, row.buttons))).rounded(.down)
+        if stretched >= metrics.compactWidth {
+            return TransportDensity(
+                buttonWidth: Swift.min(stretched, metrics.buttonWidth), readoutsAtFloor: false)
         }
-        return candidates[candidates.count - 1]
+        return TransportDensity(buttonWidth: metrics.compactWidth, readoutsAtFloor: true)
+    }
+
+    /// The glyph for a button `width` wide: the metric's own size, or smaller
+    /// where the button is too narrow to hold it. A ⏪ runs about 1.4× its
+    /// point size across, so 0.62 of the width leaves it a margin either side.
+    static func glyph(forWidth width: CGFloat, metrics: ControlMetrics) -> CGFloat {
+        Swift.min(metrics.buttonGlyph, (width * 0.62).rounded(.down))
     }
 }
