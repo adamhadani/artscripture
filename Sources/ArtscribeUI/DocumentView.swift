@@ -150,15 +150,14 @@ public struct DocumentView: View {
                 // picture beside them.
                 TimelineAndPictureView(
                     model: model, appearance: appearance, miniPlayer: context.miniPlayer)
+                // Above the status bar, and given the keyboard back after every
+                // press: see `TransportBarView` for why, in a keyboard-first app.
+                TransportBarView(model: model) { hasKeyboardFocus = true }
+                StatusBarView(model: model, bottomInset: bottomInset)
             } else {
+                // No transport or status bar without a track: `EmptyStateView`.
                 EmptyStateView(model: model, recents: context.recents, about: context.about)
             }
-
-            // Directly above the status bar, and given the keyboard back after
-            // every press: see `TransportBarView` for why that second half is
-            // not optional in a keyboard-first app.
-            TransportBarView(model: model) { hasKeyboardFocus = true }
-            StatusBarView(model: model, bottomInset: bottomInset)
         }
         #if !os(macOS)
         // Exactly the space offered, however tall the content. Load-bearing.
