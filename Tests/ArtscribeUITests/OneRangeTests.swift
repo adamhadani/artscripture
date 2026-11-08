@@ -55,11 +55,41 @@ struct OneRangeTests {
 
     // MARK: - The drag
 
-    @Test("a drag defines the range, with looping left as it was")
+    /// A new loop loops: the user's *"should be opt out rather than opt in"*.
+    @Test("a drag defines the range, and the new loop loops")
     func aDragDefinesTheRange() {
         let model = makeModel()
         drag(model, from: 100, to: 300)
         #expect(model.loop.range == range(100, 300))
+        #expect(model.loop.isEnabled)
+    }
+
+    /// Switching looping off is for *this* loop. The next one marked is a new
+    /// loop, and loops — otherwise one "off" would quietly bring back the
+    /// opt-in behaviour this replaced.
+    @Test("with looping switched off, a newly marked passage still loops")
+    func aNewPassageLoopsEvenAfterLoopingWasSwitchedOff() {
+        let model = makeModel()
+        drag(model, from: 100, to: 300)
+        model.toggleLoop()
+        #expect(!model.loop.isEnabled)
+        drag(model, from: 500, to: 700)
+        #expect(model.loop.range == range(500, 700))
+        #expect(model.loop.isEnabled)
+    }
+
+    /// The edits keep it off: dragging an edge or the middle is adjusting the
+    /// loop you switched off, not making a new one.
+    @Test("with looping switched off, adjusting the loop leaves it off")
+    func editingALoopKeepsLoopingOff() {
+        let model = makeModel()
+        drag(model, from: 100, to: 300)
+        model.toggleLoop()
+        drag(model, from: 300, to: 400)  // its end edge
+        #expect(model.loop.range == range(100, 400))
+        #expect(!model.loop.isEnabled)
+        drag(model, from: 250, to: 350)  // its middle
+        #expect(model.loop.range == range(200, 500))
         #expect(!model.loop.isEnabled)
     }
 
@@ -195,12 +225,12 @@ struct OneRangeTests {
         #expect(model.loop == LoopRegion())
     }
 
-    @Test("select all makes the whole file the range, and does not turn looping on")
-    func selectAllLoopsTheWholeFileWithoutTurningLoopingOn() {
+    @Test("select all makes the whole file the loop, and it loops")
+    func selectAllLoopsTheWholeFile() {
         let model = makeModel()
         model.loopWholeFile()
         #expect(model.loop.range == FrameRange(start: 0, count: Self.totalFrames))
-        #expect(!model.loop.isEnabled)
+        #expect(model.loop.isEnabled)
     }
 
     @Test("shift-space goes to the range start, looping or not, else to 0")

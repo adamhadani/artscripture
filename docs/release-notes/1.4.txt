@@ -4,6 +4,8 @@ Start a ramp and the button becomes a live readout: which repetition you are on,
 
 The header's buttons now share one shape and size, so the top of the screen reads as one set of controls.
 
+Mark a passage and it loops straight away; playback no longer runs on past the passage you just marked. Tap the loop button if you only wanted to mark it.
+
 To move a loop, drag it from anywhere inside it; it keeps its length. Drag its edges to resize it, and drag outside it to mark a new passage, as before. A click or tap inside the loop still just moves the playhead.
 
 The transport buttons are bigger and easier to hit on iPhone and iPad, and the readouts beneath them now sit on one line, so the controls you press most get the room. On iPhone the buttons stretch across the bar, and the zoom buttons make way for them; pinch to zoom.

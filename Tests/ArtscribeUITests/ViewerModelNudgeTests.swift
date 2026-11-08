@@ -97,7 +97,6 @@ struct ViewerModelNudgeTests {
         model.setLoopIn()
         model.seek(to: 300_000)
         model.setLoopOut()
-        model.toggleLoop()
         let loop = model.loop
         #expect(loop.isActive)
 

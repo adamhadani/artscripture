@@ -184,18 +184,20 @@ extension AcceptanceRun {
     ) async {
         model.fitWholeFile()
 
-        // The acceptance script since the one-range change: drag, then D. The
-        // drag *is* the loop region; `G` (Selection → Loop) is gone.
+        // The drag *is* the loop, and since 2026-11 a new loop loops: D is the
+        // way out, not the way in. (`G`, Selection → Loop, went with the
+        // one-range change.)
         model.clearLoop()
         model.dragChanged(startPixel: 300, currentPixel: 300, extending: false)
         model.dragChanged(startPixel: 300, currentPixel: 340, extending: false)
         model.dragEnded(
             startPixel: 300, endPixel: 340, now: ProcessInfo.processInfo.systemUptime)
         log.check("a drag defines the loop region", !model.loop.range.isEmpty)
-        log.check("a drag alone does not start looping", !model.loop.isEnabled)
+        log.check("and the new loop loops without D", model.loop.isActive)
         press(.d)
-        log.check("D enables looping", model.loop.isActive)
+        log.check("D switches looping off", !model.loop.isActive)
         press(.d)
+        log.check("and D switches it back on", model.loop.isActive)
         model.clearLoop()
 
         // The brief's listening check, measured: a four-second loop at 50%
@@ -209,7 +211,8 @@ extension AcceptanceRun {
         model.seek(to: outPoint)
         press(.s)
         log.check("S sets the loop out point at the playhead", model.loop.range.end == outPoint)
-        press(.d)
+        // A made a new loop, which loops; S edited it and kept it so. No D.
+        log.check("A and S give a loop that is already looping", model.loop.isActive)
         press(.three)
         model.seek(to: inPoint)
         // Space resumes from the in point exactly: the loop is active and the
@@ -348,7 +351,8 @@ extension AcceptanceRun {
         press(.a)
         model.seek(to: loopStart + visible / 2)
         press(.s)
-        press(.d)
+        // A new loop already loops; this only covers a loop left switched off.
+        if !model.loop.isEnabled { press(.d) }
         model.seek(to: loopStart)
         let held = model.viewport.startFrame
         // Inside an active loop, so the preroll clamps to the in point and

@@ -154,6 +154,9 @@ extension ViewerModel {
         if dragOrigin != startPixel {
             dragOrigin = startPixel
             let pressed = PixelMapping.frame(atPixel: startPixel, in: viewport)
+            // A new passage loops; a ⇧-extend of the loop is an edit and
+            // keeps looping as it was (`enterLoopIfOutside`).
+            rangeDragLooping = extending && !loop.range.isEmpty ? loop.isEnabled : true
             if extending && !loop.range.isEmpty {
                 let range = loop.range
                 let startIsFarther = abs(pressed - range.start) > abs(pressed - range.end)
@@ -177,7 +180,7 @@ extension ViewerModel {
         stageLoop(
             LoopRegion(
                 range: FrameRange(start: low, count: Swift.max(anchor, head) - low),
-                isEnabled: loop.isEnabled))
+                isEnabled: rangeDragLooping))
     }
 
     /// Ends a drag. A drag that never really moved is a click: it places the
