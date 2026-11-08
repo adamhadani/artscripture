@@ -96,23 +96,46 @@ extension ViewerModel {
         if !isPlaying { play() }
     }
 
-    /// **Stop**, wherever the ramp got to, including from `.complete`.
+    /// Ends the ramp, wherever it got to, including from `.complete` — and
+    /// touches nothing else: the speed stays where the ramp left it, and so
+    /// does the transport.
     ///
-    /// It leaves the speed and the transport exactly where they are. Snapping
-    /// back to 100% would undo the tempo you pressed stop in order to keep
-    /// working at, and pausing would be the ramp taking over a transport it does
-    /// not own — the same reasoning that decides what happens at the end of a
-    /// ramp, for which see `SpeedRamp`.
+    /// This is the app's own stop, for when the ramp has lost its reason to
+    /// run: the loop was cleared, the track closed or replaced. None of those
+    /// should silence a playing track. **The Stop a person presses is
+    /// `stopPractice()`**, which also pauses.
     public func stopRamp() {
         guard !ramp.isIdle else { return }
         ramp.stop()
     }
 
-    /// What the menu item and `⌥R` do. A completed ramp restarts rather than
-    /// clearing, because "again, from the top" is what you want next.
+    /// **Stop**, as pressed: the header's stop segment, the Practice panel's
+    /// Stop, the menu item and `⌥R`. Ends the ramp and pauses.
+    ///
+    /// Until 2026-11 it ended the ramp and left the track playing, on the
+    /// reasoning that pausing would be the ramp taking over a transport it does
+    /// not own. But `startRamp()` *does* take the transport — it presses play —
+    /// and the user, from using 1.4: *"clicking stop on Practice … doesn't
+    /// actually stop playback (just stops the 'practice' iterations)"*. Start
+    /// plays, so Stop stops.
+    ///
+    /// The speed still stays where the ramp left it: snapping back to 100%
+    /// would undo the tempo you stopped at in order to keep working at it.
+    /// And a ramp that has already **completed** is left playing — it is
+    /// holding its last speed on purpose (`SpeedRamp`), and what the header
+    /// offers then is not Stop but ✕, to put the readout away.
+    public func stopPractice() {
+        let wasRunning = ramp.isRunning
+        stopRamp()
+        if wasRunning && isPlaying { pause() }
+    }
+
+    /// What the Practice panel's Start/Stop, the menu item and `⌥R` do. A
+    /// completed ramp restarts rather than clearing, because "again, from the
+    /// top" is what you want next.
     public func toggleRamp() {
         if ramp.isRunning {
-            stopRamp()
+            stopPractice()
         } else {
             startRamp()
         }

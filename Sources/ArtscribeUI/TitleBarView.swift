@@ -164,7 +164,9 @@ struct TitleBarView: View {
                         onPractice()
                     },
                     onStop: {
-                        model.stopRamp()
+                        // Stop pauses a running ramp; ✕ on a finished one only
+                        // puts the readout away (`stopPractice`).
+                        model.stopPractice()
                         restoreFocus()
                     })
             }
