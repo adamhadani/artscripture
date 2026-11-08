@@ -2,28 +2,46 @@ import SwiftUI
 
 /// What the header's overflow menu can open.
 ///
-/// A value rather than four closures on `TitleBarView`, so adding a fifth
-/// surface is one field here and one line in the menu rather than a change to
-/// the view's shape and to every call site.
+/// A value rather than a closure per surface on `TitleBarView`, so adding one
+/// is one field here and one line in the menu rather than a change to the
+/// view's shape and to every call site.
+///
+/// Practice is not here. It was, until it got a button of its own in the
+/// header (`PracticeButton`): it is the feature, not a destination beside About.
 struct AuxiliaryMenuActions {
     let settings: () -> Void
     let shortcuts: () -> Void
-    let practice: () -> Void
     let about: () -> Void
 }
 
-/// The header: wordmark, the loaded file, and the decode progress bar.
+/// The header: wordmark, the loaded file, the decode progress bar, and the
+/// Practice button.
 struct TitleBarView: View {
     let model: ViewerModel
     let onOpen: () -> Void
+    /// Opens Practice — a window on the Mac, a sheet on iPad and iPhone. The
+    /// button shows only while a track is open, on every platform.
+    ///
+    /// **Required, with no default**, like `restoreFocus` below: a closure that
+    /// may be `nil` is a wire that may not be connected (CLAUDE.md), and a call
+    /// site that forgot this would hide the app's main feature without a word.
+    ///
+    /// `DocumentView` passes `practice.show()`, not the menu's `toggle()`: a
+    /// button labelled Practice should never be the thing that closes it. On
+    /// the Mac a click here has already made the document key, so the two would
+    /// agree anyway; on iPad the sheet covers the button.
+    let onPractice: () -> Void
+    /// Hands the keyboard back to the document after a press. See
+    /// `TransportBarView` for why this is not optional in a keyboard-first app.
+    let restoreFocus: () -> Void
     /// **The only route to the auxiliary surfaces on a touch-only device.**
     ///
     /// iPadOS has a menu bar, but reaching it needs a hardware keyboard — so on
-    /// a phone, or an iPad without one, `⌘,` `⌘/` and `⌘P` reach nothing at all.
-    /// Settings and About had been given buttons; the shortcut reference and
-    /// Practice never were, and so simply did not exist on those devices.
+    /// a phone, or an iPad without one, `⌘,` and `⌘/` reach nothing at all.
+    /// Settings and About had been given buttons; the shortcut reference never
+    /// was, and so simply did not exist on those devices.
     ///
-    /// One menu rather than four buttons: the header is already tight on a
+    /// One menu rather than a button each: the header is already tight on a
     /// phone, and this is the shape iOS uses for exactly this — a set of
     /// destinations that are not the primary action. macOS passes nil; it has
     /// the menu bar.
@@ -36,6 +54,11 @@ struct TitleBarView: View {
     /// not have a "back".
     var onClose: (() -> Void)?
     @Environment(\.palette) private var palette
+    #if !os(macOS)
+    /// Split View, Slide Over and a narrow Stage Manager window are compact
+    /// on an iPad; see `PracticeButtonFace.prefersCompact`.
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    #endif
     /// Follows the user's text-size setting. A plain `CGFloat` scaled by the
     /// body text style, used as a *factor* rather than as a size, because the
     /// base value depends on the surface and `@ScaledMetric` takes a literal.
@@ -126,66 +149,33 @@ struct TitleBarView: View {
                 }
             }
 
-            if let auxiliary {
-                Menu {
-                    Button("Settings…", systemImage: "gearshape", action: auxiliary.settings)
-                    Button(
-                        "Keyboard Shortcuts", systemImage: "keyboard",
-                        action: auxiliary.shortcuts)
-                    Button("Practice", systemImage: "metronome", action: auxiliary.practice)
-                    // Only for a video file, like the transport's Video button:
-                    // without a hardware keyboard there is no View menu.
-                    if model.hasVideo {
-                        Toggle(
-                            isOn: Binding(
-                                get: { model.prefs.video.shown },
-                                set: { _ in model.toggleVideo() })
-                        ) {
-                            Label("Video", systemImage: "film")
-                        }
-                    }
-                    Divider()
-                    // A phone has no menu bar, so this and the Loop button's
-                    // long press are its only ways to remove a loop.
-                    Button("Clear Loop", systemImage: "xmark.circle", role: .destructive) {
-                        model.clearLoop()
-                    }
-                    .disabled(model.loop.range.isEmpty)
-                    Divider()
-                    Button(
-                        "About Artscripture", systemImage: "info.circle", action: auxiliary.about)
-                } label: {
-                    // **The control this whole file was reopened for.** It was
-                    // a bare 15 pt glyph: a 15 × 15 pt target, on the one route
-                    // to Settings, Shortcuts, Practice and About that a device
-                    // without a hardware keyboard has.
-                    Image(systemName: "ellipsis.circle")
-                        .font(.system(size: metrics.glyph))
-                        .foregroundStyle(palette.dimmed.color())
-                        .frame(width: metrics.chromeHeight, height: metrics.chromeHeight)
-                        .hitRegion(target: metrics.target, drawn: metrics.chromeHeight)
-                }
-                .menuStyle(.borderlessButton)
-                .menuIndicator(.hidden)
-                .fixedSize()
-                .accessibilityLabel("More")
+            if model.hasTrack {
+                PracticeButton(
+                    face: PracticeButtonFace.face(
+                        for: model.ramp, speed: model.speed.ratio, compact: compactPractice),
+                    metrics: metrics,
+                    onOpen: {
+                        // Focus first, *then* the window or sheet: restoring it
+                        // afterwards would point the keyboard back at the
+                        // document behind a Practice surface that has just
+                        // taken it. Done before, the document is the one that
+                        // has it when Practice is put away again.
+                        restoreFocus()
+                        onPractice()
+                    },
+                    onStop: {
+                        model.stopRamp()
+                        restoreFocus()
+                    })
             }
 
-            Button("Open…", action: onOpen)
-                .buttonStyle(.plain)
-                .font(Typography.readout)
-                .foregroundStyle(palette.text.color())
-                .padding(.horizontal, metrics.groupPadding * 1.4)
-                .frame(minHeight: metrics.chromeHeight)
-                .background(
-                    RoundedRectangle(cornerRadius: metrics.cornerRadius)
-                        .fill(palette.panel.color())
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: metrics.cornerRadius)
-                        .stroke(palette.rule.color(), lineWidth: 1)
-                )
-                .hitRegion(target: metrics.target, drawn: metrics.chromeHeight)
+            // `⋯` and Open… sit closer to each other than to Practice: two
+            // groups, the primary action and the utilities, which is how Apple's
+            // toolbar guidance asks related items to be gathered.
+            HStack(spacing: Metrics.sm) {
+                auxiliaryMenu
+                openButton
+            }
         }
         .padding(.horizontal, Metrics.gutter)
         // Clear of the window's traffic lights, which macOS draws on top of this
@@ -200,6 +190,80 @@ struct TitleBarView: View {
         .overlay(alignment: .bottom) {
             Rectangle().fill(palette.rule.color()).frame(height: Metrics.hairline)
         }
+    }
+
+    private var compactPractice: Bool {
+        #if os(macOS)
+        let horizontallyCompact = false
+        #else
+        let horizontallyCompact = horizontalSizeClass == .compact
+        #endif
+        return PracticeButtonFace.prefersCompact(
+            surface: EmptyStatePrompt.current, horizontallyCompact: horizontallyCompact)
+    }
+
+    @ViewBuilder private var auxiliaryMenu: some View {
+        if let auxiliary {
+            Menu {
+                Button("Settings…", systemImage: "gearshape", action: auxiliary.settings)
+                Button(
+                    "Keyboard Shortcuts", systemImage: "keyboard",
+                    action: auxiliary.shortcuts)
+                // Only for a video file, like the transport's Video button:
+                // without a hardware keyboard there is no View menu.
+                if model.hasVideo {
+                    Toggle(
+                        isOn: Binding(
+                            get: { model.prefs.video.shown },
+                            set: { _ in model.toggleVideo() })
+                    ) {
+                        Label("Video", systemImage: "film")
+                    }
+                }
+                Divider()
+                // A phone has no menu bar, so this and the Loop button's
+                // long press are its only ways to remove a loop.
+                Button("Clear Loop", systemImage: "xmark.circle", role: .destructive) {
+                    model.clearLoop()
+                }
+                .disabled(model.loop.range.isEmpty)
+                Divider()
+                Button(
+                    "About Artscripture", systemImage: "info.circle", action: auxiliary.about)
+            } label: {
+                // **The control this whole file was reopened for.** It was a
+                // bare 15 pt glyph: a 15 × 15 pt target, on the one route to
+                // Settings, Shortcuts and About that a device without a
+                // hardware keyboard has. Then it was `ellipsis.circle` — a ring
+                // drawn smaller than the buttons either side of it, which is
+                // most of why the header's trailing end looked like three
+                // unrelated shapes. It is now a square in Open…'s own chrome.
+                Image(systemName: "ellipsis")
+                    .font(.system(size: metrics.glyph * 0.85, weight: .semibold))
+                    .foregroundStyle(palette.text.color())
+                    .frame(width: metrics.chromeHeight, height: metrics.chromeHeight)
+                    .controlChrome(
+                        metrics, fill: palette.panel.color(), stroke: palette.rule.color()
+                    )
+                    .hitRegion(target: metrics.target, drawn: metrics.chromeHeight)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .accessibilityLabel("More")
+        }
+    }
+
+    private var openButton: some View {
+        Button("Open…", action: onOpen)
+            .buttonStyle(.plain)
+            .font(Typography.readout)
+            .foregroundStyle(palette.text.color())
+            .padding(.horizontal, metrics.groupPadding * 1.4)
+            .frame(minHeight: metrics.chromeHeight)
+            .controlChrome(metrics, fill: palette.panel.color(), stroke: palette.rule.color())
+            .fixedSize()
+            .hitRegion(target: metrics.target, drawn: metrics.chromeHeight)
     }
 }
 

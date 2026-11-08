@@ -226,4 +226,15 @@ extension View {
             .contentShape(.rect)
             .padding(.vertical, -inset)
     }
+
+    /// The window's one bordered-control shape: a `cornerRadius` rounded
+    /// rectangle, filled and stroked. The header's Practice, `⋯` and Open…
+    /// and every transport button are drawn in it, so they read as one family
+    /// and a change to the radius or the stroke is made once.
+    func controlChrome(
+        _ metrics: ControlMetrics, fill: Color, stroke: Color, lineWidth: CGFloat = 1
+    ) -> some View {
+        let shape = RoundedRectangle(cornerRadius: metrics.cornerRadius)
+        return background(shape.fill(fill)).overlay(shape.stroke(stroke, lineWidth: lineWidth))
+    }
 }

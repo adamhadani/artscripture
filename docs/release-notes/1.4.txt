@@ -1,0 +1,5 @@
+Practice is one tap away. Open a track and a Practice button is waiting in the header, on iPhone, iPad and Mac alike, where it used to be tucked away in the ⋯ menu. Give it a loop and it plays the passage over and over while the speed climbs, from slow to tempo.
+
+Start a ramp and the button becomes a live readout: which repetition you are on, the speed you are hearing, filling up as you go, with a stop button right beside it. Put the Practice panel away and keep your eyes on the waveform; the header still tells you where you are.
+
+The header's buttons now share one shape and size, so the top of the screen reads as one set of controls.

@@ -159,18 +159,13 @@ struct TransportBarView: View {
                 // is actually short of and the axis nothing here competes for.
                 .frame(width: width, height: metrics.buttonHeight)
                 .foregroundStyle(tint(enabled: enabled, isOn: isOn))
-                .background(
-                    RoundedRectangle(cornerRadius: metrics.cornerRadius)
-                        .fill(
-                            isOn
-                                ? palette.loop.color(opacity: 0.22)
-                                : palette.panel.color(opacity: enabled ? 1 : 0.5))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: metrics.cornerRadius)
-                        .stroke(
-                            isOn ? palette.loop.color() : palette.rule.color(),
-                            lineWidth: isOn ? 1.5 : 1)
+                .controlChrome(
+                    metrics,
+                    fill: isOn
+                        ? palette.loop.color(opacity: 0.22)
+                        : palette.panel.color(opacity: enabled ? 1 : 0.5),
+                    stroke: isOn ? palette.loop.color() : palette.rule.color(),
+                    lineWidth: isOn ? 1.5 : 1
                 )
                 .contentShape(Rectangle())
                 .hitRegion(target: metrics.target, drawn: metrics.buttonHeight)
