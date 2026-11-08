@@ -85,8 +85,9 @@ struct LicenceTextSheet: View {
     #else
     /// The system sizes a sheet here, so the margin is free to be generous.
     private static let inset = EdgeInsets(top: 20, leading: 24, bottom: 20, trailing: 24)
-    /// The ✕ is a 44 pt circle, so it is centred on the titles rather than
-    /// hung from their baseline, which left them riding above its middle.
+    /// The ✕ is an image in a chrome-height frame, with no text baseline to
+    /// share, so it is centred on the titles rather than hung from their
+    /// baseline, which left them riding above its middle.
     private static let headerAlignment = VerticalAlignment.center
     #endif
 

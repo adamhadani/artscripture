@@ -2,8 +2,8 @@
 import SwiftUI
 import UIKit
 
-/// **The way out of a sheet on iPhone and iPad**: the system's Close button, at
-/// the sheet's top leading corner.
+/// **The way out of a sheet on iPhone and iPad**: a plain ✕ at the sheet's top
+/// leading corner.
 ///
 /// Practice, the shortcut reference and About used to have no button at all —
 /// a swipe down was the only way back, and on a landscape iPhone, where a sheet
@@ -19,10 +19,31 @@ import UIKit
 /// every one of these sheets: each applies its settings as they change, so
 /// there is nothing to confirm and nothing to lose.
 ///
-/// Settings, inside a `NavigationStack`, puts the same role in its toolbar
-/// instead and gets the same glass ✕ from the system. The others draw their
-/// own header rows, which a navigation bar would sit on top of and duplicate,
-/// so they carry this view at the leading end of the row they already have.
+/// ## Why a bare glyph, and not the system's glass ✕
+///
+/// The first version (1.4, build 186) was the system's own Close: a 44 pt glass
+/// circle. It worked and it looked bolted on — the only round, glassy, full-size
+/// shape in sheets whose headers are a 9 pt monospaced eyebrow over a hairline
+/// rule. Four alternatives were rendered on a phone side by side (a teal
+/// "⌄ Close" link, the ✕ in the header's square chrome, a "Close" pill, and
+/// this); the user chose this one as *"minimalistic and clear"*. The ✕ itself
+/// is what makes it clear — nobody needs it explained — so it needs no frame.
+///
+/// Drawn in `dimmed`, the colour of the eyebrow beside it: a control, not a
+/// heading, but no louder than the heading. `dimmed` clears WCAG's 3:1 for
+/// non-text controls on both themes: 4.1 dark and 4.8 light against the
+/// sheets' `background` (see `Palette`).
+///
+/// **The ✕ is 11 pt across; what answers a finger is 44 × 44.** The same rule as
+/// the rest of the chrome (`hitRegion`), applied on both axes because a glyph
+/// is narrower than the target as well as shorter. The layout keeps the
+/// glyph's own width, so the ✕ lines up with the sheet's content edge.
+///
+/// Settings, inside a `NavigationStack`, puts this same view in its toolbar
+/// with the toolbar's glass turned off, so all four sheets close the same way.
+/// The others draw their own header rows, which a navigation bar would sit on
+/// top of and duplicate, so they carry it at the leading end of the row they
+/// already have.
 ///
 /// **Esc closes it** with a hardware keyboard on iPad. That does not fight the
 /// document's own `Esc` (Clear Loop): while any sheet is up the menu's
@@ -45,44 +66,56 @@ struct SheetCloseButton: View {
     var escapeCloses = true
     let action: () -> Void
     @ScaledMetric(relativeTo: .body) private var typeScale: CGFloat = 1
+    /// Read here rather than taking `\.palette`: Settings is a system form and
+    /// never sets one, and the environment's default palette is the dark one.
+    @Environment(\.colorScheme) private var colorScheme
 
-    /// The toolbar's own ✕ glyph weight, measured off Settings' button.
-    private static let glyph: CGFloat = 17
+    /// The glyph against the touch chrome's `glyph` (18 pt): an ✕ is all
+    /// diagonals and reads larger than its point size, and at full size it
+    /// outweighed the eyebrow beside it.
+    private static let glyphScale: CGFloat = 0.8
 
     /// Resigns whatever text field has the keyboard, which is what makes a
-    /// `TextField(value:format:)` write its edit back. Settings' toolbar Close
-    /// calls it too.
+    /// `TextField(value:format:)` write its edit back.
     @MainActor
     static func endEditing() {
         UIApplication.shared.sendAction(
             #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 
-    /// **Drawn at the full target, unlike the app's other chrome** — the one
-    /// exception to "44 is a hit region, not a drawn size", and on purpose.
-    /// Settings gets its ✕ from the system toolbar, which draws a 44 pt glass
-    /// circle; `.buttonStyle(.glass)` outside a toolbar drew 30 pt, so the same
-    /// button was two sizes depending on which sheet you opened, and the
-    /// smaller one was under Apple's 44 pt minimum. This is the button people
-    /// already know from Apple's own sheets, so it is drawn at Apple's size.
-    /// Scaled with Dynamic Type like the rest of the chrome, so it grows with
-    /// the header text beside it.
-    private var side: CGFloat { ControlMetrics.current.scaled(by: typeScale).target }
-
     var body: some View {
-        // The glyph is spelled out. In a toolbar the role alone draws the ✕;
-        // anywhere else it draws the word "Close".
+        // Scaled with Dynamic Type like the rest of the chrome, so the ✕
+        // grows with the header text beside it.
+        let metrics = ControlMetrics.current.scaled(by: typeScale)
+        let glyph = metrics.glyph * Self.glyphScale
+        let palette = Palette.of(colorScheme == .dark ? .dark : .light)
+        let across = max(0, (metrics.target - glyph) / 2)
+        let down = max(0, (metrics.target - metrics.chromeHeight) / 2)
         Button(role: .close) {
             Self.endEditing()
             action()
         } label: {
+            // An explicit glyph: `role: .close` draws the ✕ only inside a
+            // toolbar, and anywhere else it draws the word "Close".
             Image(systemName: "xmark")
-                .font(.system(size: Self.glyph * typeScale, weight: .medium))
-                .frame(width: side, height: side)
-                .contentShape(.circle)
+                .font(.system(size: glyph, weight: .medium))
+                // Pinned: a toolbar draws its symbols a scale up, which made
+                // Settings' ✕ 14 pt across where the others are 11 — measured
+                // off the screenshots, not visible in the code.
+                .imageScale(.medium)
+                .foregroundStyle(palette.dimmed.color())
+                .frame(height: metrics.chromeHeight)
+                // `hitRegion`'s pad out, claim it, pad back in — on both axes
+                // at once, since a glyph is narrower than the target as well
+                // as shorter. One shape: two nested ones would leave which
+                // wins up to SwiftUI.
+                .padding(.horizontal, across)
+                .padding(.vertical, down)
+                .contentShape(.rect)
+                .padding(.horizontal, -across)
+                .padding(.vertical, -down)
         }
         .buttonStyle(.plain)
-        .glassEffect(.regular.interactive(), in: .circle)
         .keyboardShortcut(escapeCloses ? .cancelAction : nil)
         .accessibilityLabel("Close")
         .help(escapeCloses ? "Close  (Esc)" : "Close")
