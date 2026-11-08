@@ -69,6 +69,10 @@ extension AcceptanceRun {
     ) async -> CursorReadings {
         let restoreTo = NSEvent.mouseLocation
         var readings = CursorReadings()
+        // The playhead's grip on the ruler has its own, sideways cursor
+        // (`PlayheadScrub`), so park the playhead well clear of the ruler's
+        // middle before reading the ruler's.
+        model.seek(to: 0)
 
         readings.outside = await read(
             "nothing (the window's title bar)", x: ruler.midX, y: -12, into: &readings)

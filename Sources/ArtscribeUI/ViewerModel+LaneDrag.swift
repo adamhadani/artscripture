@@ -132,6 +132,7 @@ extension ViewerModel {
         dragOrigin = nil
         zoomDrag = nil
         edgeDrag = nil
+        rulerDrag = nil
     }
 
     public func laneDragEnded(start: CGPoint, end: CGPoint, now: Double) {
