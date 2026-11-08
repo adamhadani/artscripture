@@ -37,6 +37,7 @@ extension AcceptanceRun {
             outputDirectory: outputDirectory)
         await checkRampOverRealWraps(
             model: model, theme: theme, log: &log, outputDirectory: outputDirectory)
+        await checkStopStopsTheTrack(model: model, log: &log)
         context.practice.show()
         await settle(seconds: 0.4)
         practiceWindow()?.performClose(nil)
@@ -44,6 +45,27 @@ extension AcceptanceRun {
         model.stopRamp()
         model.clearLoop()
         model.setSpeedPreset(1.0)
+    }
+
+    /// Stop, as pressed, stops the track as well as the ramp (2026-11) — on the
+    /// real graph, which the unit tests cannot reach. Reported from 1.4: the
+    /// Practice panel's Stop ended the repetitions and left the track playing.
+    @MainActor
+    private static func checkStopStopsTheTrack(model: ViewerModel, log: inout Logger) async {
+        guard !model.loop.range.isEmpty else {
+            log.check("the Stop check has a loop to ramp", false)
+            return
+        }
+        model.startRamp()
+        await settle(seconds: 0.6)
+        let before = model.isPlaying
+        // What the panel's Stop, the menu item and ⌥R all do.
+        model.toggleRamp()
+        await settle(seconds: 0.4)
+        log.check(
+            "Stop ends a running ramp and pauses the track "
+                + "(playing \(before) -> \(model.isPlaying))",
+            before && !model.isPlaying && model.ramp.isIdle)
     }
 
     /// The whole menu bar, scanned for a key equivalent claimed twice.

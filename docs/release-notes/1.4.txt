@@ -13,3 +13,5 @@ The transport buttons are bigger and easier to hit on iPhone and iPad, and the r
 On iPhone and iPad, every panel (Practice, Settings, the shortcut reference and About) now has a close button in its top corner, so the way back to your track is always in sight.
 
 Fixed: tapping one of Practice's number fields on iPhone could freeze the app instead of bringing up the keyboard.
+
+Fixed: stopping a ramp now stops playback too, rather than leaving the passage playing.

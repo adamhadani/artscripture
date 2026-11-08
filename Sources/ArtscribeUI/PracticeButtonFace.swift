@@ -39,7 +39,7 @@ public struct PracticeButtonFace: Equatable, Sendable {
     public let progress: Double?
     /// The second segment's SF Symbol, or `nil` when there is no second
     /// segment. A ramp in progress offers **stop**; a finished one, holding its
-    /// last speed, offers to put the readout away (`xmark`) — what `stopRamp()`
+    /// last speed, offers to put the readout away (`xmark`) — what `stopPractice()`
     /// does from `.complete`.
     public let stopSymbol: String?
     public let accessibilityLabel: String
