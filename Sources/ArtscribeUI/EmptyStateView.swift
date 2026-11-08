@@ -26,7 +26,16 @@ struct EmptyStateView: View {
     /// Five, not the eight the menu holds. This is a resting screen, not a
     /// browser — a short list is read at a glance, and Open Recent is still
     /// there for the rest.
-    private static let shown = 5
+    ///
+    /// **Two on a phone**, which is what fits. A landscape iPhone gives this
+    /// screen about 235 pt between the header and the transport bar, and a row
+    /// is 47 — a 44 pt target plus its two lines. With the phone's tighter
+    /// spacing below, two rows and the About link fit with nothing scrolled
+    /// out of sight; a third would not. The picker Open… brings up has the
+    /// system's own Recents for anything older.
+    private static func shown(on surface: EmptyStatePrompt.Surface) -> Int {
+        surface == .phone ? 2 : 5
+    }
 
     /// The dashed drop target's own inset, and the gap between it and the
     /// recents below. Both are deliberately larger than anything on the scale:
@@ -43,22 +52,25 @@ struct EmptyStateView: View {
         case .desktop, .tabletWithDrop:
             return EdgeInsets(top: 30, leading: 44, bottom: 30, trailing: 44)
         case .phone:
-            return EdgeInsets(top: 18, leading: 28, bottom: 18, trailing: 28)
+            return EdgeInsets(top: 12, leading: 28, bottom: 12, trailing: 28)
         }
     }
 
     private static func blockGap(for surface: EmptyStatePrompt.Surface) -> CGFloat {
-        surface == .phone ? Metrics.xxl : 26
+        surface == .phone ? Metrics.lg : 26
     }
 
     /// Margin at the top and bottom of the whole screen, so the first and last
-    /// things on it are never flush against a rule.
-    private static let screenInset: CGFloat = Metrics.xxl
+    /// things on it are never flush against a rule. Halved on a phone, for the
+    /// height `shown(on:)` describes.
+    private static func screenInset(for surface: EmptyStatePrompt.Surface) -> CGFloat {
+        surface == .phone ? Metrics.md : Metrics.xxl
+    }
 
     private var surface: EmptyStatePrompt.Surface { EmptyStatePrompt.current }
 
     private var shownRecents: [URL] {
-        Array(recents.urls.prefix(Self.shown))
+        Array(recents.urls.prefix(Self.shown(on: surface)))
     }
 
     /// The sample to offer, or `nil` when it should not be offered — either
@@ -71,23 +83,27 @@ struct EmptyStateView: View {
         return SampleTrack.installedURL()
     }
 
-    /// **Scrolls once it no longer fits, and is centred while it does.**
+    /// **Laid out to fit, and scrolls only if it still does not.**
     ///
-    /// The block is a fixed stack — drop target, up to five recents, the About
-    /// link — with nothing in it that can shrink. On a landscape iPhone one
-    /// recent fills the ~250 pt it gets (see `dropZoneInset`); the second
-    /// overflowed, and the document's column, which cannot grow, split the
-    /// excess evenly off its top and bottom: the header with Open… went off the
-    /// top of the screen and the status bar off the bottom. Reported from an
-    /// iPhone with two recents, and reproduced on a simulator with four, where
-    /// the header was gone entirely — with or without `DocumentView`'s
-    /// proposal-sized frame, so it was never that frame's doing.
+    /// The block is a fixed stack — drop target, recents, the About link — with
+    /// nothing in it that can shrink. On a landscape iPhone, through 1.3 and
+    /// 1.4's first builds, one recent filled the height it gets and a second
+    /// overflowed: the document's column, which cannot grow, split the excess
+    /// off its top and bottom, so the header with Open… went off the top of
+    /// the screen and the status bar off the bottom. Reported from an iPhone
+    /// with two recents; measured on a simulator against the 1.3 release,
+    /// which clipped the same way, and with `DocumentView`'s proposal-sized
+    /// frame removed, which changed nothing.
     ///
-    /// A scroll view takes exactly the space it is offered, so the header, the
-    /// transport bar and the status bar stay put whatever the list holds. The
-    /// content is given at least the visible height, which keeps it centred as
-    /// before when it fits, and `basedOnSize` stops a block that fits from
-    /// bouncing under a finger.
+    /// The fix is the phone's own sizes — two recents, tighter margins (see
+    /// `shown(on:)`) — so everything is on screen at once. A scroll view alone
+    /// was tried first and was not enough: nothing was cut off any more, but
+    /// the About link sat below the fold, reported as the screen still looking
+    /// wrong. It stays as the safety net for what sizes cannot promise, such as
+    /// the largest Dynamic Type settings: it takes exactly the space it is
+    /// offered, so the header, transport bar and status bar stay put, and its
+    /// content is given at least the visible height, which keeps it centred
+    /// when it fits. `basedOnSize` stops a block that fits from bouncing.
     var body: some View {
         GeometryReader { proxy in
             ScrollView(.vertical) {
@@ -179,7 +195,9 @@ struct EmptyStateView: View {
                             #endif
                     }
                     .padding(.horizontal, Metrics.lg)
-                    .padding(.bottom, Metrics.md)
+                    // Half on a phone, for the height `shown(on:)` describes;
+                    // the rows below keep their full 44 pt targets.
+                    .padding(.bottom, surface == .phone ? Metrics.xs : Metrics.md)
                     ForEach(shownRecents, id: \.self) { url in
                         RecentEntryRow(url: url) { ViewerActions.open(model, url: url) }
                     }
@@ -213,7 +231,7 @@ struct EmptyStateView: View {
                 .hitRegion(target: metrics.target, drawn: metrics.chromeHeight)
             #endif
         }
-        .padding(.vertical, Self.screenInset)
+        .padding(.vertical, Self.screenInset(for: surface))
     }
 
     /// See `EmptyStatePrompt` — the wording differs by platform because on a
