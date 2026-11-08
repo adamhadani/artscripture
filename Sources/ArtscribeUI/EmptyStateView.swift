@@ -3,6 +3,18 @@ import SwiftUI
 
 /// What the window says before anything is loaded. An empty screen is an
 /// invitation to act, so it names both ways in.
+///
+/// **It is the whole window below the header: no transport bar, no status
+/// bar** (`DocumentView` draws those only with a track). With nothing loaded
+/// they were a row of disabled buttons — `TransportControl.isEnabled` is false
+/// for every one — over a row of "—" and "none", and on a landscape iPhone
+/// they took about 120 pt from the one screen that needed it. The user, on
+/// build 190: *"don't think we need those bottom two strips at all in startup
+/// screen"*. The volume slider was the one live control, and a level set with
+/// nothing to hear cannot be judged; it is back the moment a track opens.
+/// Every platform, since the reason is not the size of the screen. Opening a
+/// second file swaps the track in place (`adopt`), so the bars never flicker
+/// out between two tracks; only Close Track brings this screen back.
 struct EmptyStateView: View {
     @ScaledMetric(relativeTo: .body) private var typeScale: CGFloat = 1
     private var metrics: ControlMetrics { ControlMetrics.current.scaled(by: typeScale) }
@@ -27,12 +39,13 @@ struct EmptyStateView: View {
     /// browser — a short list is read at a glance, and Open Recent is still
     /// there for the rest.
     ///
-    /// **Two on a phone**, which is what fits. A landscape iPhone gives this
-    /// screen about 235 pt between the header and the transport bar, and a row
-    /// is 47 — a 44 pt target plus its two lines. With the phone's tighter
-    /// spacing below, two rows and the About link fit with nothing scrolled
-    /// out of sight; a third would not. The picker Open… brings up has the
-    /// system's own Recents for anything older.
+    /// **Two on a phone.** A landscape iPhone gave this screen about 235 pt
+    /// between the header and the transport bar, and a row is 47 — a 44 pt
+    /// target plus its two lines — so two rows and the About link were what
+    /// fit. The bars are gone from this screen now (see `DocumentView`), and
+    /// the room they left is kept as headroom for larger text rather than
+    /// spent on a third row. The picker Open… brings up has the system's own
+    /// Recents for anything older.
     private static func shown(on surface: EmptyStatePrompt.Surface) -> Int {
         surface == .phone ? 2 : 5
     }
@@ -41,28 +54,16 @@ struct EmptyStateView: View {
     /// recents below. Both are deliberately larger than anything on the scale:
     /// this is the emptiest screen in the app and the space is the design.
     ///
-    /// **Except on a phone, where there is no space to spend.** iPhone is
-    /// landscape-only, so this screen gets about 250 pt of height between the
-    /// header and the transport bar, and at the desktop's generosity the block
-    /// filled it exactly — the About link ended up a point or two off the
-    /// transport bar's rule, reported as "too close to the bottom border".
-    /// Keyed on the surface like every other platform difference here.
-    private static func dropZoneInset(for surface: EmptyStatePrompt.Surface) -> EdgeInsets {
-        switch surface {
-        case .desktop, .tabletWithDrop:
-            return EdgeInsets(top: 30, leading: 44, bottom: 30, trailing: 44)
-        case .phone:
-            return EdgeInsets(top: 12, leading: 28, bottom: 12, trailing: 28)
-        }
-    }
-
-    private static func blockGap(for surface: EmptyStatePrompt.Surface) -> CGFloat {
-        surface == .phone ? Metrics.lg : 26
-    }
+    /// The same on a phone. Build 190 shrank both there, to fit the block
+    /// above a transport bar that is no longer on this screen; with the room
+    /// back, the squat drop target was the thing that looked off.
+    private static let dropZoneInset = EdgeInsets(top: 30, leading: 44, bottom: 30, trailing: 44)
+    private static let blockGap: CGFloat = 26
 
     /// Margin at the top and bottom of the whole screen, so the first and last
-    /// things on it are never flush against a rule. Halved on a phone, for the
-    /// height `shown(on:)` describes.
+    /// things on it are never flush against a rule. The block is centred, so
+    /// this only matters once it has filled the height — on a phone at large
+    /// text sizes — and a phone keeps the smaller one so that happens later.
     private static func screenInset(for surface: EmptyStatePrompt.Surface) -> CGFloat {
         surface == .phone ? Metrics.md : Metrics.xxl
     }
@@ -95,15 +96,18 @@ struct EmptyStateView: View {
     /// which clipped the same way, and with `DocumentView`'s proposal-sized
     /// frame removed, which changed nothing.
     ///
-    /// The fix is the phone's own sizes — two recents, tighter margins (see
-    /// `shown(on:)`) — so everything is on screen at once. A scroll view alone
-    /// was tried first and was not enough: nothing was cut off any more, but
-    /// the About link sat below the fold, reported as the screen still looking
-    /// wrong. It stays as the safety net for what sizes cannot promise, such as
-    /// the largest Dynamic Type settings: it takes exactly the space it is
-    /// offered, so the header, transport bar and status bar stay put, and its
-    /// content is given at least the visible height, which keeps it centred
-    /// when it fits. `basedOnSize` stops a block that fits from bouncing.
+    /// Three fixes, in the order they shipped. A scroll view alone (build 189)
+    /// stopped anything being cut off, but left the About link below the fold.
+    /// The phone's own sizes (190) — two recents, tighter margins, see
+    /// `shown(on:)` — put everything on screen, but only just. Then the
+    /// transport and status bars came off this screen altogether (see
+    /// `DocumentView`), which gave it the ~120 pt they had been taking.
+    ///
+    /// The scroll view stays as the safety net for what sizes cannot promise,
+    /// such as the largest Dynamic Type settings: it takes exactly the space it
+    /// is offered, so the header stays put, and its content is given at least
+    /// the visible height, which keeps it centred when it fits. `basedOnSize`
+    /// stops a block that fits from bouncing.
     var body: some View {
         GeometryReader { proxy in
             ScrollView(.vertical) {
@@ -116,7 +120,7 @@ struct EmptyStateView: View {
     }
 
     private var content: some View {
-        VStack(spacing: Self.blockGap(for: surface)) {
+        VStack(spacing: Self.blockGap) {
             // The drop target, drawn as one. A dashed outline does two jobs
             // here: it says *this rectangle is where a file goes*, which the
             // words alone only assert, and it separates the centred invitation
@@ -130,7 +134,7 @@ struct EmptyStateView: View {
                     .font(Typography.readout)
                     .foregroundStyle(palette.dimmed.color())
             }
-            .padding(Self.dropZoneInset(for: surface))
+            .padding(Self.dropZoneInset)
             .frame(maxWidth: Metrics.readingWidth)
             .overlay(
                 RoundedRectangle(cornerRadius: Metrics.Radius.panel)
@@ -195,9 +199,7 @@ struct EmptyStateView: View {
                             #endif
                     }
                     .padding(.horizontal, Metrics.lg)
-                    // Half on a phone, for the height `shown(on:)` describes;
-                    // the rows below keep their full 44 pt targets.
-                    .padding(.bottom, surface == .phone ? Metrics.xs : Metrics.md)
+                    .padding(.bottom, Metrics.md)
                     ForEach(shownRecents, id: \.self) { url in
                         RecentEntryRow(url: url) { ViewerActions.open(model, url: url) }
                     }
