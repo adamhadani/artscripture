@@ -70,7 +70,7 @@ extension AcceptanceRun {
     /// Puts a loop between two lane points using the real `A`/`S` bindings, so a
     /// regression in those cannot masquerade as an edge-drag pass.
     @MainActor
-    private static func setLoop(_ model: ViewerModel, fromPoint: Double, toPoint: Double) {
+    static func setLoop(_ model: ViewerModel, fromPoint: Double, toPoint: Double) {
         model.clearLoop()
         model.seek(to: PixelMapping.frame(atPixel: fromPoint, in: model.viewport))
         press(.a)
@@ -80,14 +80,14 @@ extension AcceptanceRun {
     }
 
     @MainActor
-    private static func frame(_ model: ViewerModel, atLanePoint point: Double) -> FrameIndex {
+    static func frame(_ model: ViewerModel, atLanePoint point: Double) -> FrameIndex {
         PixelMapping.frame(atPixel: point, in: model.viewport)
     }
 
     /// One point of slack in either direction: a frame round-trips through the
     /// viewport's `Double` arithmetic on the way in and on the way out.
     @MainActor
-    private static func within(
+    static func within(
         _ model: ViewerModel, _ actual: FrameIndex, ofPoint point: Double
     ) -> Bool {
         abs(model.viewport.pixel(forFrame: actual) - point) <= 1.5
@@ -228,6 +228,10 @@ extension AcceptanceRun {
         model.seek(to: frame(model, atLanePoint: 100))
         let loopBefore = model.loop
         let at = CGPoint(x: lanes.minX + 450, y: lanes.midY)
+        // Moved there first, as `click(at:)` does: a first press delivered
+        // without one was not reliably seen.
+        sendMouse(.mouseMoved, at: at)
+        await settle(seconds: 0.05)
         sendMouse(.leftMouseDown, at: at)
         await settle(seconds: 0.05)
         sendMouse(.leftMouseUp, at: at)
@@ -323,70 +327,5 @@ extension AcceptanceRun {
         }
         theme.preference = wanted
         await settle(seconds: 0.4)
-    }
-
-    // MARK: - While playing
-
-    /// A loop edge moved with the transport running has to take effect without
-    /// a click or a dropout. It cannot: the edge goes through `applyLoop`, which
-    /// is the app's one `PlaybackCommand.setLoop` path, and the engine wraps at
-    /// the boundary it is fed without ever resetting the stretcher there.
-    ///
-    /// What is measurable from here is the *consequence*: the transport is still
-    /// running afterwards, the playhead ends up inside the region the drag left
-    /// behind, and none of the render-thread degradation counters moved — a
-    /// stall, a rejected command or a dropped one is exactly what a dropout
-    /// would show up as.
-    @MainActor
-    static func checkEdgeDragWhilePlaying(model: ViewerModel, log: inout Logger) async {
-        let names = [
-            "a loop edge dragged during playback is still playing afterwards",
-            "the dragged loop's new out point contains the playhead",
-            "and no render stall, rejected or dropped command was counted"
-        ]
-        guard model.canPlay else {
-            for name in names { log.skip(name, because: "no audio output was opened") }
-            return
-        }
-        if let reason = positionChecksAreImpossible(model: model) {
-            for name in names { log.skip(name, because: reason) }
-            return
-        }
-        let lanes = model.laneFrame
-        adoptViewerWindow(for: model)
-        guard !lanes.isEmpty, await regainKeyWindow() else {
-            for name in names {
-                log.skip(name, because: "no window is key, so a real drag cannot be delivered")
-            }
-            return
-        }
-
-        model.fitWholeFile()
-        setLoop(model, fromPoint: 200, toPoint: 800)
-        if !model.loop.isEnabled { press(.d) }
-        model.seek(to: model.loop.range.start)
-        let before = model.degradation
-        model.play()
-        await settle(seconds: 1.2)
-
-        // Pull the out point in while the engine is running through the region.
-        await pointerDrag(
-            from: CGPoint(x: lanes.minX + 800, y: lanes.midY),
-            to: CGPoint(x: lanes.minX + 500, y: lanes.midY))
-        await settle(seconds: 1.5)
-        let playing = model.isPlaying
-        let region = model.loop.range
-        let position = model.playhead
-        let after = model.degradation
-        model.pause()
-        await settle(seconds: 0.2)
-
-        log.note("loop after the drag", "\(region.start)…\(region.end), playhead \(position)")
-        log.check("a loop edge dragged during playback is still playing afterwards", playing)
-        log.check(
-            "the dragged loop's new out point contains the playhead",
-            position >= region.start && position <= region.end)
-        log.check(
-            "and no render stall, rejected or dropped command was counted", after == before)
     }
 }

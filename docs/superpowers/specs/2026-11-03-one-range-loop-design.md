@@ -59,6 +59,8 @@ The precedence rule (`TimelineHandles`), latched at touch-down as today:
 - **Grab radius by input device**, from `ControlMetrics` keyed on `EmptyStatePrompt.Surface`:
   9 pt either side on the Mac (the 20 pt target it has now), **22 pt** on touch (44 pt, the
   HIG minimum). The body band grows the same way: 14 pt → 22 pt on touch. *My call.*
+  (The band itself went on 2026-11-08 — the body is the whole inside of the loop; see the note
+  above.)
 - **A new-range drag reaches the engine when the finger lifts**, not on every event: a range
   that starts at zero width would otherwise switch the engine's loop off and on under a
   playing track for the length of the gesture. It is drawn live. Edge and body drags stay

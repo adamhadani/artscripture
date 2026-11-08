@@ -26,8 +26,10 @@ import SwiftUI
 ///   wider wash, and a small monospaced time flag under the loop bar — the
 ///   legend on a fader cap, set in the same face the status bar's POSITION uses.
 /// - **The loop body.** Its two bars thicken by a point or two. Deliberately no
-///   more than that: the bars *are* the handle, and turning the whole region
-///   into a lit panel would drown the waveform underneath it.
+///   more than that, though the whole region is the handle since 2026-11:
+///   turning it into a lit panel would drown the waveform underneath it. And
+///   only once it has *moved* — a press inside the loop is usually a click,
+///   which places the playhead and should not flash a drag on its way.
 struct TimelineEdgeOverlay: View {
     let model: ViewerModel
     /// The handle under a stationary pointer, resolved by the lanes.
@@ -62,7 +64,7 @@ struct TimelineEdgeOverlay: View {
         GeometryReader { proxy in
             let size = proxy.size
             ZStack(alignment: .topLeading) {
-                if let drag {
+                if let drag, drag.handle != .loopBody || drag.hasMoved {
                     if drag.handle == .loopBody {
                         bars(loopRange, viewport: viewport, size: size, extra: 2)
                     } else {

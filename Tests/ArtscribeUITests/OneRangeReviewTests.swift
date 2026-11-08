@@ -252,7 +252,8 @@ struct OneRangeReviewTests {
         drag(model, from: 400, to: 460)
         #expect(model.loop.range == range(260, 660))
         #expect(model.loop.isEnabled)
-        #expect(model.playhead == frame(50))
+        // Looping, so the moved loop is the one you hear.
+        #expect(model.playhead == frame(260))
     }
 
     @Test("on touch, a tap inside the loop places the playhead and leaves the loop alone")

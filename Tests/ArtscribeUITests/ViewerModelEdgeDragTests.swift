@@ -195,13 +195,61 @@ struct ViewerModelEdgeDragTests {
     /// the loop it must not: the press may be the start of a move, and moving
     /// the playhead under a playing loop the moment you take hold of it would
     /// interrupt exactly what you are listening to.
-    @Test("pressing inside the loop and dragging leaves the playhead alone")
-    func movingTheLoopLeavesThePlayhead() {
+    @Test("pressing inside the loop and dragging leaves the playhead alone mid-gesture")
+    func movingTheLoopLeavesThePlayheadWhileItMoves() {
         let model = makeModel()
         withLoop(model)
-        model.seek(to: frame(50))
-        drag(model, from: CGPoint(x: 300, y: midLane), toX: 450)
-        #expect(model.playhead == frame(50))
+        model.seek(to: frame(450))
+        let start = CGPoint(x: 300, y: midLane)
+        model.laneDragChanged(start: start, current: start, option: false, shift: false)
+        #expect(model.playhead == frame(450))
+        model.laneDragChanged(
+            start: start, current: CGPoint(x: 400, y: midLane), option: false, shift: false)
+        #expect(model.playhead == frame(450))
+        #expect(model.loop.range == FrameRange(start: frame(300), count: frame(400)))
+    }
+
+    // MARK: - A moved loop is the one you hear
+
+    /// The engine takes hold of a loop only on arrival (spec §5.1). A playing
+    /// loop dragged back behind the playhead played on to the end of the track.
+    @Test("a looping loop moved back past the playhead brings the playhead to its start")
+    func aLoopMovedBehindThePlayheadBringsItIn() {
+        let model = makeModel()
+        withLoop(model)
+        model.seek(to: frame(550))
+        drag(model, from: CGPoint(x: 400, y: midLane), toX: 300)
+        #expect(model.loop.range == FrameRange(start: frame(100), count: frame(400)))
+        #expect(model.playhead == frame(100))
+    }
+
+    @Test("a looping loop moved ahead of the playhead starts there, not after the old passage")
+    func aLoopMovedAheadOfThePlayheadBringsItIn() {
+        let model = makeModel()
+        withLoop(model)
+        model.seek(to: frame(250))
+        drag(model, from: CGPoint(x: 400, y: midLane), toX: 500)
+        #expect(model.playhead == frame(300))
+    }
+
+    @Test("a playhead still inside the moved loop stays where it is")
+    func aPlayheadInsideTheMovedLoopStays() {
+        let model = makeModel()
+        withLoop(model)
+        model.seek(to: frame(450))
+        drag(model, from: CGPoint(x: 400, y: midLane), toX: 350)
+        #expect(model.playhead == frame(450))
+    }
+
+    @Test("with looping off, moving the loop leaves the playhead alone")
+    func aLoopMovedWhileNotLoopingLeavesThePlayhead() {
+        let model = makeModel()
+        model.loop = LoopRegion(
+            range: FrameRange(start: frame(200), count: frame(400)), isEnabled: false)
+        model.seek(to: frame(550))
+        drag(model, from: CGPoint(x: 400, y: midLane), toX: 300)
+        #expect(model.loop.range == FrameRange(start: frame(100), count: frame(400)))
+        #expect(model.playhead == frame(550))
     }
 
     @Test("a double-click inside the loop still plays, and leaves the loop where it was")
@@ -226,8 +274,10 @@ struct ViewerModelEdgeDragTests {
         drag(model, from: CGPoint(x: 400, y: midLane), toX: 420, now: 0)
         drag(model, from: CGPoint(x: 420, y: midLane), toX: 440, now: 0.1)
         #expect(model.playbackNotice == nil)
-        #expect(model.playhead == 0)
         #expect(model.loop.range == FrameRange(start: frame(240), count: frame(400)))
+        // Brought in by each move (the playhead began outside the loop), and
+        // never played.
+        #expect(model.playhead == frame(240))
     }
 
     /// The escape hatch, and the reason a modifier outranks a handle: ⌥ on top

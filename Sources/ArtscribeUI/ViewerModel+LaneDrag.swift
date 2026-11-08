@@ -162,6 +162,17 @@ extension ViewerModel {
             edgeDragEnded()
             if stayed && (handle == .loopBody || prefs.edgeTapIsAClick) {
                 dragEnded(startPixel: start.x, endPixel: end.x, now: now)
+            } else if !stayed && handle == .loopBody {
+                // A loop you just moved is the one you hear — the rule a new
+                // range already follows on lift (`commitStagedLoop`). The
+                // engine takes hold of a loop only on arrival (spec §5.1), so a
+                // playing loop dragged back behind the playhead would otherwise
+                // play on to the end of the track, and one dragged ahead would
+                // play the old passage out first. Until 2026-11 this drag drew
+                // a new loop and got that rule for free.
+                if loop.isActive && !loop.range.contains(playhead) {
+                    seek(to: loop.range.start)
+                }
             }
         case .range, nil:
             dragEnded(startPixel: start.x, endPixel: end.x, now: now)

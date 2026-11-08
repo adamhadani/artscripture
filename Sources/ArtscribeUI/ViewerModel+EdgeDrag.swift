@@ -7,7 +7,8 @@ import CoreGraphics
 /// the click slop** (2026-11). It used to jump to wherever the pointer was —
 /// harmless inside a pointer's 9 pt reach, but a finger's is 22, and every tap
 /// near a loop moved its edge, pushed it and saved it. Below the slop it is not
-/// a drag at all, and on touch it is a tap (`LaneDragPolicy.edgeTapIsAClick`).
+/// a drag at all: on the body it is a click on every device, and on an edge it
+/// is a tap on touch (`LaneDragPolicy.edgeTapIsAClick`).
 ///
 /// The arithmetic is all in `TimelineHandles`, which is pure and tested on its
 /// own; what lives here is the state machine — latching what was grabbed at
