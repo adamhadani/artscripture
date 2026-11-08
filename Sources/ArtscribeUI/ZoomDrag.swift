@@ -122,17 +122,19 @@ struct ZoomDrag: Equatable, Sendable {
 /// range drag into a zoom or the other way about — you would be mid-gesture,
 /// watching the wrong thing happen, with no way to undo it.
 enum LaneDragMode: Equatable, Sendable {
-    /// The core gesture, and not negotiable: a plain left-drag marks a
-    /// passage — the range, which is the loop (2026-11). `extending` is ⇧-drag,
-    /// which keeps the far edge and moves the near one.
+    /// The core gesture, and not negotiable: a plain left-drag outside the
+    /// loop marks a passage — the range, which is the loop (2026-11); inside
+    /// it, the drag moves the loop instead (`TimelineHandles`). `extending` is
+    /// ⇧-drag, which keeps the far edge and moves the near one, from anywhere.
     case range(extending: Bool)
     /// ⌥-drag. ⌥ because it collides with neither ⇧-drag (extend) nor ⌘-drag,
     /// and because Melodyne sets the precedent for a modifier-drag zoom inside
     /// the editing pane.
     case zoom
-    /// A loop handle taken hold of at mouse-down (Task 23). The
-    /// handle is latched with the mode, so an edge dragged past its opposite
-    /// number keeps being *this* drag rather than becoming a different one.
+    /// A loop handle taken hold of at mouse-down (Task 23): an edge, or the
+    /// body — the whole inside of the loop. The handle is latched with the
+    /// mode, so an edge dragged past its opposite number keeps being *this*
+    /// drag rather than becoming a different one.
     case edge(TimelineHandle)
 
     /// The lanes' precedence rule, in one place. See `TimelineHandles` for the

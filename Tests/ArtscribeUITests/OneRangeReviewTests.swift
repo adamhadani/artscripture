@@ -238,4 +238,43 @@ struct OneRangeReviewTests {
         model.toggleLoop()
         #expect(!model.loop.isEnabled)
     }
+
+    // MARK: - 2026-11: a finger inside the loop moves it
+
+    /// Reported from an iPhone: *"when I drag my finger inside of a looped area
+    /// typically the intent is to move the whole loop along"*. It redrew the
+    /// loop from under the finger.
+    @Test("on touch, a drag from inside the loop moves it, keeping its length")
+    func aFingerInsideTheLoopMovesIt() {
+        let model = makeModel(touch: true)
+        model.applyLoop(LoopRegion(range: range(200, 600), isEnabled: true))
+        model.seek(to: frame(50))
+        drag(model, from: 400, to: 460)
+        #expect(model.loop.range == range(260, 660))
+        #expect(model.loop.isEnabled)
+        // Looping, so the moved loop is the one you hear.
+        #expect(model.playhead == frame(260))
+    }
+
+    @Test("on touch, a tap inside the loop places the playhead and leaves the loop alone")
+    func aTapInsideTheLoopOnTouchIsATap() {
+        let model = makeModel(touch: true)
+        let loop = LoopRegion(range: range(200, 600), isEnabled: true)
+        model.applyLoop(loop)
+        let pushes = model.loopPushes
+        tap(model, at: 400)
+        #expect(model.loop == loop)
+        #expect(model.loopPushes == pushes)
+        #expect(model.playhead == frame(400))
+    }
+
+    /// A finger's 22 pt reach is still the edge's, inside the loop as well as
+    /// outside it, so a short loop can still be resized.
+    @Test("on touch, a press within a finger's reach inside the loop still resizes")
+    func theFingerReachInsideTheLoopIsStillTheEdge() {
+        let model = makeModel(touch: true)
+        model.applyLoop(LoopRegion(range: range(200, 600), isEnabled: true))
+        drag(model, from: 215, to: 245)
+        #expect(model.loop.range == range(230, 600))
+    }
 }

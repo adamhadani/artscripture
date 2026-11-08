@@ -1,5 +1,4 @@
 import ArtscribeKit
-import CoreGraphics
 
 /// Something on the timeline a pointer can take hold of and move.
 ///
@@ -8,8 +7,8 @@ import CoreGraphics
 public enum TimelineHandle: Equatable, Sendable, CaseIterable {
     case loopStart
     case loopEnd
-    /// The whole loop, moved with its length preserved. Grabbable only on the
-    /// bars the loop draws along the top and bottom of the lanes.
+    /// The whole loop, moved with its length preserved. Grabbable anywhere
+    /// inside its span, at any height, once neither edge is in reach.
     case loopBody
 
     var isLoop: Bool {
@@ -51,37 +50,50 @@ public enum TimelineEdgeSide: Equatable, Sendable {
 /// 3. **Within reach of a loop edge → drag that edge.** If both are in reach
 ///    the *nearer* wins. Reach is per input device (`HandleReach`): a finger
 ///    gets the 44 pt target a pointer does not need.
-/// 4. **On the loop's top or bottom bar, inside its span → move the whole
-///    loop.** Edges are tested first.
-/// 5. **Anything else → a new range**, replacing the loop — looping stays as
-///    it was, so a passage dragged out while looping loops at once. A click
+/// 4. **Inside the loop, at any height → move the whole loop.** Edges are
+///    tested first, so a short loop is still resizable from either end. A
+///    press that never moves is a click, not a grab: it places the playhead,
+///    and two play, exactly as they do outside the loop (`laneDragEnded`).
+/// 5. **Outside the loop → a new range**, replacing the loop — looping stays
+///    as it was, so a passage dragged out while looping loops at once. A click
 ///    and a double-click arrive through here too, and leave the range alone.
 ///
-/// ## Why the loop body is only the bars
+/// ## Why the whole inside of the loop moves it (2026-11)
 ///
-/// A full-height body handle over the loop would take "drag out a passage" —
-/// the app's most-used gesture — away from precisely the stretch of timeline you
-/// are working on. So the body handle lives where the ink is: the 4 pt bars the
-/// loop already draws along the top and bottom of the lanes, given a grab band
-/// (14 pt for a pointer, 22 for a finger). Ableton's loop brace works the same
-/// way and for the same reason. `C`/`V` move the whole loop by keyboard.
-/// How far from a drawn handle a press still takes hold of it — a question
-/// about the input device, not about taste, so it comes from `ControlMetrics`
-/// per surface rather than being one constant.
+/// From Task 23 until 2026-11 the body was only the 4 pt bars the loop draws
+/// along its top and bottom, given a grab band, on the argument that a
+/// full-height body would take "drag out a passage" away from the stretch of
+/// timeline you are working on. In use it read the other way round. The user,
+/// from an iPhone: *"when I drag my finger inside of a looped area typically
+/// the intent is to move the whole loop along"* — and on a phone the bars were
+/// a strip a finger mostly missed, so the drag redrew the loop from under it.
+/// Asked to choose, they took it for the Mac as well, with a click inside
+/// still only placing the playhead.
+///
+/// It is the cycle region's behaviour in Logic and Ableton's loop brace — drag
+/// the middle to move it, drag an end to resize it — over the waveform rather
+/// than on a strip of its own. Those DAWs keep it to a strip because the space
+/// under a loop is where regions are edited; here it had one other use,
+/// drawing a new loop over the old one, and that is what this gives up. A new
+/// loop is drawn starting outside the current one, or after `Esc` (Clear
+/// Loop), or by dragging the edges; `C`/`V` move the whole loop by keyboard.
+/// How far from a drawn edge a press still takes hold of it — a question about
+/// the input device, not about taste, so it comes from `ControlMetrics` per
+/// surface rather than being one constant.
+///
+/// It used to carry a second number, the depth of the loop body's grab band at
+/// the top and bottom of the lanes. The body is the whole inside of the loop
+/// now (see above), so there is no band to size.
 public struct HandleReach: Equatable, Sendable {
     /// Points either side of a loop edge.
     public let edge: Double
-    /// Depth of the loop-body grab band at the top and the bottom of the lanes.
-    public let bodyBand: Double
 
-    public init(edge: Double, bodyBand: Double) {
+    public init(edge: Double) {
         self.edge = edge
-        self.bodyBand = bodyBand
     }
 
-    /// A pointer's: `TimelineHandles.grabRadius` and `.bodyBandHeight`.
-    public static let pointer = HandleReach(
-        edge: TimelineHandles.grabRadius, bodyBand: TimelineHandles.bodyBandHeight)
+    /// A pointer's: `TimelineHandles.grabRadius`.
+    public static let pointer = HandleReach(edge: TimelineHandles.grabRadius)
 }
 
 public enum TimelineHandles {
@@ -94,31 +106,23 @@ public enum TimelineHandles {
     /// from an edge still selects.
     public static let grabRadius: Double = 9
 
-    /// How deep the loop-body grab band is at the top and at the bottom.
-    /// The drawn bar is 4 pt; 14 makes it hittable while leaving the great
-    /// majority of the lane to the range drag.
-    public static let bodyBandHeight: Double = 14
-
-    /// The handle under `point`, or `nil` when the pointer is over open lane.
+    /// The handle under the lanes' pixel column `x`, or `nil` when it is open
+    /// lane outside the loop.
     ///
-    /// - Parameters:
-    ///   - point: local to the waveform lanes, top-left origin.
-    ///   - laneHeight: the lanes' height, which is what makes "the bottom bar"
-    ///     a position rather than a guess.
+    /// A column, not a point: every handle is full height now that the body is
+    /// the whole inside of the loop, so where in the lanes' height a press
+    /// lands no longer changes what it takes hold of.
     public static func handle(
-        at point: CGPoint,
-        laneHeight: Double,
+        atPixel x: Double,
         loop: LoopRegion,
         viewport: Viewport,
         reach: HandleReach = .pointer
     ) -> TimelineHandle? {
-        guard point.x.isFinite, point.y.isFinite else { return nil }
-        let edge = edge(
-            atPixel: point.x, loop: loop, viewport: viewport, radius: reach.edge)
-        if let edge { return edge }
-        return body(
-            at: point, laneHeight: laneHeight, loop: loop, viewport: viewport,
-            band: reach.bodyBand)
+        guard x.isFinite else { return nil }
+        if let edge = edge(atPixel: x, loop: loop, viewport: viewport, radius: reach.edge) {
+            return edge
+        }
+        return body(atPixel: x, loop: loop, viewport: viewport)
     }
 
     /// Step 3 of the precedence rule: the nearest edge within `grabRadius`,
@@ -149,23 +153,15 @@ public enum TimelineHandles {
         return bestHandle
     }
 
-    /// Step 4: the loop's own bars, and only within its own span.
+    /// Step 4: anywhere within the loop's own span.
     private static func body(
-        at point: CGPoint, laneHeight: Double, loop: LoopRegion, viewport: Viewport,
-        band bandHeight: Double
+        atPixel x: Double, loop: LoopRegion, viewport: Viewport
     ) -> TimelineHandle? {
-        guard !loop.range.isEmpty, laneHeight > 0 else { return nil }
-        // Never more than a quarter of the lane at each end, however short the
-        // lane gets. Two fixed 14 pt bands in a 28 pt lane would leave no lane
-        // at all, and the plain drag — which selects — would vanish from a
-        // window the user had merely made small.
-        let band = Swift.min(bandHeight, laneHeight / 4)
-        let onABar = point.y < band || point.y > laneHeight - band
-        guard onABar else { return nil }
+        guard !loop.range.isEmpty else { return nil }
         let startX = viewport.pixel(forFrame: loop.range.start)
         let endX = viewport.pixel(forFrame: loop.range.end)
         guard startX.isFinite, endX.isFinite else { return nil }
-        return point.x >= startX && point.x <= endX ? .loopBody : nil
+        return x >= startX && x <= endX ? .loopBody : nil
     }
 
     /// The edge that stays put while `handle` is dragged. `nil` for the body,

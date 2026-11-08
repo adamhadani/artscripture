@@ -393,8 +393,4 @@ public final class ViewerModel {
     }
 
     var lanePointWidth: Int { Swift.max(1, Int(laneSize.width.rounded())) }
-
-    /// The lanes' height in points, which is what puts the loop's top and
-    /// bottom bars — and therefore its body grab band — somewhere definite.
-    var lanePointHeight: Double { Swift.max(1, laneSize.height) }
 }

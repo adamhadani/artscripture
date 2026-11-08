@@ -160,13 +160,12 @@ public struct ControlMetrics: Equatable, Sendable {
     /// The Mac keeps the 9 pt either side (a 20 pt target) it has always had.
     /// Touch gets 22 — the full 44 pt the guidance asks of anything a finger
     /// has to hit — because a missed edge was reported from an iPhone as
-    /// starting something else instead of moving the loop. The body band
-    /// grows to match, still capped at a quarter of the lane by
-    /// `TimelineHandles` so a small lane keeps room for a plain drag.
+    /// starting something else instead of moving the loop. The loop's body
+    /// needs no reach: it is the whole inside of the loop.
     public static func handleReach(on surface: EmptyStatePrompt.Surface) -> HandleReach {
         switch surface {
         case .desktop: return .pointer
-        case .tabletWithDrop, .phone: return HandleReach(edge: 22, bodyBand: 22)
+        case .tabletWithDrop, .phone: return HandleReach(edge: 22)
         }
     }
 

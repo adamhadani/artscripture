@@ -13,14 +13,14 @@ extension ViewerModel {
 
     // MARK: - The lane drag, and what it was decided to mean
 
-    /// A left-drag in the waveform lanes: a handle, a selection, or an
+    /// A left-drag in the waveform lanes: a loop handle, a new range, or an
     /// ⌥-modified zoom.
     ///
     /// **The precedence is `LaneDragMode`'s and it is written down there and in
     /// `TimelineHandles`.** In one line: ⌥ zooms and ⇧ extends wherever the
-    /// pointer is; otherwise a loop or selection edge within its grab zone —
-    /// or the loop's own top/bottom bar — is taken hold of; otherwise the drag
-    /// starts a new selection exactly as it always has.
+    /// pointer is; otherwise a loop edge within its grab zone is taken hold of,
+    /// then the loop's body — anywhere inside it; otherwise the drag draws a new
+    /// range exactly as it always has.
     ///
     /// **The mode is latched at mouse-down.** `option` and `shift` are read
     /// live from `NSEvent.modifierFlags` by the view, so they change the moment
@@ -151,13 +151,28 @@ extension ViewerModel {
         switch mode {
         case .zoom:
             zoomDragEnded()
-        case .edge:
-            // On touch a handle press that never moved is a tap (see
-            // `LaneDragPolicy.edgeTapIsAClick`): it seeks, and two play.
+        case .edge(let handle):
+            // A press that never moved is a click, not a grab: it seeks, and
+            // two play. Always on the loop's body — it is the whole inside of
+            // the loop, and a click there means the playhead, on any device
+            // (2026-11). On an edge only on touch, where a finger's reach
+            // covers most of a short loop (`LaneDragPolicy.edgeTapIsAClick`);
+            // the Mac keeps Task 23's no-seek edge click.
             let stayed = edgeDrag.map { !$0.hasMoved } ?? true
             edgeDragEnded()
-            if stayed && prefs.edgeTapIsAClick {
+            if stayed && (handle == .loopBody || prefs.edgeTapIsAClick) {
                 dragEnded(startPixel: start.x, endPixel: end.x, now: now)
+            } else if !stayed && handle == .loopBody {
+                // A loop you just moved is the one you hear — the rule a new
+                // range already follows on lift (`commitStagedLoop`). The
+                // engine takes hold of a loop only on arrival (spec §5.1), so a
+                // playing loop dragged back behind the playhead would otherwise
+                // play on to the end of the track, and one dragged ahead would
+                // play the old passage out first. Until 2026-11 this drag drew
+                // a new loop and got that rule for free.
+                if loop.isActive && !loop.range.contains(playhead) {
+                    seek(to: loop.range.start)
+                }
             }
         case .range, nil:
             dragEnded(startPixel: start.x, endPixel: end.x, now: now)
