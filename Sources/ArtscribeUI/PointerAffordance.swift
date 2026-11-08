@@ -59,6 +59,8 @@ enum PointerAffordance: Equatable, Sendable {
     case moveRegion
     /// The same, with the hand closed, while it is actually being moved.
     case movingRegion
+    /// Over the playhead's grip on the ruler, or scrubbing from it: sideways.
+    case scrubPlayhead
 
     /// The scheme, in one function.
     ///
@@ -82,16 +84,17 @@ enum PointerAffordance: Equatable, Sendable {
         optionHeld: Bool,
         shiftHeld: Bool = false,
         laneDrag: LaneDragMode?,
-        hovering: TimelineHandle? = nil
+        hovering: TimelineHandle? = nil,
+        onPlayheadGrip: Bool = false
     ) -> PointerAffordance {
         switch region {
         case .timeRuler:
-            // The ruler's only gesture is the zoom drag and it takes no
-            // modifier, so no argument can change this. Task 23 deliberately
-            // added nothing here: the ruler's whole surface is claimed by a
-            // modifier-free vertical drag, and carving grab zones out of it at
-            // the loop edges would break that zoom exactly where the loop is.
-            return .verticalDrag
+            // The zoom drag everywhere but the playhead's grip (2026-11), which
+            // scrubs when dragged sideways. Task 23 added no grab zones at the
+            // loop edges, and still none: those would break the zoom exactly
+            // where the loop is. The grip does not, because an up-or-down drag
+            // from it is still the zoom (`PlayheadScrub`).
+            return onPlayheadGrip ? .scrubPlayhead : .verticalDrag
         case .waveformLanes:
             switch laneDrag {
             case .zoom: return .zoom
@@ -135,6 +138,7 @@ enum PointerAffordance: Equatable, Sendable {
         case .resizeRegionTrailing: return .frameResize(position: .trailing)
         case .moveRegion: return .grabIdle
         case .movingRegion: return .grabActive
+        case .scrubPlayhead: return .columnResize
         }
     }
     #endif

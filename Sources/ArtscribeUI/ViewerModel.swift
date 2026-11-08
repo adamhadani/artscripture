@@ -284,6 +284,8 @@ public final class ViewerModel {
     /// would invalidate the window sixty times a second for nothing. The redraw
     /// a drag really does need comes from the viewport it moves.
     @ObservationIgnored var zoomDrag: ZoomDrag?
+    /// The ruler drag in flight — a zoom, or a scrub from the playhead's grip (`PlayheadScrub`).
+    @ObservationIgnored var rulerDrag: RulerDrag?
     /// Where the left-drag in flight in the lanes began, which is what
     /// identifies one gesture across its events. `@ObservationIgnored` for the
     /// same reason as `zoomDrag`: nothing draws from it.
