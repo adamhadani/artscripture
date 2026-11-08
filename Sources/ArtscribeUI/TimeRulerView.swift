@@ -8,6 +8,10 @@ struct TimeRulerView: View {
     @Environment(\.palette) private var palette
     /// Whether the pointer is over the playhead's grip, for the Mac's cursor.
     @State private var overGrip = false
+    /// True while a ruler gesture is in flight. Reset by SwiftUI on cancel as
+    /// well as on end — and only an end calls `onEnded` — which is how a
+    /// cancelled scrub is noticed at all (`rulerDragCancelled`).
+    @GestureState private var rulerPressed = false
 
     /// The ruler's height, and therefore its hit area.
     ///
@@ -102,6 +106,12 @@ struct TimeRulerView: View {
         }
         #endif
         .gesture(rulerGesture)
+        .onChange(of: rulerPressed) { _, pressed in
+            // After this turn of the run loop, so a normal end's `onEnded` has
+            // run first and this finds nothing to cancel.
+            guard !pressed else { return }
+            Task { @MainActor in model.rulerDragCancelled() }
+        }
         // Reported for the same reason the lanes report theirs: so a pointer
         // aimed at the ruler is aimed at where the ruler actually is. Nothing
         // draws from it.
@@ -128,6 +138,7 @@ struct TimeRulerView: View {
     /// both, and both draw through `viewport.pixel(forFrame:)`.
     private var rulerGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .local)
+            .updating($rulerPressed) { _, pressed, _ in pressed = true }
             .onChanged { model.rulerDragChanged(start: $0.startLocation, current: $0.location) }
             .onEnded { _ in model.rulerDragEnded() }
     }

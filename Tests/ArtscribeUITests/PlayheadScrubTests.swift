@@ -30,13 +30,23 @@ struct PlayheadScrubRuleTests {
 
     /// The ruler's up-and-down zoom has to survive a press that lands on the
     /// grip, because the playhead is where people start a zoom.
-    @Test("sideways from the grip is a scrub, up or down is the zoom, a wobble is neither")
+    @Test("only a clearly sideways drag from the grip scrubs; ties and up-or-down zoom")
     func directionDecides() {
-        #expect(PlayheadScrub.isScrub(dx: 2, dy: 1, slop: 3) == nil)
-        #expect(PlayheadScrub.isScrub(dx: 12, dy: 4, slop: 3) == true)
-        #expect(PlayheadScrub.isScrub(dx: -12, dy: 4, slop: 3) == true)
-        #expect(PlayheadScrub.isScrub(dx: 3, dy: 20, slop: 3) == false)
-        #expect(PlayheadScrub.isScrub(dx: 0, dy: -20, slop: 3) == false)
+        #expect(PlayheadScrub.isScrub(dx: 2, dy: 1, distance: 3) == nil)
+        #expect(PlayheadScrub.isScrub(dx: 12, dy: 4, distance: 3) == true)
+        #expect(PlayheadScrub.isScrub(dx: -12, dy: 4, distance: 3) == true)
+        #expect(PlayheadScrub.isScrub(dx: 12, dy: 6, distance: 3) == false, "a tie scrubbed")
+        #expect(PlayheadScrub.isScrub(dx: 10, dy: 10, distance: 3) == false)
+        #expect(PlayheadScrub.isScrub(dx: 3, dy: 20, distance: 3) == false)
+        #expect(PlayheadScrub.isScrub(dx: 0, dy: -20, distance: 3) == false)
+    }
+
+    /// A finger's first points wobble: on touch the grip waits longer.
+    @Test("a finger travels further than a pointer before the grip decides")
+    func touchWaitsLonger() {
+        #expect(PlayheadScrub.decisionDistance(reach: .pointer) == 3)
+        #expect(PlayheadScrub.decisionDistance(reach: HandleReach(edge: 22)) == 10)
+        #expect(PlayheadScrub.isScrub(dx: 9, dy: 0, distance: 10) == nil)
     }
 
     @Test("the playhead keeps its grab offset and stays on the page")
@@ -183,11 +193,12 @@ struct PlayheadScrubModelTests {
         #expect(model.playhead == 0)
     }
 
-    /// A gesture whose end never came — cancelled by the system, or lost to
-    /// another recogniser — must not leave the engine somewhere other than the
-    /// playhead, nor a track paused that was playing.
-    @Test("a scrub whose end never came is landed when the next ruler drag starts")
-    func aLeftoverScrubIsLanded() {
+    /// A gesture whose end and cancel were both lost must not leave the engine
+    /// somewhere other than the playhead — and must never be landed by
+    /// starting playback from an unrelated gesture (found in review: a zoom
+    /// drag minutes later started the music).
+    @Test("a pending scrub is landed by the next ruler drag with a seek, never by playing")
+    func aLeftoverScrubIsLandedWithoutPlaying() {
         let model = makeModel()
         model.transport.request(true, now: 0)
         let before = model.seekGeneration
@@ -195,8 +206,87 @@ struct PlayheadScrubModelTests {
             model, from: CGPoint(x: 400, y: 16), to: CGPoint(x: 500, y: 16), lift: false)
         model.rulerDragChanged(start: CGPoint(x: 100, y: 16), current: CGPoint(x: 100, y: 16))
         #expect(model.seekGeneration == before + 1)
-        #expect(playWasRequested(model))
+        #expect(!playWasRequested(model), "an unrelated ruler drag started playback")
         #expect(model.playhead == frame(500))
+    }
+
+    @Test("a cancelled scrub lands where it was left, and does not play again")
+    func aCancelledScrubLandsWithoutPlaying() {
+        let model = makeModel()
+        model.transport.request(true, now: 0)
+        let before = model.seekGeneration
+        rulerDrag(
+            model, from: CGPoint(x: 400, y: 16), to: CGPoint(x: 520, y: 16), lift: false)
+        model.rulerDragCancelled()
+        #expect(model.seekGeneration == before + 1)
+        #expect(model.playhead == frame(520))
+        #expect(!playWasRequested(model))
+        #expect(model.rulerDrag == nil)
+        // And after a normal end there is nothing left to cancel.
+        rulerDrag(model, from: CGPoint(x: 520, y: 16), to: CGPoint(x: 600, y: 16))
+        let settled = model.seekGeneration
+        model.rulerDragCancelled()
+        #expect(model.seekGeneration == settled)
+    }
+
+    @Test("closing the track drops a scrub in flight, and the next track's ruler is clean")
+    func closingDropsTheScrub() {
+        let model = makeModel()
+        model.transport.request(true, now: 0)
+        rulerDrag(
+            model, from: CGPoint(x: 400, y: 16), to: CGPoint(x: 500, y: 16), lift: false)
+        model.closeTrack()
+        #expect(model.rulerDrag == nil)
+        let storage = AudioStorage(channels: 1, capacityFrames: Int(Self.totalFrames))
+        let audio = DecodedAudio(
+            channels: 1, sampleRate: 44100, frameCount: Self.totalFrames, storage: storage)
+        model.loadForTesting(audio: audio, pyramid: PeakPyramid.build(audio), widthPixels: 1000)
+        let before = model.seekGeneration
+        rulerDrag(model, from: CGPoint(x: 100, y: 8), to: CGPoint(x: 100, y: 200))
+        #expect(model.seekGeneration == before, "the old track's scrub landed on the new one")
+        #expect(!playWasRequested(model))
+    }
+
+    /// Space, a headphone button or the lock screen, mid-scrub: playback starts
+    /// from where the finger is, and the finger lets go of the playhead.
+    @Test("play pressed mid-scrub starts from the scrubbed spot, and the rest of the drag is spent")
+    func playMidScrubLandsTheScrub() {
+        let model = makeModel()
+        let before = model.seekGeneration
+        rulerDrag(
+            model, from: CGPoint(x: 400, y: 16), to: CGPoint(x: 480, y: 16), lift: false)
+        model.play()
+        #expect(model.seekGeneration == before + 1, "playback would start from the old spot")
+        #expect(model.playhead == frame(480))
+        model.rulerDragChanged(start: CGPoint(x: 400, y: 16), current: CGPoint(x: 700, y: 16))
+        #expect(model.playhead == frame(480), "the finger kept moving the playhead")
+        model.rulerDragEnded()
+        #expect(model.seekGeneration == before + 1, "release seeked again")
+    }
+
+    @Test("on touch a short sideways wobble on the grip is still nothing")
+    func touchWobbleIsNothing() {
+        let model = makeModel()
+        model.prefs.handleReach = HandleReach(edge: 22)
+        model.transport.request(true, now: 0)
+        let start = CGPoint(x: 410, y: 16)
+        model.rulerDragChanged(start: start, current: start)
+        model.rulerDragChanged(start: start, current: CGPoint(x: 418, y: 17))
+        #expect(model.isPlaying, "a wobble paused the track")
+        #expect(model.playhead == frame(400))
+        model.rulerDragChanged(start: start, current: CGPoint(x: 440, y: 18))
+        #expect(!model.isPlaying)
+        #expect(model.playhead == frame(430))
+        model.rulerDragEnded()
+    }
+
+    @Test("a diagonal drag from the grip is the zoom, not a scrub")
+    func aDiagonalFromTheGripZooms() {
+        let model = makeModel()
+        let zoom = model.zoomFactor
+        rulerDrag(model, from: CGPoint(x: 400, y: 8), to: CGPoint(x: 500, y: 108))
+        #expect(model.playhead == frame(400))
+        #expect(model.zoomFactor != zoom)
     }
 
     /// The point of putting the grip on the ruler: the lanes, and every loop

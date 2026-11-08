@@ -24,10 +24,12 @@ import CoreGraphics
 ///
 /// The ruler's vertical drag is the app's only modifier-free zoom, and the
 /// natural place to start a zoom is where you are looking — often the
-/// playhead. So a press on the grip decides nothing until it has moved past
-/// the click slop: mostly sideways is a scrub, mostly up or down is the zoom,
-/// anchored where it began exactly as before. Off the grip a drag zooms at
-/// once, as it always did.
+/// playhead. So a press on the grip decides nothing until it has travelled
+/// `decisionDistance`, and then only a **clearly** sideways drag is a scrub
+/// (more than twice as far across as down); anything else, ties included, is
+/// the zoom, anchored where it began exactly as before. A finger's first few
+/// points wobble, so on touch it waits longer (10 pt, against the pointer's
+/// 3). Off the grip a drag zooms at once, as it always did.
 ///
 /// ## What a scrub does to the engine
 ///
@@ -37,6 +39,18 @@ import CoreGraphics
 /// paused too. The engine is told **once**, on release (`seek(to:)`), and plays
 /// again if it was playing. A seek per finger event would reset the stretcher
 /// sixty times a second for nothing anyone could hear.
+///
+/// ## When it does not end normally
+///
+/// - **Cancelled** (a call, an app switch, another recogniser): landed with
+///   the seek and *without* playing again — the gesture is noticed through
+///   the ruler's gesture state, which resets on cancel as on end.
+/// - **Play pressed mid-scrub** (Space, headphones, the lock screen): `play()`
+///   lands the scrub first, so playback starts from where the finger is, and
+///   the rest of that drag is spent.
+/// - **The track closes or changes**: dropped, like a lane gesture.
+/// - A scrub still pending when a later ruler drag starts is landed with the
+///   seek alone — never by starting playback from an unrelated gesture.
 struct PlayheadScrub: Equatable {
     /// Where the press began, in ruler points: the gesture's identity.
     let startX: Double
@@ -58,11 +72,18 @@ struct PlayheadScrub: Equatable {
         return PlayheadScrub(startX: x, grabOffset: x - playheadX)
     }
 
-    /// What a drag on the grip turns out to be, once it has moved `slop`:
-    /// `true` for a scrub, `false` for the zoom, `nil` while it is still a tap.
-    static func isScrub(dx: Double, dy: Double, slop: Double) -> Bool? {
-        guard Swift.max(abs(dx), abs(dy)) >= slop else { return nil }
-        return abs(dx) >= abs(dy)
+    /// What a drag on the grip turns out to be, once it has moved `distance`:
+    /// `true` for a scrub — clearly sideways — `false` for the zoom, ties
+    /// included, and `nil` while it is still a tap.
+    static func isScrub(dx: Double, dy: Double, distance: Double) -> Bool? {
+        guard Swift.max(abs(dx), abs(dy)) >= distance else { return nil }
+        return abs(dx) > 2 * abs(dy)
+    }
+
+    /// How far a press on the grip travels before it is decided: the click
+    /// slop with a pointer, more under a finger, whose first points wobble.
+    static func decisionDistance(reach: HandleReach) -> Double {
+        reach.edge > HandleReach.pointer.edge ? 10 : 3
     }
 
     /// Where the playhead goes with the pointer at `x`: at its grab offset,
@@ -76,10 +97,13 @@ struct PlayheadScrub: Equatable {
 enum RulerDrag: Equatable {
     case zoom(startX: Double)
     case scrub(PlayheadScrub)
+    /// A scrub that playback took over (`landScrubForPlayback`): the rest of
+    /// the gesture is ignored.
+    case spent(startX: Double)
 
     var startX: Double {
         switch self {
-        case .zoom(let x): return x
+        case .zoom(let x), .spent(let x): return x
         case .scrub(let scrub): return scrub.startX
         }
     }

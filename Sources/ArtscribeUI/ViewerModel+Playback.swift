@@ -249,6 +249,7 @@ extension ViewerModel {
 
     public func play() {
         guard hasTrack else { return }
+        landScrubForPlayback()
         guard let session else {
             playbackNotice =
                 "There is no audio output, so nothing can play. "

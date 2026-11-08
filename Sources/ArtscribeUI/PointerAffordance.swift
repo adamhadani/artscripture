@@ -59,7 +59,7 @@ enum PointerAffordance: Equatable, Sendable {
     case moveRegion
     /// The same, with the hand closed, while it is actually being moved.
     case movingRegion
-    /// Over the playhead's grip on the ruler, or scrubbing from it: sideways.
+    /// Over the playhead's grip on the ruler: sideways.
     case scrubPlayhead
 
     /// The scheme, in one function.
