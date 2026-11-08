@@ -21,7 +21,7 @@ extension AcceptanceRun {
         await settle(seconds: 0.3)
         let frames = model.transportFrames
         // The Video button is on the bar only for a video file.
-        let shown = TransportControl.visibleGroups(in: model.transportState).joined()
+        let shown = TransportControl.visibleGroups(in: model.transportState, on: .desktop).joined()
         log.check(
             "every transport control laid out (\(frames.count)/\(shown.count))",
             frames.count == shown.count)

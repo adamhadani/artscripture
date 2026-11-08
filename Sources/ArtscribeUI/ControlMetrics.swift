@@ -83,6 +83,25 @@ public struct ControlMetrics: Equatable, Sendable {
     /// height themselves and this is only the gap to the rules above and below.
     public let rowPadding: CGFloat
 
+    /// The height a **transport** button is drawn at — the full target on
+    /// touch, not `chromeHeight`.
+    ///
+    /// The header's chrome stays inset from its target, for the reason
+    /// `chromeHeight` gives. The transport is the other way round: it is what
+    /// a player reaches for most, and at 32 pt above a two-line status bar the
+    /// readouts took nearly twice the buttons' height. The user, 2026-11:
+    /// *"give the transport bar more vertical space than the bottom most bar
+    /// … more space for the buttons users tend to click more often is more
+    /// important"*. Of four layouts rendered on a phone they chose this one:
+    /// 44 pt buttons, stretched across the row (`TransportDensity`), over a
+    /// one-line status bar.
+    public let buttonHeight: CGFloat
+
+    /// The transport's SF Symbol size, at the button's full width. A narrower
+    /// button draws it smaller (`TransportDensity.glyph`): a ⏪ is wider than
+    /// its point size, and at 22 pt it clipped the sides of a 30 pt button.
+    public let buttonGlyph: CGFloat
+
     /// Around a group of buttons, separating it from its neighbours, and at the
     /// ends of the bar.
     ///
@@ -111,10 +130,6 @@ public struct ControlMetrics: Equatable, Sendable {
 
     // MARK: - Derived
 
-    /// The height a button is **drawn** at. What *responds* is `target`, which
-    /// `hitRegion(target:drawn:)` adds without taking the space.
-    public var buttonHeight: CGFloat { chromeHeight }
-
     /// Preferred width. Slightly wider than tall, so a row of them reads as a
     /// row of keys rather than a strip of squares.
     public var buttonWidth: CGFloat { target * 1.25 }
@@ -137,7 +152,8 @@ public struct ControlMetrics: Equatable, Sendable {
             // there is nothing to separate. Nothing on the Mac moves.
             return ControlMetrics(
                 target: 24, chromeHeight: 24, glyph: 13, barPadding: 9, rowPadding: 5,
-                groupPadding: 7, barInset: 10, compactWidth: 30)
+                buttonHeight: 24, buttonGlyph: 13, groupPadding: 7, barInset: 10,
+                compactWidth: 30)
         case .tabletWithDrop, .phone:
             // Both are 44: the guidance does not distinguish a finger on an
             // iPad from a finger on a phone, and neither does a finger. What
@@ -145,13 +161,14 @@ public struct ControlMetrics: Equatable, Sendable {
             // layout rather than by a constant — an iPad reaches the full
             // preferred width, a phone in landscape compresses toward
             // `compactWidth`.
-            // 32 pt of chrome inside a 44 pt region. The paddings are then
-            // what put the difference *around* each control rather than inside
-            // it: a header of 32 + 8 + 8 = 48, a transport row of 32 + 6 + 6 =
-            // 44, and in both the region a thumb gets is the full 44.
+            // The header: 32 pt of chrome inside a 44 pt region, 32 + 8 + 8 =
+            // 48. The transport: buttons drawn at the full 44, a row of
+            // 44 + 10 + 10 = 64 — see `buttonHeight` for why it outgrew the
+            // header.
             return ControlMetrics(
-                target: 44, chromeHeight: 32, glyph: 18, barPadding: 8, rowPadding: 6,
-                groupPadding: 6, barInset: 10, compactWidth: 30)
+                target: 44, chromeHeight: 32, glyph: 18, barPadding: 8, rowPadding: 10,
+                buttonHeight: 44, buttonGlyph: 22, groupPadding: 6, barInset: 10,
+                compactWidth: 30)
         }
     }
 
@@ -189,7 +206,8 @@ public struct ControlMetrics: Equatable, Sendable {
 
     /// Grown by the user's text-size preference, clamped.
     ///
-    /// Only `target`, `glyph` and `compactWidth` scale. The padding does not:
+    /// Only the target, the drawn heights, the glyphs and `compactWidth`
+    /// scale. The padding does not:
     /// it is whitespace, and whitespace growing with the text is how a bar ends
     /// up taller than the control it holds.
     public func scaled(by factor: CGFloat) -> ControlMetrics {
@@ -200,6 +218,8 @@ public struct ControlMetrics: Equatable, Sendable {
             glyph: glyph * clamped,
             barPadding: barPadding,
             rowPadding: rowPadding,
+            buttonHeight: buttonHeight * clamped,
+            buttonGlyph: buttonGlyph * clamped,
             groupPadding: groupPadding,
             barInset: barInset,
             compactWidth: compactWidth * clamped)

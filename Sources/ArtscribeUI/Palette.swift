@@ -204,4 +204,12 @@ struct Eyebrow: View {
             .fixedSize(horizontal: true, vertical: false)
             .foregroundStyle(palette.dimmed.color())
     }
+
+    /// A label that changes between words without changing width: laid out as
+    /// `widest`, drawn as `text`. Since the status bar went to one line
+    /// (2026-11) its labels sit *beside* their values, so "■ POSITION" turning
+    /// into "▶ PLAYING" on every press of play would slide the whole row.
+    static func steady(_ text: String, widest: String) -> some View {
+        Eyebrow(widest).hidden().overlay(alignment: .leading) { Eyebrow(text) }
+    }
 }

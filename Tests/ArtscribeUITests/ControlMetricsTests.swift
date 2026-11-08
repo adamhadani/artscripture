@@ -54,7 +54,24 @@ struct ControlMetricsTests {
             #expect(
                 m.chromeHeight >= m.target * 0.6,
                 "\(surface) draws \(m.chromeHeight) inside a \(m.target) region — too invisible")
-            #expect(m.buttonHeight == m.chromeHeight)
+            // The transport is drawn between the two: never smaller than the
+            // header's chrome, never outside its own target.
+            #expect(m.buttonHeight >= m.chromeHeight, "\(surface) transport smaller than header")
+            #expect(m.buttonHeight <= m.target, "\(surface) transport draws outside its target")
+        }
+    }
+
+    /// The user's call (2026-11), from four layouts rendered on a phone: on
+    /// touch the transport — what gets pressed most — is drawn at the full
+    /// target, taller than the header's inset chrome, and a 64 pt row stands
+    /// over a one-line status bar instead of a 44 pt row under a two-line one.
+    @Test("on touch the transport is drawn at the full target, above the header's chrome")
+    func touchTransportIsFullHeight() {
+        for surface in [EmptyStatePrompt.Surface.tabletWithDrop, .phone] {
+            let m = ControlMetrics.metrics(for: surface)
+            #expect(m.buttonHeight == m.target)
+            #expect(m.buttonHeight > m.chromeHeight)
+            #expect(m.buttonHeight + 2 * m.rowPadding == 64)
         }
     }
 
@@ -76,7 +93,7 @@ struct ControlMetricsTests {
     func barsContainTheirTargets() {
         for surface in Self.surfaces {
             let m = ControlMetrics.metrics(for: surface)
-            let row = m.chromeHeight + 2 * m.rowPadding
+            let row = m.buttonHeight + 2 * m.rowPadding
             let header = m.chromeHeight + 2 * m.barPadding
             #expect(row >= m.target, "\(surface) transport row \(row) < target \(m.target)")
             #expect(header >= m.target, "\(surface) header \(header) < target \(m.target)")
@@ -133,6 +150,43 @@ struct ControlMetricsTests {
         #expect(last == m.buttonWidth, "an iPad-width row never reaches the preferred width")
     }
 
+    /// **The phone's row stretches its buttons to fill it** rather than dropping
+    /// to the floor. With fixed steps (55, 44, 30) a landscape phone fell to 30
+    /// and left about 110 pt of the row empty — the user: *"stretch out buttons
+    /// horizontally a bit so doesn't look weird and fills up the space more
+    /// naturally"*. The width chosen is the widest that fits: one point more
+    /// would not.
+    @Test("a phone's transport stretches its buttons to fill the row")
+    func thePhoneRowStretches() {
+        let m = ControlMetrics.metrics(for: .phone)
+        let available: CGFloat = 750  // an iPhone 17 Pro in landscape, safe area off
+        let density = TransportDensity.fitting(available: available, row: Self.phoneRow, metrics: m)
+        let width = density.buttonWidth
+        #expect(width > m.compactWidth && width < m.buttonWidth, "\(width) pt")
+        #expect(!density.readoutsAtFloor)
+        let needed = { (w: CGFloat) in
+            TransportDensity.width(
+                buttonWidth: w, readoutsAtFloor: false, row: Self.phoneRow, metrics: m)
+        }
+        #expect(needed(width) <= available, "the stretched row overflows: \(needed(width))")
+        #expect(needed(width + 1) > available, "\(width) pt is not the widest that fits")
+    }
+
+    /// A ⏪ runs about 1.4× its point size across: a glyph sized for a wide
+    /// button clipped both sides of a 30 pt one when the mocks were rendered.
+    @Test("a transport glyph never outgrows its button, and is full size when it can be")
+    func theGlyphFitsTheButton() {
+        for surface in Self.surfaces {
+            let m = ControlMetrics.metrics(for: surface)
+            for width in stride(from: m.compactWidth, through: m.buttonWidth, by: 1) {
+                let glyph = TransportDensity.glyph(forWidth: width, metrics: m)
+                #expect(glyph * 1.4 < width, "\(surface): \(glyph) pt in \(width) pt")
+                #expect(glyph <= m.buttonGlyph)
+            }
+            #expect(TransportDensity.glyph(forWidth: m.buttonWidth, metrics: m) == m.buttonGlyph)
+        }
+    }
+
     /// Zero is what the first layout pass reports, before any geometry exists.
     /// Guessing wide there draws one frame of a row hanging out under the notch.
     @Test("an unmeasured bar starts tight rather than wide")
@@ -155,6 +209,18 @@ struct ControlMetricsTests {
         labelPreferred: 58, labelFloor: 40,
         pitchGap: Metrics.sm, slack: Metrics.md)
 
+    /// The phone's bar: no zoom buttons and, for audio, no Video button.
+    private static let phoneRow: TransportDensity.Row = {
+        let groups = TransportControl.groups.map {
+            $0.filter { ![.zoomIn, .zoomOut, .video].contains($0) }
+        }.filter { !$0.isEmpty }
+        return TransportDensity.Row(
+            buttons: groups.reduce(0) { $0 + $1.count }, groups: groups.count,
+            gaps: groups.reduce(0) { $0 + max(0, $1.count - 1) },
+            speedPreferred: 46, speedFloor: 38, sliderPreferred: 92, sliderFloor: 56,
+            labelPreferred: 58, labelFloor: 40, pitchGap: Metrics.sm, slack: Metrics.md)
+    }()
+
     @Test("the derived shape stays proportional to the target")
     func ratiosHold() {
         for surface in Self.surfaces {
@@ -163,6 +229,7 @@ struct ControlMetricsTests {
             #expect(m.spacing > 0 && m.spacing < m.groupPadding, "\(surface) grouping is flat")
             #expect(m.cornerRadius < m.target / 2, "\(surface) buttons are capsules")
             #expect(m.glyph < m.target, "\(surface) glyph overflows its button")
+            #expect(m.buttonGlyph < m.buttonHeight, "\(surface) transport glyph overflows")
         }
     }
 
@@ -230,6 +297,10 @@ struct ControlMetricsTests {
         #expect(m.glyph == 13)
         #expect(m.barPadding == 9)
         #expect(m.rowPadding == 5)
+        #expect(m.buttonGlyph == 13)
+        // The stretch never touches a Mac: its preferred and floor widths are
+        // the same 30 pt, so there is nothing between them to stretch into.
+        #expect(m.compactWidth == m.buttonWidth)
     }
 }
 

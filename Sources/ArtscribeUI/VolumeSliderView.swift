@@ -21,8 +21,14 @@ struct VolumeSliderView: View {
 
     var body: some View {
         let volume = model.volume
-        VStack(alignment: .leading, spacing: Metrics.xs) {
-            Eyebrow(volume.isMuted ? "MUTED  (M)" : "VOLUME  (↑↓)")
+        // One line, beside its label, like every status-bar field since 2026-11.
+        // The key hint only where there are keys to press.
+        let keys = EmptyStatePrompt.current == .desktop
+        HStack(alignment: .firstTextBaseline, spacing: Metrics.sm) {
+            Eyebrow.steady(
+                volume.isMuted
+                    ? (keys ? "MUTED  (M)" : "MUTED") : (keys ? "VOLUME  (↑↓)" : "VOLUME"),
+                widest: keys ? "VOLUME  (↑↓)" : "VOLUME")
             HStack(spacing: Metrics.lg) {
                 track(volume)
                 Text(Readout.percent(volume.level))
@@ -31,6 +37,7 @@ struct VolumeSliderView: View {
                     .foregroundStyle(
                         volume.isMuted ? palette.dimmed.color() : palette.text.color())
             }
+            .frame(width: StatusBarFields.width(of: .volume), alignment: .leading)
         }
     }
 

@@ -74,11 +74,22 @@ public enum TransportControl: String, CaseIterable, Sendable, Hashable {
         [.video]
     ]
 
-    /// The groups the bar draws for `state`: all of them for a video file, and
-    /// without the Video button — and its separator — for audio.
-    public static func visibleGroups(in state: TransportState) -> [[TransportControl]] {
-        guard !state.hasVideo else { return groups }
-        return groups.map { $0.filter { $0 != .video } }.filter { !$0.isEmpty }
+    /// The groups the bar draws for `state` on `surface`: the Video button only
+    /// for a video file, and the zoom buttons everywhere but a phone.
+    ///
+    /// **No zoom buttons on a phone.** A pinch zooms there, and the two
+    /// buttons' width went to the other ten instead — the layout the user
+    /// chose from four rendered on a phone (2026-11), which makes them nearly
+    /// square rather than tall and narrow. An iPad keeps them: its row has the
+    /// room, and a pointer or keyboard on an iPad wants a button to zoom with.
+    /// The keys (`R`, `E`) and the menu still zoom on every surface.
+    public static func visibleGroups(
+        in state: TransportState, on surface: EmptyStatePrompt.Surface
+    ) -> [[TransportControl]] {
+        var hidden: Set<TransportControl> = []
+        if !state.hasVideo { hidden.insert(.video) }
+        if surface == .phone { hidden.formUnion([.zoomOut, .zoomIn]) }
+        return groups.map { $0.filter { !hidden.contains($0) } }.filter { !$0.isEmpty }
     }
 
     /// What one button says and draws in its resting state.

@@ -49,10 +49,31 @@ struct VideoControlsTests {
     /// An audio file's bar is exactly today's bar.
     @Test func theVideoButtonOnlyShowsForVideo() {
         let audio = model(withVideo: false).transportState
-        #expect(TransportControl.visibleGroups(in: audio) == TransportControl.groups.dropLast())
-        #expect(!TransportControl.visibleGroups(in: audio).joined().contains(.video))
+        for surface in [EmptyStatePrompt.Surface.desktop, .tabletWithDrop] {
+            let groups = TransportControl.visibleGroups(in: audio, on: surface)
+            #expect(groups == TransportControl.groups.dropLast())
+            #expect(!groups.joined().contains(.video))
+        }
         let video = model(withVideo: true).transportState
-        #expect(TransportControl.visibleGroups(in: video) == TransportControl.groups)
+        #expect(TransportControl.visibleGroups(in: video, on: .desktop) == TransportControl.groups)
+        #expect(TransportControl.visibleGroups(in: video, on: .phone).joined().contains(.video))
+    }
+
+    /// A phone has no zoom buttons — a pinch zooms there, and their width went
+    /// to the other ten (the layout chosen from four rendered on a phone,
+    /// 2026-11). An iPad and a Mac keep them, and nothing else is dropped.
+    @Test func thePhoneBarHasNoZoomButtons() {
+        let audio = model(withVideo: false).transportState
+        let phone = TransportControl.visibleGroups(in: audio, on: .phone)
+        #expect(!phone.joined().contains(.zoomIn))
+        #expect(!phone.joined().contains(.zoomOut))
+        #expect(phone.count == TransportControl.groups.count - 2, "an empty group left a separator")
+        let everyOther = Set(TransportControl.allCases).subtracting([.zoomIn, .zoomOut, .video])
+        #expect(Set(phone.joined()) == everyOther)
+        for surface in [EmptyStatePrompt.Surface.desktop, .tabletWithDrop] {
+            let groups = TransportControl.visibleGroups(in: audio, on: surface).joined()
+            #expect(groups.contains(.zoomIn) && groups.contains(.zoomOut), "\(surface)")
+        }
     }
 
     @Test func theVideoButtonIsOnWhileThePictureShows() {
