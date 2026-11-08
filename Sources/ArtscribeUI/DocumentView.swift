@@ -166,7 +166,9 @@ public struct DocumentView: View {
         .onGeometryChange(for: CGFloat.self) {
             $0.safeAreaInsets.bottom
         } action: {
-            bottomInset = $0
+            // Only ever the home indicator: see `HomeIndicatorInset`.
+            let next = HomeIndicatorInset.next(current: bottomInset, measured: $0)
+            if next != bottomInset { bottomInset = next }
         }
         .background(Palette.of(appearance).background.color())
         // **The auxiliary windows, as sheets.** On macOS these are real windows —

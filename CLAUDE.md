@@ -260,6 +260,18 @@ carries on under the home indicator while its content does not, so 8 pt sat abov
 inset now goes on top, measured from `DocumentView`'s geometry rather than read off a UIKit
 singleton.
 
+**And that measurement was a layout loop waiting for an overflow — it froze 1.4 on a phone.**
+A view that pads itself by an inset measured from its own geometry is closed only while it fits
+its space. A keyboard rising over a sheet makes UIKit re-lay out the presenter in ~207 pt, the
+document overhangs, and the "inset" becomes the overhang, which the padding changes: 20 → 194.8
+→ 151.1 → 162.1 → … about thirty full re-renders on a simulator, **forever on an iPhone 17 Pro**
+— no keyboard, a dead sheet, a `0x8BADF00D` scene-update kill on backgrounding.
+`ignoresSafeArea(.keyboard)` changed nothing at any placement (it is the sheet controller, not
+SwiftUI's keyboard region). The fix is at the input: `HomeIndicatorInset` takes nothing taller
+than a home indicator, in whole points. Two things that found it: the four device crash logs
+each stopped in a *different* view body under one `_keyboardAboutToShow` — a loop, not a stall
+— and logging the geometry every pass, which turned a guess into a table.
+
 **Look at the pixels, on each platform, before calling UI done.** Three defects in the welcome
 sheet were invisible to 967 passing tests and to two code reviews, and all three were obvious
 in the first screenshot. A `TabView` carrying `.tabViewStyle(.page(…))` behind `#if !os(macOS)`
