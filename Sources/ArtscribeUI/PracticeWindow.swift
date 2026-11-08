@@ -119,6 +119,9 @@ public struct PracticeWindow: View {
     /// only the suggestion that it can.
     private var header: some View {
         HStack(spacing: Metrics.xl) {
+            #if !os(macOS)
+            SheetCloseButton { context.practice.windowState.isPresented = false }
+            #endif
             Eyebrow("RAMPING LOOP")
             Spacer(minLength: Metrics.md)
             if model.canRamp {

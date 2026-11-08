@@ -135,6 +135,15 @@ public struct AboutWindow: View {
             .padding(Self.contentInset)
             .frame(maxWidth: .infinity)
         }
+        // Over the scroll view rather than in it: About is a centred column with
+        // no header row to carry the button, and a Close that scrolled away with
+        // the licences would be no way out at all.
+        #if !os(macOS)
+        .overlay(alignment: .topLeading) {
+            SheetCloseButton { about.windowState.isPresented = false }
+            .padding(Metrics.xl)
+        }
+        #endif
         // As in `ShortcutWindow` and `PracticeWindow`: a minimum is a floor for a
         // resizable window and a fixed size for a sheet, so the two platforms
         // want different modifiers from the same numbers. The iPad cap is what

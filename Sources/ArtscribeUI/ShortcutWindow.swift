@@ -201,6 +201,9 @@ public struct ShortcutWindow: View {
 
     private func header(query: Binding<String>) -> some View {
         HStack(spacing: Metrics.xl) {
+            #if !os(macOS)
+            SheetCloseButton { shortcuts.windowState.isPresented = false }
+            #endif
             Eyebrow("KEYBOARD SHORTCUTS")
 
             HStack(spacing: Metrics.sm) {

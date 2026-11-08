@@ -87,6 +87,13 @@ struct LicenceTextSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline, spacing: Metrics.md) {
+                // `dismiss` is right here, unlike in the top-level sheets: this
+                // one is presented from `readingLicence`, which the dismissal
+                // puts back to `nil` itself.
+                #if !os(macOS)
+                SheetCloseButton { dismiss() }
+                    .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] }
+                #endif
                 Text(licence.component)
                     .font(Typography.readoutEmphasis)
                     .foregroundStyle(palette.text.color())
@@ -94,12 +101,16 @@ struct LicenceTextSheet: View {
                     .font(Typography.readoutSmall)
                     .foregroundStyle(palette.accent.color())
                 Spacer(minLength: Metrics.md)
+                // The Mac keeps Done at the trailing end, where a Mac sheet's
+                // button goes; iOS has the Close button at the leading end.
+                #if os(macOS)
                 Button("Done") { dismiss() }
                     .buttonStyle(.plain)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(palette.accent.color())
                     .hitRegion(target: metrics.target, drawn: metrics.chromeHeight)
                     .keyboardShortcut(.defaultAction)
+                #endif
             }
             .padding(Self.inset)
             Rectangle().fill(palette.rule.color()).frame(height: Metrics.hairline)
