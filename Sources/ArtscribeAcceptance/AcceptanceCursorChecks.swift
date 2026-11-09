@@ -69,9 +69,9 @@ extension AcceptanceRun {
     ) async -> CursorReadings {
         let restoreTo = NSEvent.mouseLocation
         var readings = CursorReadings()
-        // The playhead's grip on the ruler has its own, sideways cursor
-        // (`PlayheadScrub`), so park the playhead well clear of the ruler's
-        // middle before reading the ruler's.
+        // The playhead's grip, halfway down the lanes, has its own sideways
+        // cursor (`PlayheadScrub`), so park the playhead well clear of the
+        // lanes' middle before reading theirs.
         model.seek(to: 0)
 
         readings.outside = await read(

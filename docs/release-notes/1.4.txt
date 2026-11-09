@@ -6,7 +6,7 @@ The header's buttons now share one shape and size, so the top of the screen read
 
 Mark a passage and it loops straight away; playback no longer runs on past the passage you just marked. Tap the loop button if you only wanted to mark it.
 
-Scrub through a track by dragging the playhead's handle on the time ruler; with a video open, the picture follows your finger frame by frame.
+Scrub through a track by dragging the handle on the playhead, halfway down the waveform beside the loop's handles; with a video open, the picture changes as your finger moves.
 
 To move a loop, drag it from anywhere inside it; it keeps its length. Drag its edges to resize it, and drag outside it to mark a new passage, as before. A click or tap inside the loop still just moves the playhead.
 

@@ -136,23 +136,33 @@ enum LaneDragMode: Equatable, Sendable {
     /// mode, so an edge dragged past its opposite number keeps being *this*
     /// drag rather than becoming a different one.
     case edge(TimelineHandle)
+    /// The playhead's grip taken hold of: a scrub (`PlayheadScrub`). The
+    /// grip sits halfway down the lanes, in line with the loop's grips.
+    case scrub
 
     /// The lanes' precedence rule, in one place. See `TimelineHandles` for the
     /// whole of it and for why it is ordered this way:
     ///
     /// 1. ⌥ → zoom. It beats everything, including a handle under the pointer.
     /// 2. ⇧ → extend the range. Also beats a handle.
-    /// 3. A handle under the pointer → drag it.
-    /// 4. Otherwise → a new range, replacing the old one.
+    /// 3. The playhead's grip under the pointer → scrub. Only where a loop
+    ///    edge is not as near (`PlayheadScrub.grabbed` settles that), so it
+    ///    beats the loop's body and open lane, never an edge.
+    /// 4. A handle under the pointer → drag it.
+    /// 5. Otherwise → a new range, replacing the old one.
     ///
     /// ⌥ beating ⇧ when both are held is unchanged: holding both is a typo
     /// rather than a third gesture, and the same precedence already governs the
     /// nudge tiers.
-    init(option: Bool, shift: Bool, handle: TimelineHandle? = nil) {
+    init(
+        option: Bool, shift: Bool, handle: TimelineHandle? = nil, onPlayheadGrip: Bool = false
+    ) {
         if option {
             self = .zoom
         } else if shift {
             self = .range(extending: true)
+        } else if onPlayheadGrip {
+            self = .scrub
         } else if let handle {
             self = .edge(handle)
         } else {

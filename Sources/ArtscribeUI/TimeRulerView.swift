@@ -6,12 +6,6 @@ import SwiftUI
 struct TimeRulerView: View {
     let model: ViewerModel
     @Environment(\.palette) private var palette
-    /// Whether the pointer is over the playhead's grip, for the Mac's cursor.
-    @State private var overGrip = false
-    /// True while a ruler gesture is in flight. Reset by SwiftUI on cancel as
-    /// well as on end — and only an end calls `onEnded` — which is how a
-    /// cancelled scrub is noticed at all (`rulerDragCancelled`).
-    @GestureState private var rulerPressed = false
 
     /// The ruler's height, and therefore its hit area.
     ///
@@ -23,10 +17,8 @@ struct TimeRulerView: View {
     /// spacing (both are laid out from the bottom edge), so the extra eight
     /// points are quiet background rather than more ink.
     ///
-    /// It is not extended past the drawn ruler in either direction — the
-    /// playhead's grip included, which is why it lives on the ruler at all
-    /// (`PlayheadScrub`). Downwards would steal from the waveform lanes, where
-    /// a bare drag marks a loop; upwards
+    /// It is not extended past the drawn ruler in either direction. Downwards
+    /// would steal from the waveform lanes, where a bare drag selects; upwards
     /// would steal from the overview strip, where a bare drag scrubs. Both are
     /// gestures with no modifier, so an invisible margin over either would make
     /// the wrong thing happen with the pointer apparently in the right place.
@@ -37,6 +29,10 @@ struct TimeRulerView: View {
     /// The tick labels' baseline, measured from the bottom edge so the label
     /// keeps its relationship to the ticks whatever the height is.
     private static let labelBaseline: Double = 16
+    /// Constant, because the ruler's zoom drag needs no modifier and there is
+    /// no other gesture here to be in flight.
+    private static let pointerAffordance = PointerAffordance.over(
+        .timeRuler, optionHeld: false, laneDrag: nil)
 
     var body: some View {
         // Read at body level, not inside the `Canvas` closure: SwiftUI's
@@ -48,7 +44,6 @@ struct TimeRulerView: View {
         let sampleRate = model.sampleRate
         let loop = model.loop
         let playhead = model.playhead
-        let reach = model.prefs.handleReach
 
         Canvas(rendersAsynchronously: false) { context, size in
             context.fill(
@@ -81,37 +76,17 @@ struct TimeRulerView: View {
             }
 
             drawLoopMarkers(in: &context, size: size, loop: loop, viewport: viewport)
-            drawPlayhead(
-                in: &context, size: size, frame: playhead, viewport: viewport, reach: reach)
+            drawPlayhead(in: &context, size: size, frame: playhead, viewport: viewport)
         }
         .frame(height: Self.height)
         .contentShape(.rect)
-        // A drag nobody can see is not an affordance. Asked through the same
-        // function as the lanes', so the scheme lives in one place: up and
-        // down everywhere, sideways over the playhead's grip.
+        // A drag nobody can see is not an affordance. The ruler's answer takes
+        // neither a modifier nor a gesture in flight, but it is asked through
+        // the same function as the lanes' so the scheme lives in one place.
         #if os(macOS)
-        .pointerStyle(
-            PointerAffordance.over(
-                .timeRuler, optionHeld: false, laneDrag: nil, onPlayheadGrip: overGrip
-            ).pointerStyle
-        )
-        .onContinuousHover { phase in
-            switch phase {
-            case .active(let point):
-                let over = model.isOverPlayheadGrip(atX: point.x)
-                if over != overGrip { overGrip = over }
-            case .ended:
-                if overGrip { overGrip = false }
-            }
-        }
+        .pointerStyle(Self.pointerAffordance.pointerStyle)
         #endif
-        .gesture(rulerGesture)
-        .onChange(of: rulerPressed) { _, pressed in
-            // After this turn of the run loop, so a normal end's `onEnded` has
-            // run first and this finds nothing to cancel.
-            guard !pressed else { return }
-            Task { @MainActor in model.rulerDragCancelled() }
-        }
+        .gesture(zoomDragGesture)
         // Reported for the same reason the lanes report theirs: so a pointer
         // aimed at the ruler is aimed at where the ruler actually is. Nothing
         // draws from it.
@@ -128,19 +103,14 @@ struct TimeRulerView: View {
     /// no trackpad. Horizontal travel is ignored; see
     /// `ViewerModel.zoomDragChanged`.
     ///
-    /// **Except sideways from the playhead's grip, which scrubs** (2026-11) —
-    /// see `PlayheadScrub`. An up-or-down drag from the grip is still the zoom,
-    /// so a zoom started at the playhead works as it always did.
-    ///
     /// `coordinateSpace: .local` puts `x` in the ruler's own points, which is
     /// the space the viewport maps from — the ruler and the lanes are siblings
     /// in the same full-width `VStack`, so a point means the same thing in
     /// both, and both draw through `viewport.pixel(forFrame:)`.
-    private var rulerGesture: some Gesture {
+    private var zoomDragGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .local)
-            .updating($rulerPressed) { _, pressed, _ in pressed = true }
-            .onChanged { model.rulerDragChanged(start: $0.startLocation, current: $0.location) }
-            .onEnded { _ in model.rulerDragEnded() }
+            .onChanged { model.zoomDragChanged(start: $0.startLocation, current: $0.location) }
+            .onEnded { _ in model.zoomDragEnded() }
     }
 
     /// The loop shown as a bar spanning the region, so the in and out points stay
@@ -160,28 +130,15 @@ struct TimeRulerView: View {
             with: .color(palette.loop.color(opacity: opacity)))
     }
 
-    /// The playhead marker, and its grip. Drawn last so it is never hidden
-    /// under a loop bar or a selection post.
-    ///
-    /// The grip says "drag me" the way the loop's edges do (`PlayheadGrip`,
-    /// the loop grips' shape), in the playhead's own colour so the two are
-    /// never confused — and here on the ruler, where it shares nothing with
-    /// the loop's gestures in the lanes.
+    /// The playhead marker. Drawn last so it is never hidden under a loop bar or
+    /// a selection post.
     private func drawPlayhead(
-        in context: inout GraphicsContext, size: CGSize, frame: FrameIndex, viewport: Viewport,
-        reach: HandleReach
+        in context: inout GraphicsContext, size: CGSize, frame: FrameIndex, viewport: Viewport
     ) {
         let x = viewport.pixel(forFrame: frame)
         guard x >= 0, x <= size.width else { return }
         context.fill(
             Path(CGRect(x: x - 1, y: 0, width: 2, height: size.height)),
             with: .color(palette.accent.color()))
-        let tab = PlayheadGrip.tab(atX: x, rulerHeight: size.height, reach: reach)
-        context.fill(
-            Path(roundedRect: tab, cornerRadius: LoopGrip.cornerRadius(of: tab)),
-            with: .color(palette.accent.color()))
-        for line in LoopGrip.gripLines(in: tab) {
-            context.fill(Path(line), with: .color(palette.background.color(opacity: 0.85)))
-        }
     }
 }

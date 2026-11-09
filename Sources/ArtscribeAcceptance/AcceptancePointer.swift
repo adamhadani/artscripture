@@ -253,8 +253,9 @@ extension AcceptanceRun {
                 "and an Option-drag makes no selection",
                 "a real click on the overview strip moves the playhead there",
                 "a real drag on the strip carries the view",
-                "a real sideways drag on the playhead's grip scrubs it there",
-                "a drag down from the playhead's grip still zooms"
+                "a real drag on the playhead's grip in the lanes scrubs it there",
+                "a drag from above the grip, on the playhead's own line, marks a loop",
+                "with the playhead on a loop edge, a drag there resizes the loop, not a scrub"
             ] {
                 log.skip(name, because: reason)
             }
@@ -262,7 +263,7 @@ extension AcceptanceRun {
         }
 
         await checkRulerPointerDrag(model: model, ruler: ruler, log: &log)
-        await checkPlayheadScrub(model: model, ruler: ruler, log: &log)
+        await checkPlayheadScrub(model: model, lanes: lanes, log: &log)
         await checkLanePointerDrags(model: model, lanes: lanes, log: &log)
         await checkOverviewClick(model: model, log: &log)
     }
