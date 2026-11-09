@@ -27,10 +27,15 @@ extension AcceptanceRun {
             log.check("lane geometry is known to the loop-move check", false)
             return
         }
+        // A quarter of the way down, not halfway: halfway is the playhead's
+        // grip, and each loop marked here leaves the playhead on its start —
+        // so the next mark, from the same spot, would scrub instead
+        // (`PlayheadScrub`), mark nothing, and every check after it would be
+        // about an empty loop.
         func markMiddle() -> FrameRange {
             model.clearLoop()
-            let from = CGPoint(x: lanes.width * 0.3, y: lanes.height / 2)
-            let to = CGPoint(x: lanes.width * 0.45, y: lanes.height / 2)
+            let from = CGPoint(x: lanes.width * 0.3, y: lanes.height / 4)
+            let to = CGPoint(x: lanes.width * 0.45, y: lanes.height / 4)
             model.laneDragChanged(start: from, current: from, option: false, shift: false)
             model.laneDragChanged(start: from, current: to, option: false, shift: false)
             model.laneDragEnded(start: from, end: to, now: ProcessInfo.processInfo.systemUptime)
@@ -48,7 +53,7 @@ extension AcceptanceRun {
                 + "(\(after.start - before.start) frames, one step is \(gentle))",
             after.start - before.start == gentle && after.count == before.count)
         press(.c)
-        log.check("C moves it back, once", model.loop.range == before)
+        log.check("C moves it back, once", !before.isEmpty && model.loop.range == before)
 
         before = markMiddle()
         press(.optionC)
@@ -58,7 +63,8 @@ extension AcceptanceRun {
                 + "(\(before.start - after.start) frames, one step is \(aggressive))",
             before.start - after.start == aggressive && after.count == before.count)
         press(.optionV)
-        log.check("Option-V moves it back, once", model.loop.range == before)
+        log.check(
+            "Option-V moves it back, once", !before.isEmpty && model.loop.range == before)
 
         // Both walls. A loop pushed against an end must stop with its
         // length intact rather than shrink against it or invert past it.
