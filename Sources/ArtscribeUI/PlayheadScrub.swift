@@ -1,6 +1,6 @@
 import CoreGraphics
 
-/// **Scrubbing: dragging the playhead by its grip on the time ruler.**
+/// **Scrubbing: dragging the playhead by its grip.**
 ///
 /// Asked for from an iPhone, with a video open (2026-11): *"dragging the
 /// playhead with my finger would be good to quickly move through audio/frames
@@ -10,77 +10,107 @@ import CoreGraphics
 /// 'draggable handles' ui"* the loop's edges have, and scrub when that is
 /// dragged.
 ///
-/// ## Why on the ruler, not in the lanes
+/// ## Where the grip is
 ///
-/// The lanes are where every loop gesture lives — edges, body, a new passage,
-/// a click — and the playhead sits inside the loop most of the time. A grip
-/// there would take some of those presses for itself, which is the regression
-/// the request was explicit about not wanting. The ruler has one gesture, the
-/// drag-to-zoom, and dragging in a ruler to move the playhead is the DAW
-/// convention besides. So the grip is drawn on the ruler, in the loop grips'
-/// shape (`PlayheadGrip`), and the lanes are untouched.
+/// Halfway down the waveform lanes, on the playhead, in the loop grips' shape
+/// (`PlayheadGrip`) and in line with them. It first shipped on the time ruler
+/// (PR #93), on the argument that the lanes hold every loop gesture; in use a
+/// grip between the overview and the waveform read as wrong: *"the dragging
+/// handle being in the middle of the two wave forms is weird. I thought we'd
+/// put it in line with where the looping draggable handles are (e.g. middle of
+/// main waveform)"*. The ruler went back to being the zoom drag alone.
 ///
-/// ## Sideways scrubs, up and down still zooms
+/// ## Sharing the lanes with the loop
 ///
-/// The ruler's vertical drag is the app's only modifier-free zoom, and the
-/// natural place to start a zoom is where you are looking — often the
-/// playhead. So a press on the grip decides nothing until it has travelled
-/// `decisionDistance`, and then only a **clearly** sideways drag is a scrub
-/// (more than twice as far across as down); anything else, ties included, is
-/// the zoom, anchored where it began exactly as before. A finger's first few
-/// points wobble, so on touch it waits longer (10 pt, against the pointer's
-/// 3). Off the grip a drag zooms at once, as it always did.
+/// It is a grip, not a column: only a press on the tab — its height, and the
+/// edges' reach either side — takes it (`PlayheadGrip.target`). Above and
+/// below it the playhead's line is loop body or open lane exactly as before,
+/// so moving the loop or drawing a new one from that column still works.
+///
+/// Where the grip and a loop edge are both in reach — the playhead parked on a
+/// loop's start, which is where a new loop puts it — **a press on the edge's
+/// drawn tab is always the edge's**, and elsewhere **the nearer wins, a tie
+/// going to the edge** (the edges' own rule between themselves). The loop's
+/// grips are drawn over the playhead's, so the tab you can see on top is the
+/// one a press takes, and resizing a loop works as it always did — including
+/// on a playing loop, where the playhead sweeps past each edge every
+/// repetition and "nearer" alone made the same press resize or scrub
+/// depending on when it landed.
+///
+/// ## A drag, not a press
+///
+/// A press on the grip decides nothing until it has travelled
+/// `decisionDistance` **sideways** — then it is a scrub. One that never does
+/// is a click at the press, like any other in the lanes, however much a
+/// finger wobbled on the way: it places the playhead, and two play. (Up or
+/// down never scrubs: a vertical wobble while playing would pause, seek to
+/// the same spot and play — an audible hiccup for nothing.)
 ///
 /// ## What a scrub does to the engine
 ///
-/// It pauses (once the drag is a drag, so a tap on the grip changes nothing)
-/// and moves the model's playhead, which the lanes, the readout and the video
-/// picture all follow — the picture is driven from the playhead on every tick,
-/// paused too. The engine is told **once**, on release (`seek(to:)`), and plays
-/// again if it was playing. A seek per finger event would reset the stretcher
-/// sixty times a second for nothing anyone could hear.
+/// It pauses (once the press is a drag) and moves the model's playhead, which
+/// the lanes, the readout and the video picture all follow — the picture is
+/// driven from the playhead on every tick, paused too, and shows each frame
+/// the decoder finishes while the finger is still moving (`VideoFrameSource`).
+/// The engine is told **once**, on release (`seek(to:)`), and plays again if
+/// it was playing. A seek per finger event would reset the stretcher sixty
+/// times a second for nothing anyone could hear.
 ///
 /// ## When it does not end normally
 ///
-/// - **Cancelled** (a call, an app switch, another recogniser): landed with
-///   the seek and *without* playing again — the gesture is noticed through
-///   the ruler's gesture state, which resets on cancel as on end.
+/// - **Cancelled** (a call, an app switch): landed with the seek and *without*
+///   playing again — noticed through the lanes' gesture state, which resets on
+///   cancel as on end. Whatever cancelled it is a reason not to start music.
+/// - **Taken over by a pinch** (its first finger landed on the grip): put back
+///   the way a pinch puts back any lane drag — the playhead where it was, and
+///   playing again if it was.
 /// - **Play pressed mid-scrub** (Space, headphones, the lock screen): `play()`
 ///   lands the scrub first, so playback starts from where the finger is, and
 ///   the rest of that drag is spent.
-/// - **The track closes or changes**: dropped, like a lane gesture.
-/// - A scrub still pending when a later ruler drag starts is landed with the
-///   seek alone — never by starting playback from an unrelated gesture.
+/// - **The track closes or changes**: dropped, like any lane gesture.
+/// - A scrub still pending when the next lane gesture starts is landed with
+///   the seek alone — never by starting playback from an unrelated gesture.
 struct PlayheadScrub: Equatable {
-    /// Where the press began, in ruler points: the gesture's identity.
+    /// Where the press began, in lane points: the gesture's identity.
     let startX: Double
     /// Pointer minus playhead at the press, kept for the whole drag, so the
     /// playhead does not jump to the middle of the finger.
     let grabOffset: Double
-    /// Whether to play again on release. `nil` until the drag has moved far
-    /// enough sideways to be a scrub — which is when it pauses.
+    /// Whether to play again on release. `nil` until the press has travelled
+    /// far enough to be a drag — which is when it pauses.
     var resumes: Bool?
 
-    /// The scrub a press at `x` could become, or `nil` when it is not on the
-    /// grip — including when the playhead is off the page and has no grip.
+    /// The scrub a press at `point` could become, or `nil` when it is not on
+    /// the grip, when a loop edge is at least as near, or when the playhead is
+    /// off the page and has no grip.
     static func grabbed(
-        atX x: Double, playheadX: Double, reach: HandleReach, width: Double
+        at point: CGPoint, playheadX: Double, lanes: CGSize, reach: HandleReach,
+        loopEdges: [Double]
     ) -> PlayheadScrub? {
-        guard playheadX >= 0, playheadX <= width, abs(x - playheadX) <= reach.edge else {
-            return nil
+        guard playheadX >= 0, playheadX <= lanes.width else { return nil }
+        let target = PlayheadGrip.target(
+            atX: playheadX, laneHeight: lanes.height, reach: reach)
+        guard point.x >= target.minX, point.x <= target.maxX,
+            point.y >= target.minY, point.y <= target.maxY
+        else { return nil }
+        let distance = abs(point.x - playheadX)
+        let edgeTab = LoopGrip.tab(atX: 0, laneHeight: lanes.height, reach: reach).width / 2
+        let anEdgeWins = loopEdges.contains { edge in
+            let toEdge = abs(point.x - edge)
+            return toEdge <= edgeTab || (toEdge <= reach.edge && toEdge <= distance)
         }
-        return PlayheadScrub(startX: x, grabOffset: x - playheadX)
+        guard !anEdgeWins else { return nil }
+        return PlayheadScrub(startX: point.x, grabOffset: point.x - playheadX)
     }
 
-    /// What a drag on the grip turns out to be, once it has moved `distance`:
-    /// `true` for a scrub — clearly sideways — `false` for the zoom, ties
-    /// included, and `nil` while it is still a tap.
-    static func isScrub(dx: Double, dy: Double, distance: Double) -> Bool? {
-        guard Swift.max(abs(dx), abs(dy)) >= distance else { return nil }
-        return abs(dx) > 2 * abs(dy)
+    /// Whether a press on the grip has travelled far enough sideways to be a
+    /// scrub rather than a click. `dy` is taken and ignored on purpose: up or
+    /// down is never a scrub.
+    static func isADrag(dx: Double, dy: Double, distance: Double) -> Bool {
+        abs(dx) >= distance
     }
 
-    /// How far a press on the grip travels before it is decided: the click
+    /// How far a press on the grip travels before it is a scrub: the click
     /// slop with a pointer, more under a finger, whose first points wobble.
     static func decisionDistance(reach: HandleReach) -> Double {
         reach.edge > HandleReach.pointer.edge ? 10 : 3
@@ -93,29 +123,22 @@ struct PlayheadScrub: Equatable {
     }
 }
 
-/// What the drag in flight on the ruler is, latched at the press.
-enum RulerDrag: Equatable {
-    case zoom(startX: Double)
-    case scrub(PlayheadScrub)
-    /// A scrub that playback took over (`landScrubForPlayback`): the rest of
-    /// the gesture is ignored.
-    case spent(startX: Double)
-
-    var startX: Double {
-        switch self {
-        case .zoom(let x), .spent(let x): return x
-        case .scrub(let scrub): return scrub.startX
-        }
-    }
-}
-
-/// The playhead's grip on the ruler: the loop grips' shape and width
-/// (`LoopGrip`), in the playhead's colour, nearly the ruler's height.
+/// The playhead's grip: the loop grips' exact shape and size (`LoopGrip`), in
+/// the playhead's colour, halfway down the lanes — in line with them.
 enum PlayheadGrip {
-    static func tab(atX x: Double, rulerHeight: Double, reach: HandleReach) -> CGRect {
-        let isTouch = reach.edge > HandleReach.pointer.edge
-        let width = Swift.min(isTouch ? 14.0 : 10.0, 2 * reach.edge)
-        let height = Swift.max(0, rulerHeight - 10)
-        return CGRect(x: x - width / 2, y: (rulerHeight - height) / 2, width: width, height: height)
+    /// The drawn tab.
+    static func tab(atX x: Double, laneHeight: Double, reach: HandleReach) -> CGRect {
+        LoopGrip.tab(atX: x, laneHeight: laneHeight, reach: reach)
+    }
+
+    /// What a press has to land on to take it: the edges' reach either side of
+    /// the playhead, and the tab's height or `2 × reach` — a finger's 44 pt —
+    /// whichever is taller, never more than the lanes.
+    static func target(atX x: Double, laneHeight: Double, reach: HandleReach) -> CGRect {
+        let drawn = tab(atX: x, laneHeight: laneHeight, reach: reach)
+        let height = Swift.min(laneHeight, Swift.max(drawn.height, 2 * reach.edge))
+        return CGRect(
+            x: x - reach.edge, y: laneHeight / 2 - height / 2, width: 2 * reach.edge,
+            height: height)
     }
 }

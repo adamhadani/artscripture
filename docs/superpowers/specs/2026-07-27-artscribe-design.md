@@ -376,6 +376,7 @@ zoom is the only one that anchors on the playhead.
 |---|---|---|
 | Left-drag | Lanes | Mark a passage — the range, which is the loop. **The core gesture — not negotiable**. While looping it replaces the loop, which keeps looping. Drawn live, played on release |
 | ⇧ left-drag | Lanes | Extend the range: the far edge holds, the near one follows |
+| Left-drag **on the playhead's grip** | Lanes, halfway down | **Scrub** (2026-11): the playhead follows sideways, playback pauses and resumes on release, one seek on release; a video's picture changes while the finger moves. Only the grip's tab — the rest of the playhead's line is the lane's — and a loop edge's own tab, or a nearer edge, beats it (`PlayheadScrub`) |
 | Click | Lanes | Place the playhead. **The range is kept** — a loop set on purpose is not a click's to clear |
 | Double-click | Lanes | Place the playhead there **and play from it** — never re-routed to the loop start (`⌘A` remains Select All) |
 | **⌥ left-drag, vertically** | **Lanes** | **Zoom, smooth and continuous, anchored at the drag's start** |
@@ -400,8 +401,10 @@ zoom or the reverse.
 **Pointer affordances.** None of the drags above is visible, and an affordance nobody can
 see is not one. Each loop edge carries a **grip tab** — a small rounded tab with two grip
 lines at mid-height, sized from the same reach that grabs it (`LoopGrip`; added for 1.2,
-because a finger has no hover cursor) — and on the Mac the cursor names what the region
-under it can do. Three shapes, and no
+because a finger has no hover cursor) — and so does the playhead, in its own colour, in
+line with them (`PlayheadGrip`, 2026-11; it spent one build on the ruler) — and on the Mac
+the cursor names what the region under it can do, including `columnResize` over the
+playhead's grip. Three shapes, and no
 more — a cursor that changed everywhere would stop meaning anything:
 
 | Region | Cursor | What it says |

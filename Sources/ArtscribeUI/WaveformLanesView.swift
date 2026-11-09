@@ -36,6 +36,15 @@ struct WaveformLanesView: View {
     /// picture that is identical. This way a pointer crossing 200 points of open
     /// lane costs zero body evaluations.
     @State private var hovering: TimelineHandle?
+    /// Whether the pointer is on the playhead's grip, where a press scrubs.
+    /// Kept apart from `hovering` so the loop's hover treatment stands down
+    /// over it: the press would scrub, not move or resize the loop.
+    @State private var overPlayheadGrip = false
+    /// Where the lane gesture in flight began, while it is in flight. SwiftUI
+    /// resets it on cancel as well as on end — and only an end calls
+    /// `onEnded` — which is how a scrub cut short by a call or an app switch
+    /// is noticed at all (`ViewerModel.laneGestureCancelled`).
+    @GestureState private var gestureStart: CGPoint?
 
     #if !os(macOS)
     /// The magnification the pinch had reached last time it reported. See
@@ -59,7 +68,8 @@ struct WaveformLanesView: View {
         /// the frames: the hairline needs no title, and copying 13 strings into
         /// this snapshot on every redraw would be waste.
         let trackMarks: [FrameIndex]
-        /// Sizes the loop's grip tabs, so the drawn tab matches what grabs.
+        /// Sizes the loop's and the playhead's grip tabs, so the drawn tab
+        /// matches what grabs.
         let reach: HandleReach
     }
 
@@ -115,7 +125,8 @@ struct WaveformLanesView: View {
         .pointerStyle(
             PointerAffordance.over(
                 .waveformLanes, optionHeld: optionHeld, shiftHeld: shiftHeld,
-                laneDrag: model.laneDragMode, hovering: hovering
+                laneDrag: model.laneDragMode, hovering: hovering,
+                onPlayheadGrip: overPlayheadGrip
             ).pointerStyle
         )
         // Not `NSEvent.modifierFlags` polled from the gesture: that is only
@@ -131,14 +142,22 @@ struct WaveformLanesView: View {
         // which is the whole difference between a discoverable handle and a
         // hidden one.
         .onContinuousHover(coordinateSpace: .local) { phase in
-            let found: TimelineHandle? =
-                switch phase {
-                case .active(let point): model.timelineHandle(at: point)
-                case .ended: nil
-                }
+            var onGrip = false
+            var found: TimelineHandle?
+            if case .active(let point) = phase {
+                onGrip = model.isOverPlayheadGrip(at: point)
+                found = onGrip ? nil : model.timelineHandle(at: point)
+            }
+            if onGrip != overPlayheadGrip { overPlayheadGrip = onGrip }
             if found != hovering { hovering = found }
         }
         .gesture(dragGesture)
+        .onChange(of: gestureStart) { previous, now in
+            guard now == nil, let previous else { return }
+            // After `onEnded`, which has already landed a scrub that ended
+            // normally; so this only ever lands one that was cancelled.
+            Task { @MainActor in model.laneGestureCancelled(start: previous) }
+        }
         #if !os(macOS)
         // Pinch is how you get around a waveform on a tablet. macOS is excluded
         // deliberately rather than by oversight: it already has ⌘-scroll and the
@@ -194,6 +213,7 @@ struct WaveformLanesView: View {
     /// than here. See `ViewerModel.laneDragChanged`.
     private var dragGesture: some Gesture {
         DragGesture(minimumDistance: 0, coordinateSpace: .local)
+            .updating($gestureStart) { value, start, _ in start = value.startLocation }
             .onChanged { value in
                 // ⌥ and ⇧ change what a lane drag *means* — zoom rather than
                 // select, extend rather than restart. On iPad there is no
@@ -230,6 +250,11 @@ struct WaveformLanesView: View {
         // the thing that gets hidden.
         drawTrackMarks(in: &context, size: size, state: state)
         drawPlayhead(in: &context, size: size, state: state)
+        // Over the playhead's grip — and across its line, for a grip's
+        // height: where the two share a spot a press takes the loop's
+        // (`PlayheadScrub`), so the loop's is the one you see. The playhead's
+        // line still shows above and below it.
+        drawLoopGrips(in: &context, size: size, state: state)
         drawChannelLabels(in: &context, size: size, channels: state.channels)
     }
 
@@ -293,16 +318,18 @@ struct WaveformLanesView: View {
             context.fill(
                 Path(CGRect(x: x - 1, y: 0, width: 2, height: size.height)), with: .color(colour))
         }
-        drawGrips(in: &context, size: size, edges: [startX, endX], state: state)
     }
 
     /// The grip tab on each edge (`LoopGrip`): says "drag me" the way a Mac
     /// trim handle does, at the same opacity as the posts it sits on.
-    private func drawGrips(
-        in context: inout GraphicsContext, size: CGSize, edges: [Double], state: OverlayState
+    private func drawLoopGrips(
+        in context: inout GraphicsContext, size: CGSize, state: OverlayState
     ) {
+        let range = state.loop.range
+        guard state.hasTrack, !range.isEmpty else { return }
         let opacity = state.loop.isEnabled ? 1.0 : Palette.loopDisabledOpacity
-        for x in edges {
+        for frame in [range.start, range.end] {
+            let x = state.viewport.pixel(forFrame: frame)
             let tab = LoopGrip.tab(atX: x, laneHeight: size.height, reach: state.reach)
             guard tab.maxX >= 0, tab.minX <= size.width, tab.height > 0 else { continue }
             context.fill(
@@ -328,6 +355,15 @@ struct WaveformLanesView: View {
         context.fill(
             Path(CGRect(x: x - width / 2, y: 0, width: width, height: size.height)),
             with: .color(palette.accent.color(opacity: state.isPlaying ? 1.0 : 0.85)))
+        // Its grip, halfway down, in line with the loop's: drag it to scrub.
+        let tab = PlayheadGrip.tab(atX: x, laneHeight: size.height, reach: state.reach)
+        guard tab.height > 0 else { return }
+        context.fill(
+            Path(roundedRect: tab, cornerRadius: LoopGrip.cornerRadius(of: tab)),
+            with: .color(palette.accent.color()))
+        for line in LoopGrip.gripLines(in: tab) {
+            context.fill(Path(line), with: .color(palette.background.color(opacity: 0.85)))
+        }
     }
 
     private func drawChannelLabels(
