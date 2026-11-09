@@ -34,8 +34,18 @@ public struct DecodedFrame: @unchecked Sendable {
 ///
 /// Any other jump (a click, a nudge, a seek) starts a new reader where the
 /// picture is missing. Requests coalesce: the decoder works on the latest plan
-/// and abandons one that has been replaced, so a scrub decodes where it ends up
-/// rather than everywhere it passed through.
+/// and abandons one that has been replaced — but **not before it has answered
+/// it**, with the frame for the position it was made at (`latestAnswer`).
+///
+/// That last part is what makes a scrub show frames while the finger moves.
+/// Until 2026-11 a replaced plan was dropped between any two frames, and
+/// during a drag a new one arrives every tick while a seek into a long GOP
+/// takes several: nothing finished until the finger stopped, and the picture
+/// froze for the whole drag — "currently only happens when I stop dragging",
+/// from an iPhone. It is Apple's "chase time" (Technical Q&A QA1820, for
+/// `AVPlayer.seek`): let the seek in flight complete and show it, keep only
+/// the newest target, and go there next. Frames then change at the rate the
+/// decoder manages, never at the rate the finger moves.
 public final class VideoFrameSource: @unchecked Sendable {
     // `@unchecked`: everything mutable is either in `shared`, behind its lock,
     // or one of the two readers, which only `queue` ever touches.
@@ -48,8 +58,16 @@ public final class VideoFrameSource: @unchecked Sendable {
         var cached = 0
     }
 
+    /// The frame a plan was answered with, numbered so the presenter can tell
+    /// a new answer from one it has already shown.
+    public struct Answer: Sendable {
+        public let serial: Int
+        public let frame: DecodedFrame
+    }
+
     private struct Shared {
         var cache = FrameCache<CVPixelBuffer>()
+        var answer: Answer?
         var pending: FramePlan?
         var isDraining = false
         var isClosed = false
@@ -137,6 +155,15 @@ public final class VideoFrameSource: @unchecked Sendable {
         }
     }
 
+    /// The frame for the position of the last plan the decoder finished
+    /// answering — kept even after a newer plan evicts it from the cache.
+    ///
+    /// What a scrub shows between exact frames: by the time a frame is decoded
+    /// the finger has moved on and `frame(at:)` misses, but this is still the
+    /// newest picture of where the finger *was*, which is the point of seeing
+    /// frames while scrubbing at all.
+    public var latestAnswer: Answer? { shared.withLock { $0.answer } }
+
     /// Why the picture cannot be decoded, when it cannot. The sound is
     /// unaffected either way.
     public var failure: String? { shared.withLock { $0.failure } }
@@ -149,6 +176,7 @@ public final class VideoFrameSource: @unchecked Sendable {
             state.isClosed = true
             state.pending = nil
             state.cache.removeAll()
+            state.answer = nil
         }
         queue.async {
             self.main = nil
@@ -162,6 +190,7 @@ public final class VideoFrameSource: @unchecked Sendable {
         shared.withLock { state in
             state.pending = nil
             state.cache.removeAll()
+            state.answer = nil
         }
         queue.async {
             self.main = nil
@@ -246,7 +275,7 @@ public final class VideoFrameSource: @unchecked Sendable {
         } else {
             return
         }
-        pull(reader, from: window.lowerBound, until: window.upperBound)
+        pull(reader, from: window.lowerBound, until: window.upperBound, answering: true)
     }
 
     /// How far behind the main reader may be and still be read forward rather
@@ -274,9 +303,18 @@ public final class VideoFrameSource: @unchecked Sendable {
     /// Reads `reader` forward until it passes `end`. Frames that finish
     /// before `start` — read on the way, catching up — are not kept: they
     /// would only fill the budget with pictures nobody will see.
-    private func pull(_ reader: Reader, from start: Double, until end: Double) {
+    ///
+    /// `answering`: this is the main window, and a newer plan does not stop it
+    /// until the frame covering `start` has been decoded and recorded as the
+    /// answer (see the type's note on scrubbing). Closing still stops it at
+    /// once.
+    private func pull(
+        _ reader: Reader, from start: Double, until end: Double, answering: Bool = false
+    ) {
+        var owesAnswer = answering
         while reader.cursor < end - FrameCache<Int>.tolerance, !reader.isFinished {
-            guard !isSuperseded else { return }
+            let stop = shared.withLock { $0.isClosed || ($0.pending != nil && !owesAnswer) }
+            guard !stop else { return }
             let full = shared.withLock { $0.cache.count >= budget }
             guard !full else { return }
             switch reader.next(fallbackDuration: info.frameInterval) {
@@ -285,10 +323,19 @@ public final class VideoFrameSource: @unchecked Sendable {
                     shared.withLock { $0.counters.framesDecoded += 1 }
                     continue
                 }
+                let answers = owesAnswer && frame.pts <= start + FrameCache<Int>.tolerance
                 shared.withLock { state in
                     state.cache.insert(pts: frame.pts, duration: frame.duration, frame.pixelBuffer)
                     state.counters.framesDecoded += 1
+                    if answers {
+                        state.answer = Answer(
+                            serial: (state.answer?.serial ?? 0) + 1, frame: frame)
+                    }
                 }
+                // The first frame kept is the one the plan was waiting for, or
+                // the gap after frames already cached: either way it is owed no
+                // longer, and a newer plan may take over from here.
+                owesAnswer = false
             case .end:
                 // Ending without a single frame, inside the picture, is not the
                 // end of the file but a stretch that cannot be read — a damaged

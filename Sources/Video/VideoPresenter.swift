@@ -26,6 +26,9 @@ public final class VideoPresenter {
 
     /// The presentation time of the frame on screen, for tests and the harness.
     public private(set) var shownPTS: Double?
+    /// The last of the source's answers this presenter fell back on, so one is
+    /// never shown twice — not even after an exact frame replaced it.
+    private var fallenBackOn = 0
 
     /// No decoding while set: iOS in the background with no Picture in
     /// Picture, where nobody can see the picture and the audio background
@@ -60,13 +63,28 @@ public final class VideoPresenter {
             source.request(plan)
         }
         // A miss keeps the frame already on screen: holding the last picture
-        // for a tick while a seek decodes beats a black flash.
-        guard let frame = source.frame(at: snapshot.position), frame.pts != shownPTS else {
-            return
-        }
+        // for a tick while a seek decodes beats a black flash. Paused — a
+        // scrub, a click, a nudge — it shows the decoder's newest answer
+        // instead, if there is one it has not shown: during a drag that is the
+        // picture of where the finger just was, so the frames change while the
+        // finger moves rather than only when it stops (`VideoFrameSource`).
+        guard let frame = source.frame(at: snapshot.position) ?? newAnswer(snapshot),
+            frame.pts != shownPTS
+        else { return }
         current = frame
         shownPTS = frame.pts
         for entry in surfaces { entry.surface?.show(frame) }
+    }
+
+    /// The source's latest answer, once, when paused. Playing, a miss is a
+    /// seek or a wrap catching up and the frame on screen holds: an answer
+    /// can be for a position the sound has already left.
+    private func newAnswer(_ snapshot: PlaybackSnapshot) -> DecodedFrame? {
+        guard !snapshot.isPlaying, let answer = source.latestAnswer,
+            answer.serial != fallenBackOn
+        else { return nil }
+        fallenBackOn = answer.serial
+        return answer.frame
     }
 
     /// Adds a surface and gives it the current frame at once — paused, the
