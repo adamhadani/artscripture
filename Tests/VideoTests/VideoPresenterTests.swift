@@ -103,10 +103,16 @@ struct VideoPresenterTests {
         let (presenter, source) = try await presenter()
         let surface = RecordingSurface()
         presenter.attach(surface)
+        // Paced by the clock, never by the decoder, and long enough for a slow
+        // CI simulator under parallel load (600 ms once showed only two
+        // frames there); it stops as soon as three have been shown, so on a
+        // fast machine it takes a fraction of a second. The finger never
+        // stops before then, which is the point: a frame shown after it stops
+        // would prove nothing.
         let clock = ContinuousClock()
         let began = clock.now
-        let sweep = Duration.milliseconds(600)
-        while clock.now - began < sweep {
+        let sweep = Duration.seconds(6)
+        while clock.now - began < sweep, Set(surface.shown).count < 3 {
             let progress = (clock.now - began) / sweep
             presenter.update(paused(forwards ? 0.1 + 2.8 * progress : 2.9 - 2.8 * progress))
             await Task.yield()
