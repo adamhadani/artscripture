@@ -38,9 +38,9 @@ Artscripture is one uninterrupted waveform and a set of keys. There are no palet
 to arrange and no modes to be in. The working loop is:
 
 1. Open a track — <kbd>⌘O</kbd>, or drop a file on the window.
-2. Find the passage. Drag in the waveform to select it, or set the loop's edges
+2. Find the passage. Drag in the waveform to mark it, or set the loop's edges
    at the playhead with <kbd>A</kbd> and <kbd>S</kbd>.
-3. Turn looping on with <kbd>D</kbd>.
+3. It loops straight away — <kbd>D</kbd> switches looping off, and on again.
 4. Slow it down with <kbd>Q</kbd>, or jump straight to half speed with
    <kbd>3</kbd>.
 5. Play with <kbd>Space</kbd>, and leave it running while you work it out.
@@ -107,11 +107,16 @@ say the same thing.
 
 ## Marking a passage
 
-Drag across the waveform lanes to mark a passage — **that passage is the loop**.
-Press <kbd>D</kbd> or the **Loop** button to repeat it, and again to stop. A drag
-while looping replaces the loop with the new passage, which carries on looping.
-Drag a loop edge — its grip tab marks it — to adjust it; on iPhone and iPad an
-edge takes hold from a fingertip's width away. Shift-drag extends the passage. A click places the
+Drag across the waveform lanes to mark a passage — **that passage is the loop**,
+and it starts looping straight away, because marking a passage only to hear the
+music run on past it is never what was meant. Press <kbd>D</kbd> or the **Loop**
+button to stop it repeating, and again to bring it back.
+
+**Drag inside the loop to move it**, keeping its length — if it is looping, playback
+stays inside it. A drag that starts *outside* the loop marks a new passage
+in its place. Drag a loop edge — its grip tab marks it — to adjust it; on iPhone
+and iPad an edge takes hold from a fingertip's width away. Shift-drag extends the
+passage. A click places the
 playhead and leaves the passage alone; a double-click places it and plays from
 there.
 
@@ -143,7 +148,10 @@ every wrap is exactly zero.
 | <kbd>D</kbd> | Loop on / off |
 | <kbd>F</kbd> | Restart the loop |
 
-A loop region that exists but is switched off is still drawn, visibly inert —
+Every way of making a new loop — a drag, <kbd>A</kbd> and <kbd>S</kbd>,
+<kbd>⌘A</kbd>, <kbd>⇧←</kbd> <kbd>⇧→</kbd> — starts it with looping on;
+<kbd>D</kbd> is there to switch it off. A loop region that exists but is switched
+off is still drawn, visibly inert —
 having set it is worth remembering. **Clear Loop** is <kbd>Esc</kbd>, and in the
 **Loop** menu.
 
@@ -233,6 +241,13 @@ strip to move the visible window — or click (or tap) it to move the playhead t
 the waveform — to zoom in smoothly. **Settings ▸ Playback ▸ Invert zoom
 direction** reverses that and the scroll wheel together.
 
+**Scrub** by dragging the handle on the playhead in the time ruler sideways. The
+playhead follows your pointer or finger; if the track was playing it pauses while
+you drag and carries on from where you let go, and with a video open the picture
+follows frame by frame. Dragging up or down from the handle still zooms, and
+because the handle lives on the ruler, every loop gesture in the waveform works
+exactly as before.
+
 **Scroll Left** and **Scroll Right** are View menu items with no key: <kbd>Z</kbd>
 and <kbd>X</kbd> are the nudge keys and a nudge brings the view with it, so
 moving the view alone is left to the menu, the trackpad and the overview strip.
@@ -263,7 +278,7 @@ on iPad and iPhone, as a sheet.
 | Key | Action |
 |---|---|
 | <kbd>⌘P</kbd> | Show / hide Practice — the **Practice** button in the header opens it too |
-| <kbd>⌥P</kbd> | Start / stop the ramp |
+| <kbd>⌥P</kbd> | Start / stop the ramp — stopping it pauses playback too |
 
 Give it three numbers and it works out the rest:
 
@@ -286,6 +301,11 @@ filling from the left as the passes go by, with a stop button beside it. Put the
 panel away and the main screen still tells you where you are; tap the readout to
 bring the panel back. When the ramp finishes it reads *Ramp done · 100%*, and its
 ✕ returns it to the plain button.
+
+**Stopping a ramp stops the music.** The stop button beside the readout, **Stop**
+in the panel, the menu item and <kbd>⌥P</kbd> all end the ramp *and* pause
+playback where it is. Dismissing a finished ramp with its ✕ does not: by then the
+ramp is holding the speed you were working towards, and the music carries on.
 
 When the last repetition finishes the ramp **holds the final speed and keeps
 playing**, and the window says *Ramp complete — holding 100%*. A ramp is a speed
