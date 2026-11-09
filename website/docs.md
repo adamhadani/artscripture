@@ -241,12 +241,12 @@ strip to move the visible window — or click (or tap) it to move the playhead t
 the waveform — to zoom in smoothly. **Settings ▸ Playback ▸ Invert zoom
 direction** reverses that and the scroll wheel together.
 
-**Scrub** by dragging the handle on the playhead in the time ruler sideways. The
-playhead follows your pointer or finger; if the track was playing it pauses while
-you drag and carries on from where you let go, and with a video open the picture
-follows frame by frame. Dragging up or down from the handle still zooms, and
-because the handle lives on the ruler, every loop gesture in the waveform works
-exactly as before.
+**Scrub** by dragging the handle on the playhead — halfway down the waveform, in
+line with the loop's handles. The playhead follows your pointer or finger; if the
+track was playing it pauses while you drag and carries on from where you let go,
+and with a video open the picture changes as you move. Only the handle itself
+scrubs: above and below it a drag works on the loop as always, and where the
+playhead sits on a loop edge, the edge's handle is on top and resizes the loop.
 
 **Scroll Left** and **Scroll Right** are View menu items with no key: <kbd>Z</kbd>
 and <kbd>X</kbd> are the nudge keys and a nudge brings the view with it, so
