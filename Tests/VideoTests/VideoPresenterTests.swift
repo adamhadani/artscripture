@@ -115,7 +115,12 @@ struct VideoPresenterTests {
         while clock.now - began < sweep, Set(surface.shown).count < 3 {
             let progress = (clock.now - began) / sweep
             presenter.update(paused(forwards ? 0.1 + 2.8 * progress : 2.9 - 2.8 * progress))
-            await Task.yield()
+            // A millisecond between positions: sixteen times the display
+            // link's rate, still far faster than a fresh reader's first frame,
+            // but not a spin that contends for the decoder's lock thousands of
+            // times a millisecond — which on a three-core CI runner starved
+            // the decoder outright (one frame in six seconds).
+            try? await Task.sleep(for: .milliseconds(1))
         }
         let whileMoving = surface.shown
         #expect(Set(whileMoving).count >= 3, "shown while the finger moved: \(whileMoving)")
