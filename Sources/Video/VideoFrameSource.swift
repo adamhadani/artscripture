@@ -68,6 +68,13 @@ public final class VideoFrameSource: @unchecked Sendable {
     private struct Shared {
         var cache = FrameCache<CVPixelBuffer>()
         var answer: Answer?
+        /// Never reset, so an answer's serial is never reused — not even
+        /// across a `release()`, which a presenter that outlives it would not
+        /// notice.
+        var answersGiven = 0
+        /// Moved on by `release()` and `close()`: a decode still in flight
+        /// from before carries the old one and gives no answer.
+        var generation = 0
         var pending: FramePlan?
         var isDraining = false
         var isClosed = false
@@ -177,6 +184,7 @@ public final class VideoFrameSource: @unchecked Sendable {
             state.pending = nil
             state.cache.removeAll()
             state.answer = nil
+            state.generation += 1
         }
         queue.async {
             self.main = nil
@@ -191,6 +199,7 @@ public final class VideoFrameSource: @unchecked Sendable {
             state.pending = nil
             state.cache.removeAll()
             state.answer = nil
+            state.generation += 1
         }
         queue.async {
             self.main = nil
@@ -312,6 +321,7 @@ public final class VideoFrameSource: @unchecked Sendable {
         _ reader: Reader, from start: Double, until end: Double, answering: Bool = false
     ) {
         var owesAnswer = answering
+        let generation = shared.withLock { $0.generation }
         while reader.cursor < end - FrameCache<Int>.tolerance, !reader.isFinished {
             let stop = shared.withLock { $0.isClosed || ($0.pending != nil && !owesAnswer) }
             guard !stop else { return }
@@ -327,9 +337,9 @@ public final class VideoFrameSource: @unchecked Sendable {
                 shared.withLock { state in
                     state.cache.insert(pts: frame.pts, duration: frame.duration, frame.pixelBuffer)
                     state.counters.framesDecoded += 1
-                    if answers {
-                        state.answer = Answer(
-                            serial: (state.answer?.serial ?? 0) + 1, frame: frame)
+                    if answers && state.generation == generation {
+                        state.answersGiven += 1
+                        state.answer = Answer(serial: state.answersGiven, frame: frame)
                     }
                 }
                 // The first frame kept is the one the plan was waiting for, or

@@ -26,9 +26,10 @@ public final class VideoPresenter {
 
     /// The presentation time of the frame on screen, for tests and the harness.
     public private(set) var shownPTS: Double?
-    /// The last of the source's answers this presenter fell back on, so one is
-    /// never shown twice — not even after an exact frame replaced it.
-    private var fallenBackOn = 0
+    /// The newest of the source's answers this presenter is done with — shown
+    /// as a fallback, or overtaken by an exact frame or by playback — so an
+    /// answer is never shown late, and never twice.
+    private var spentAnswer = 0
 
     /// No decoding while set: iOS in the background with no Picture in
     /// Picture, where nobody can see the picture and the audio background
@@ -68,23 +69,32 @@ public final class VideoPresenter {
         // instead, if there is one it has not shown: during a drag that is the
         // picture of where the finger just was, so the frames change while the
         // finger moves rather than only when it stops (`VideoFrameSource`).
-        guard let frame = source.frame(at: snapshot.position) ?? newAnswer(snapshot),
-            frame.pts != shownPTS
-        else { return }
+        guard let frame = frame(for: snapshot), frame.pts != shownPTS else { return }
         current = frame
         shownPTS = frame.pts
         for entry in surfaces { entry.surface?.show(frame) }
     }
 
-    /// The source's latest answer, once, when paused. Playing, a miss is a
-    /// seek or a wrap catching up and the frame on screen holds: an answer
-    /// can be for a position the sound has already left.
-    private func newAnswer(_ snapshot: PlaybackSnapshot) -> DecodedFrame? {
-        guard !snapshot.isPlaying, let answer = source.latestAnswer,
-            answer.serial != fallenBackOn
-        else { return nil }
-        fallenBackOn = answer.serial
-        return answer.frame
+    /// The exact frame for the position, or — paused, on a miss — the
+    /// source's newest answer if it is newer than anything this presenter
+    /// has finished with.
+    ///
+    /// An exact frame, or playing, retires every answer so far: each is for a
+    /// position behind what is on screen now, or one the sound has left. Left
+    /// unretired, the answer recorded when the file opened (or during a seek
+    /// while playing) waited for the first paused miss — a click, the first
+    /// tick of a scrub — and flashed a frame from before it (review finding).
+    private func frame(for snapshot: PlaybackSnapshot) -> DecodedFrame? {
+        let answer = source.latestAnswer
+        if let exact = source.frame(at: snapshot.position) {
+            spentAnswer = Swift.max(spentAnswer, answer?.serial ?? 0)
+            return exact
+        }
+        guard let answer, answer.serial > spentAnswer else { return nil }
+        spentAnswer = answer.serial
+        // Playing, a miss is a seek or a wrap catching up and the frame on
+        // screen holds: an answer can be a position the sound has left.
+        return snapshot.isPlaying ? nil : answer.frame
     }
 
     /// Adds a surface and gives it the current frame at once — paused, the

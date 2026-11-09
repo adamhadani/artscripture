@@ -47,26 +47,35 @@ extension ViewerModel {
     }
 
     /// The finger lifted. A scrub lands, and plays again if it was playing; a
-    /// press on the grip that never travelled is a click, like any other in
-    /// the lanes.
+    /// press on the grip that never became one is a click **at the press** —
+    /// a finger that drifted past the click slop but short of a scrub was
+    /// otherwise neither, and did nothing (review finding).
     func scrubEnded(start: CGPoint, end: CGPoint, now: Double) {
         guard let scrub else { return }
         if scrub.resumes == nil {
             self.scrub = nil
-            dragEnded(startPixel: start.x, endPixel: end.x, now: now)
+            dragEnded(startPixel: start.x, endPixel: start.x, now: now)
         } else {
             landScrub(resuming: true)
         }
     }
 
     /// The lanes' gesture that began at `start` went away without an end — a
-    /// call, an app switch, another recogniser. Its scrub lands where it was
-    /// left, without playing. A no-op after a normal end (which has already
-    /// landed it) and for any other gesture's scrub: the notice arrives a
-    /// beat late, and must never land a newer drag mid-flight.
+    /// call, an app switch, another recogniser. If it was a scrub it lands
+    /// where it was left, without playing, and the lanes let go of it: left
+    /// latched on `.scrub`, page-following stayed off and the Mac kept the
+    /// sideways cursor until the next lane gesture (review finding).
+    ///
+    /// A no-op after a normal end, which has already cleared the gesture, and
+    /// for any other gesture: the notice arrives a beat late, and must never
+    /// land a newer drag mid-flight.
     public func laneGestureCancelled(start: CGPoint) {
-        guard scrub?.startX == start.x else { return }
+        guard laneDragStart == start, laneDragMode == .scrub else { return }
         landScrub(resuming: false)
+        laneDragStart = nil
+        laneDragMode = nil
+        loopBeforeLaneDrag = nil
+        playheadBeforeLaneDrag = nil
     }
 
     /// `play()` arriving mid-scrub — Space, a headphone button, the lock

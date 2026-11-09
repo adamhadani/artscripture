@@ -28,17 +28,23 @@ import CoreGraphics
 /// so moving the loop or drawing a new one from that column still works.
 ///
 /// Where the grip and a loop edge are both in reach — the playhead parked on a
-/// loop's start, which is where a new loop puts it — **the nearer wins and a
-/// tie goes to the loop edge**, the edges' own rule between themselves. The
-/// loop's grips are drawn over the playhead's, so the tab you can see on top
-/// is the one a press takes, and resizing a loop works as it always did.
+/// loop's start, which is where a new loop puts it — **a press on the edge's
+/// drawn tab is always the edge's**, and elsewhere **the nearer wins, a tie
+/// going to the edge** (the edges' own rule between themselves). The loop's
+/// grips are drawn over the playhead's, so the tab you can see on top is the
+/// one a press takes, and resizing a loop works as it always did — including
+/// on a playing loop, where the playhead sweeps past each edge every
+/// repetition and "nearer" alone made the same press resize or scrub
+/// depending on when it landed.
 ///
 /// ## A drag, not a press
 ///
 /// A press on the grip decides nothing until it has travelled
-/// `decisionDistance` — then it is a scrub, whichever way it goes. One that
-/// never travels is a click like any other in the lanes: it places the
-/// playhead, and two play.
+/// `decisionDistance` **sideways** — then it is a scrub. One that never does
+/// is a click at the press, like any other in the lanes, however much a
+/// finger wobbled on the way: it places the playhead, and two play. (Up or
+/// down never scrubs: a vertical wobble while playing would pause, seek to
+/// the same spot and play — an audible hiccup for nothing.)
 ///
 /// ## What a scrub does to the engine
 ///
@@ -88,18 +94,20 @@ struct PlayheadScrub: Equatable {
             point.y >= target.minY, point.y <= target.maxY
         else { return nil }
         let distance = abs(point.x - playheadX)
+        let edgeTab = LoopGrip.tab(atX: 0, laneHeight: lanes.height, reach: reach).width / 2
         let anEdgeWins = loopEdges.contains { edge in
             let toEdge = abs(point.x - edge)
-            return toEdge <= reach.edge && toEdge <= distance
+            return toEdge <= edgeTab || (toEdge <= reach.edge && toEdge <= distance)
         }
         guard !anEdgeWins else { return nil }
         return PlayheadScrub(startX: point.x, grabOffset: point.x - playheadX)
     }
 
-    /// Whether a press on the grip has travelled far enough, in any
-    /// direction, to be a scrub rather than a click.
+    /// Whether a press on the grip has travelled far enough sideways to be a
+    /// scrub rather than a click. `dy` is taken and ignored on purpose: up or
+    /// down is never a scrub.
     static func isADrag(dx: Double, dy: Double, distance: Double) -> Bool {
-        Swift.max(abs(dx), abs(dy)) >= distance
+        abs(dx) >= distance
     }
 
     /// How far a press on the grip travels before it is a scrub: the click

@@ -250,8 +250,10 @@ struct WaveformLanesView: View {
         // the thing that gets hidden.
         drawTrackMarks(in: &context, size: size, state: state)
         drawPlayhead(in: &context, size: size, state: state)
-        // Over the playhead's grip: where the two share a spot a press takes
-        // the loop's (`PlayheadScrub`), so the loop's is the one you see.
+        // Over the playhead's grip — and across its line, for a grip's
+        // height: where the two share a spot a press takes the loop's
+        // (`PlayheadScrub`), so the loop's is the one you see. The playhead's
+        // line still shows above and below it.
         drawLoopGrips(in: &context, size: size, state: state)
         drawChannelLabels(in: &context, size: size, channels: state.channels)
     }

@@ -254,6 +254,7 @@ extension AcceptanceRun {
                 "a real click on the overview strip moves the playhead there",
                 "a real drag on the strip carries the view",
                 "a real drag on the playhead's grip in the lanes scrubs it there",
+                "a scrub while playing plays on from where it was let go",
                 "a drag from above the grip, on the playhead's own line, marks a loop",
                 "with the playhead on a loop edge, a drag there resizes the loop, not a scrub"
             ] {

@@ -142,6 +142,47 @@ struct VideoPresenterTests {
         #expect(surface.shown == [10])
     }
 
+    private func playing(_ position: Double) -> PlaybackSnapshot {
+        PlaybackSnapshot(position: position, isPlaying: true, speed: 1, loop: nil)
+    }
+
+    /// Plays smoothly from `from` to `to`, a tick at a time, waiting for the
+    /// decoder each tick so every frame on the way is shown.
+    private func play(
+        _ presenter: VideoPresenter, _ source: VideoFrameSource, from: Double, to: Double
+    ) async {
+        var position = from
+        while position < to {
+            position += 0.05
+            presenter.update(playing(position))
+            await source.idle()
+            presenter.update(playing(position))
+        }
+    }
+
+    /// Review finding: answers recorded before or during playback stayed
+    /// "unshown", so the first paused miss after playing — a click, or the
+    /// first tick of a scrub — flashed one, here the file's opening frame.
+    @Test func aPausedMissAfterPlayingFlashesNoOldFrame() async throws {
+        let (presenter, source) = try await presenter()
+        let surface = RecordingSurface()
+        presenter.attach(surface)
+        presenter.update(paused(0.15))
+        await source.idle()
+        presenter.update(paused(0.15))
+        await play(presenter, source, from: 0.15, to: 2.4)
+        presenter.update(paused(2.45))
+        await source.idle()
+        presenter.update(paused(2.45))
+        let before = surface.shown.count
+        presenter.update(paused(0.85))
+        let flashed = Array(surface.shown.dropFirst(before))
+        #expect(flashed.isEmpty, "a frame from before the click flashed: \(flashed)")
+        await source.idle()
+        presenter.update(paused(0.85))
+        #expect(surface.shown.last == 8)
+    }
+
     /// A surface the presenter outlives is not kept alive by it.
     @Test func surfacesAreNotRetained() async throws {
         let (presenter, _) = try await presenter()

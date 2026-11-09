@@ -6,111 +6,8 @@ import Waveform
 
 @testable import ArtscribeUI
 
-/// Scrubbing from the playhead's grip, halfway down the lanes — see
-/// `PlayheadScrub`.
-@Suite("Playhead scrub: the rules")
-struct PlayheadScrubRuleTests {
-
-    private func grab(
-        _ x: Double, _ y: Double = 150, playhead: Double = 400, edges: [Double] = [],
-        reach: HandleReach = .pointer, laneHeight: Double = 300, width: Double = 1000
-    ) -> PlayheadScrub? {
-        PlayheadScrub.grabbed(
-            at: CGPoint(x: x, y: y), playheadX: playhead,
-            lanes: CGSize(width: width, height: laneHeight), reach: reach, loopEdges: edges)
-    }
-
-    @Test("the grip is the playhead's x within the edges' reach, halfway down the lanes")
-    func theGripIsWhereItIsDrawn() {
-        #expect(grab(400)?.grabOffset == 0)
-        #expect(grab(409)?.grabOffset == 9)
-        #expect(grab(391)?.grabOffset == -9)
-        #expect(grab(410) == nil)
-        // A pointer's tab is 30 pt tall, centred on 150.
-        #expect(grab(400, 135) != nil)
-        #expect(grab(400, 165) != nil)
-        #expect(grab(400, 134) == nil, "above the tab is the lane's")
-        #expect(grab(400, 166) == nil, "below the tab is the lane's")
-        #expect(grab(400, playhead: -5) == nil, "a playhead off the page has no grip")
-    }
-
-    @Test("a finger gets 22 pt either side and 44 pt of height")
-    func aFingersTarget() {
-        let touch = HandleReach(edge: 22)
-        #expect(grab(422, reach: touch) != nil)
-        #expect(grab(423, reach: touch) == nil)
-        #expect(grab(400, 128, reach: touch) != nil)
-        #expect(grab(400, 127, reach: touch) == nil)
-        let target = PlayheadGrip.target(atX: 400, laneHeight: 300, reach: touch)
-        #expect(target.height == 44)
-        #expect(PlayheadGrip.target(atX: 400, laneHeight: 30, reach: touch).height == 30)
-    }
-
-    @Test("it is drawn exactly where the loop's grips are, in their shape")
-    func drawnInLineWithTheLoopGrips() {
-        for reach in [HandleReach.pointer, HandleReach(edge: 22)] {
-            #expect(
-                PlayheadGrip.tab(atX: 400, laneHeight: 300, reach: reach)
-                    == LoopGrip.tab(atX: 400, laneHeight: 300, reach: reach))
-        }
-    }
-
-    /// The playhead parked on a loop's start, where a new loop puts it: a press
-    /// there resizes the loop, as it always did.
-    @Test("a loop edge as near as the playhead wins; a nearer playhead wins")
-    func theNearerWinsAndTiesGoToTheEdge() {
-        #expect(grab(400, edges: [400]) == nil, "a tie went to the playhead")
-        #expect(grab(402, edges: [405]) != nil)
-        #expect(grab(404, edges: [405]) == nil)
-        // An edge out of its own reach takes nothing.
-        #expect(grab(408, edges: [418]) != nil)
-    }
-
-    @Test("a press is a scrub once it has travelled, whichever way")
-    func anyDirectionIsADrag() {
-        #expect(!PlayheadScrub.isADrag(dx: 2, dy: 2, distance: 3))
-        #expect(PlayheadScrub.isADrag(dx: 3, dy: 0, distance: 3))
-        #expect(PlayheadScrub.isADrag(dx: 0, dy: -3, distance: 3))
-        #expect(PlayheadScrub.decisionDistance(reach: .pointer) == 3)
-        #expect(PlayheadScrub.decisionDistance(reach: HandleReach(edge: 22)) == 10)
-    }
-
-    @Test("the modifiers beat the grip, and the grip beats a handle")
-    func thePrecedence() {
-        #expect(LaneDragMode(option: true, shift: false, onPlayheadGrip: true) == .zoom)
-        #expect(
-            LaneDragMode(option: false, shift: true, onPlayheadGrip: true)
-                == .range(extending: true))
-        #expect(
-            LaneDragMode(option: false, shift: false, handle: .loopBody, onPlayheadGrip: true)
-                == .scrub)
-        #expect(
-            LaneDragMode(option: false, shift: false, handle: .loopBody) == .edge(.loopBody))
-    }
-
-    @Test("the Mac's cursor says sideways over the grip and while scrubbing; the ruler zooms")
-    func theCursor() {
-        #expect(
-            PointerAffordance.over(
-                .waveformLanes, optionHeld: false, laneDrag: nil, onPlayheadGrip: true)
-                == .scrubPlayhead)
-        #expect(
-            PointerAffordance.over(
-                .waveformLanes, optionHeld: true, laneDrag: nil, onPlayheadGrip: true) == .zoom)
-        #expect(
-            PointerAffordance.over(
-                .waveformLanes, optionHeld: false, shiftHeld: true, laneDrag: nil,
-                onPlayheadGrip: true) == .selectRange)
-        #expect(
-            PointerAffordance.over(.waveformLanes, optionHeld: false, laneDrag: .scrub)
-                == .scrubPlayhead)
-        #expect(
-            PointerAffordance.over(
-                .timeRuler, optionHeld: false, laneDrag: nil, onPlayheadGrip: true)
-                == .verticalDrag)
-    }
-}
-
+/// The scrub on the model — see `PlayheadScrub`; the pure rules are in
+/// `PlayheadScrubRuleTests`.
 @MainActor
 @Suite("Playhead scrub: the model")
 struct PlayheadScrubModelTests {
@@ -183,7 +80,7 @@ struct PlayheadScrubModelTests {
         let model = makeModel()
         model.transport.request(true, now: 0)
         laneDrag(model, from: point(402), to: point(403))
-        #expect(model.playhead == frame(403))
+        #expect(model.playhead == frame(402), "a click places the playhead at the press")
         #expect(model.isPlaying, "a tap paused the track")
         #expect(model.laneDragMode == nil)
     }
@@ -284,6 +181,7 @@ struct PlayheadScrubModelTests {
         #expect(model.playhead == frame(520))
         #expect(!playWasRequested(model))
         #expect(model.scrub == nil)
+        #expect(model.laneDragMode == nil)
         // And after a normal end there is nothing left to cancel.
         laneDrag(model, from: point(520), to: point(600))
         let settled = model.seekGeneration
@@ -338,6 +236,44 @@ struct PlayheadScrubModelTests {
         #expect(model.playhead == frame(480), "the finger kept moving the playhead")
         model.laneDragEnded(start: point(400), end: point(700), now: 100)
         #expect(model.seekGeneration == before + 1, "release seeked again")
+    }
+
+    /// Review finding: a tap that drifted past the click slop but not the
+    /// scrub distance was neither, and did nothing at all.
+    @Test("a tap that drifts, on touch, is still a click at the press")
+    func aDriftingTapIsAClick() {
+        let model = makeModel()
+        model.prefs.handleReach = HandleReach(edge: 22)
+        laneDrag(model, from: point(410), to: point(416))
+        #expect(model.playhead == frame(410))
+    }
+
+    @Test("a vertical wobble on the grip while playing does not pause")
+    func aVerticalWobbleDoesNotPause() {
+        let model = makeModel()
+        model.transport.request(true, now: 0)
+        laneDrag(model, from: point(401), to: point(401, 160), lift: false)
+        #expect(model.isPlaying, "a vertical wobble paused the track")
+        model.laneDragEnded(start: point(401), end: point(401, 160), now: 100)
+        #expect(!playWasRequested(model))
+    }
+
+    /// Review finding: the cancel landed the scrub but left the lanes latched
+    /// on `.scrub`, which switches page-following off (and, on the Mac,
+    /// leaves the sideways cursor up) until the next lane gesture.
+    @Test("a cancelled scrub unlatches the lanes, and the page follows the playhead again")
+    func aCancelUnlatches() {
+        let model = makeModel()
+        model.transport.request(true, now: 0)
+        laneDrag(model, from: point(400), to: point(520), lift: false)
+        model.laneGestureCancelled(start: point(400))
+        #expect(model.laneDragMode == nil)
+        model.viewport.zoom(to: FrameRange(start: 0, count: 100_000))
+        model.refresh()
+        let page = model.viewport.startFrame
+        model.playhead = 1_500_000
+        model.autoScroll()
+        #expect(model.viewport.startFrame != page, "the page did not follow the playhead")
     }
 
     @Test("on touch a short wobble on the grip is still nothing")

@@ -29,8 +29,28 @@ extension AcceptanceRun {
             "and the scrub neither zooms nor marks a loop",
             model.zoomFactor == zoom && model.loop.range.isEmpty)
 
+        // Playing: the scrub pauses, and the release plays on from where it
+        // was let go. This is the order SwiftUI delivers a release in — the
+        // gesture's end before its cancel notice (`laneGestureCancelled`) —
+        // checked for real rather than assumed.
+        model.play()
+        await settle(seconds: 0.4)
+        let playingFrom = lanes.minX + model.viewport.pixel(forFrame: model.playhead)
+        await pointerDrag(
+            from: CGPoint(x: playingFrom, y: lanes.midY),
+            to: CGPoint(x: playingFrom - 120, y: lanes.midY))
+        await settle(seconds: 0.4)
+        let resumedAt = model.viewport.pixel(forFrame: model.playhead)
+        log.check(
+            "a scrub while playing plays on from where it was let go "
+                + "(playing \(model.isPlaying), at \(rounded(resumedAt)) pt, "
+                + "let go at \(rounded(playingFrom - lanes.minX - 120)))",
+            model.isPlaying && abs(resumedAt - (playingFrom - lanes.minX - 120)) <= 6)
+        model.pause()
+        await settle(seconds: 0.3)
+
         // The same column above the grip is open lane, as it always was.
-        let column = lanes.minX + landed
+        let column = lanes.minX + model.viewport.pixel(forFrame: model.playhead)
         let high = lanes.minY + lanes.height * 0.12
         await pointerDrag(
             from: CGPoint(x: column, y: high), to: CGPoint(x: column + 120, y: high))
