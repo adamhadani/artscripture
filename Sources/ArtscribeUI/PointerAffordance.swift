@@ -59,7 +59,7 @@ enum PointerAffordance: Equatable, Sendable {
     case moveRegion
     /// The same, with the hand closed, while it is actually being moved.
     case movingRegion
-    /// Over the playhead's grip on the ruler: sideways.
+    /// Over the playhead's grip in the lanes, or scrubbing from it: sideways.
     case scrubPlayhead
 
     /// The scheme, in one function.
@@ -79,6 +79,10 @@ enum PointerAffordance: Equatable, Sendable {
     ///   - hovering: the handle under the pointer, if any. Ranked below both
     ///     modifiers, exactly as `LaneDragMode`'s precedence ranks it, so the
     ///     cursor and the gesture can never disagree.
+    ///   - onPlayheadGrip: the pointer is on the playhead's grip, where a press
+    ///     scrubs (`PlayheadScrub`). Ranked where the gesture ranks it: below
+    ///     the modifiers, above a handle — it is only ever true where no loop
+    ///     edge is as near.
     static func over(
         _ region: PointerRegion,
         optionHeld: Bool,
@@ -89,24 +93,36 @@ enum PointerAffordance: Equatable, Sendable {
     ) -> PointerAffordance {
         switch region {
         case .timeRuler:
-            // The zoom drag everywhere but the playhead's grip (2026-11), which
-            // scrubs when dragged sideways. Task 23 added no grab zones at the
+            // The zoom drag, everywhere. Task 23 added no grab zones at the
             // loop edges, and still none: those would break the zoom exactly
-            // where the loop is. The grip does not, because an up-or-down drag
-            // from it is still the zoom (`PlayheadScrub`).
-            return onPlayheadGrip ? .scrubPlayhead : .verticalDrag
+            // where the loop is. The playhead's grip lived here for one build
+            // (PR #93) and moved to the lanes (`PlayheadScrub`).
+            return .verticalDrag
         case .waveformLanes:
+            guard let laneDrag else {
+                return overLanesAtRest(
+                    optionHeld: optionHeld, shiftHeld: shiftHeld, hovering: hovering,
+                    onPlayheadGrip: onPlayheadGrip)
+            }
             switch laneDrag {
             case .zoom: return .zoom
             case .range: return .selectRange
             case .edge(let handle): return forHandle(handle, dragging: true)
-            case nil:
-                if optionHeld { return .zoom }
-                if shiftHeld { return .selectRange }
-                guard let hovering else { return .selectRange }
-                return forHandle(hovering, dragging: false)
+            case .scrub: return .scrubPlayhead
             }
         }
+    }
+
+    /// The lanes with no drag in flight: the modifiers, then the playhead's
+    /// grip, then a loop handle — `LaneDragMode`'s order.
+    private static func overLanesAtRest(
+        optionHeld: Bool, shiftHeld: Bool, hovering: TimelineHandle?, onPlayheadGrip: Bool
+    ) -> PointerAffordance {
+        if optionHeld { return .zoom }
+        if shiftHeld { return .selectRange }
+        if onPlayheadGrip { return .scrubPlayhead }
+        guard let hovering else { return .selectRange }
+        return forHandle(hovering, dragging: false)
     }
 
     private static func forHandle(

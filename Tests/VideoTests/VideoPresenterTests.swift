@@ -88,6 +88,112 @@ struct VideoPresenterTests {
         #expect(surface.shown == [10])
     }
 
+    /// Scrubbing (2026-11): the picture follows the finger *while it moves*.
+    /// From an iPhone with a video open: "while I drag my finger with the
+    /// playhead I want to see video frames changing, currently only happens
+    /// when I stop dragging". Positions arrive far faster than a frame decodes
+    /// — here as fast as the loop can spin, which on a device is 60 a second
+    /// against a seek into a long GOP — so a decoder that abandons every
+    /// superseded request never finishes one until the finger stops. Each
+    /// decode now finishes and is shown, and the next goes to the newest
+    /// position: Apple's "chase time" (Technical Q&A QA1820). Backwards, every
+    /// position is a fresh reader; forwards, the main reader reads on.
+    @Test(arguments: [false, true])
+    func aScrubShowsFramesWhileItMoves(forwards: Bool) async throws {
+        let (presenter, source) = try await presenter()
+        let surface = RecordingSurface()
+        presenter.attach(surface)
+        // Paced by the clock, never by the decoder, and long enough for a slow
+        // CI simulator under parallel load (600 ms once showed only two
+        // frames there); it stops as soon as three have been shown, so on a
+        // fast machine it takes a fraction of a second. The finger never
+        // stops before then, which is the point: a frame shown after it stops
+        // would prove nothing.
+        let clock = ContinuousClock()
+        let began = clock.now
+        let sweep = Duration.seconds(6)
+        while clock.now - began < sweep, Set(surface.shown).count < 3 {
+            let progress = (clock.now - began) / sweep
+            presenter.update(paused(forwards ? 0.1 + 2.8 * progress : 2.9 - 2.8 * progress))
+            // A millisecond between positions: sixteen times the display
+            // link's rate, still far faster than a fresh reader's first frame,
+            // but not a spin that contends for the decoder's lock thousands of
+            // times a millisecond — which on a three-core CI runner starved
+            // the decoder outright (one frame in six seconds).
+            try? await Task.sleep(for: .milliseconds(1))
+        }
+        let whileMoving = surface.shown
+        #expect(Set(whileMoving).count >= 3, "shown while the finger moved: \(whileMoving)")
+        // In the order the finger went: a scrub that showed frames out of order
+        // would read as the picture jumping about.
+        #expect(whileMoving == (forwards ? whileMoving.sorted() : whileMoving.sorted(by: >)))
+        // And once it stops, the exact frame for where it stopped.
+        let last = forwards ? 2.9 : 0.1
+        presenter.update(paused(last))
+        await source.idle()
+        presenter.update(paused(last))
+        #expect(surface.shown.last == (forwards ? 29 : 1))
+    }
+
+    /// The scrub fallback is a paused thing. Playing, a miss is a seek or a
+    /// wrap catching up, and the decoder's last answer can be a position the
+    /// sound has already left — so the frame on screen holds instead.
+    @Test func playingNeverFallsBackOnAnOldAnswer() async throws {
+        let (presenter, source) = try await presenter()
+        let surface = RecordingSurface()
+        presenter.attach(surface)
+        presenter.update(paused(1.05))
+        await source.idle()
+        presenter.update(paused(1.05))
+        // Decoded and answered, but never shown: the presenter is not asked
+        // again while paused there.
+        presenter.update(paused(2.05))
+        await source.idle()
+        presenter.update(PlaybackSnapshot(position: 0.55, isPlaying: true, speed: 1, loop: nil))
+        #expect(surface.shown == [10])
+    }
+
+    private func playing(_ position: Double) -> PlaybackSnapshot {
+        PlaybackSnapshot(position: position, isPlaying: true, speed: 1, loop: nil)
+    }
+
+    /// Plays smoothly from `from` to `to`, a tick at a time, waiting for the
+    /// decoder each tick so every frame on the way is shown.
+    private func play(
+        _ presenter: VideoPresenter, _ source: VideoFrameSource, from: Double, to: Double
+    ) async {
+        var position = from
+        while position < to {
+            position += 0.05
+            presenter.update(playing(position))
+            await source.idle()
+            presenter.update(playing(position))
+        }
+    }
+
+    /// Review finding: answers recorded before or during playback stayed
+    /// "unshown", so the first paused miss after playing — a click, or the
+    /// first tick of a scrub — flashed one, here the file's opening frame.
+    @Test func aPausedMissAfterPlayingFlashesNoOldFrame() async throws {
+        let (presenter, source) = try await presenter()
+        let surface = RecordingSurface()
+        presenter.attach(surface)
+        presenter.update(paused(0.15))
+        await source.idle()
+        presenter.update(paused(0.15))
+        await play(presenter, source, from: 0.15, to: 2.4)
+        presenter.update(paused(2.45))
+        await source.idle()
+        presenter.update(paused(2.45))
+        let before = surface.shown.count
+        presenter.update(paused(0.85))
+        let flashed = Array(surface.shown.dropFirst(before))
+        #expect(flashed.isEmpty, "a frame from before the click flashed: \(flashed)")
+        await source.idle()
+        presenter.update(paused(0.85))
+        #expect(surface.shown.last == 8)
+    }
+
     /// A surface the presenter outlives is not kept alive by it.
     @Test func surfacesAreNotRetained() async throws {
         let (presenter, _) = try await presenter()

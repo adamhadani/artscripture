@@ -46,9 +46,15 @@ extension ViewerModel {
             // A range drawn by a drag whose end never arrived (an interrupted
             // gesture) is still the range on screen: it reaches the engine now,
             // before anything else happens, rather than lingering half-applied.
+            // A scrub whose end never arrived lands too — with its seek, and
+            // never by starting playback from this unrelated press.
+            landScrub(resuming: false)
             commitStagedLoop()
+            let grip = playheadGrip(at: start)
             mode = LaneDragMode(
-                option: option, shift: shift, handle: timelineHandle(at: start))
+                option: option, shift: shift, handle: timelineHandle(at: start),
+                onPlayheadGrip: grip != nil)
+            scrub = mode == .scrub ? grip : nil
             laneDragStart = start
             laneDragMode = mode
             loopBeforeLaneDrag = loop
@@ -66,6 +72,8 @@ extension ViewerModel {
             zoomDragChanged(start: start, current: current)
         case .edge(let handle):
             edgeDragChanged(handle: handle, startPixel: start.x, currentPixel: current.x)
+        case .scrub:
+            scrubChanged(start: start, current: current)
         }
     }
 
@@ -96,6 +104,9 @@ extension ViewerModel {
     /// starts playback.
     public func cancelLaneDrag() {
         guard laneDragMode != nil else { return }
+        // A scrub paused playback; the pinch puts that back with the playhead.
+        let resume = scrub?.resumes == true
+        scrub = nil
         if let previous = loopBeforeLaneDrag {
             if loopIsStaged {
                 // Never reached the engine, so only the drawing goes back.
@@ -107,6 +118,7 @@ extension ViewerModel {
             }
         }
         if let previous = playheadBeforeLaneDrag { seek(to: previous) }
+        if resume { play() }
         loopBeforeLaneDrag = nil
         playheadBeforeLaneDrag = nil
         laneDragMode = nil
@@ -132,7 +144,7 @@ extension ViewerModel {
         dragOrigin = nil
         zoomDrag = nil
         edgeDrag = nil
-        rulerDrag = nil
+        scrub = nil
     }
 
     public func laneDragEnded(start: CGPoint, end: CGPoint, now: Double) {
@@ -172,6 +184,8 @@ extension ViewerModel {
                 // passage out first. Moving keeps looping as it was: an edit.
                 enterLoopIfOutside()
             }
+        case .scrub:
+            scrubEnded(start: start, end: end, now: now)
         case .range, nil:
             dragEnded(startPixel: start.x, endPixel: end.x, now: now)
         }
