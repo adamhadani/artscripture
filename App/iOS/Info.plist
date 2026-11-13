@@ -20,8 +20,27 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>UILaunchScreen</key>
-	<dict/>
+	<!-- The launch screen: the icon's nine-bar mark, still, on the app's own
+	     dark panel colour. `App/iOS/LaunchScreen.storyboard`.
+
+	     **A storyboard, not the `UILaunchScreen` dictionary** this used to be
+	     (empty, which gave a blank white or black screen). The dictionary can
+	     name a colour and an image, and Apple documents nothing about how the
+	     image is scaled; developer reports going back to iOS 14 have it drawn
+	     at its own size on a first install and stretched to fill the screen on
+	     later launches, with no answer from Apple and the storyboard as the
+	     only fix anyone confirmed. A storyboard states the size and the centre
+	     as constraints, so there is nothing to find out on a customer's phone.
+
+	     **Dark whatever the system is set to.** The frame is drawn before any
+	     of our code runs, so it cannot know the app's own theme — and that
+	     theme defaults to dark, as the icon is. Following the system would
+	     flash white in front of the default look on every light-mode phone.
+
+	     Only one of the two keys may be present; `LaunchScreenTests` holds the
+	     storyboard to the palette and to the catalog. -->
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
 	<!-- iPhone: landscape only, and deliberately.
 
 	     A waveform is a horizontal instrument. Portrait on a phone gives a

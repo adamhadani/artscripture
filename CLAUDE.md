@@ -696,6 +696,31 @@ frame-locked to the sound. Design: `docs/superpowers/specs/2026-11-05-video-pane
   `ImageRenderer` in a throwaway test, or open it with `open -g`. iOS: stage a file in the app's
   data container and launch with a temporary `SIMCTL_CHILD_` hook; remove it after.
 
+## Launch screen — iPhone and iPad
+
+`App/iOS/LaunchScreen.storyboard`: the icon's nine-bar mark, still, centred on the dark
+panel colour. The Mac has no launch screen. iOS draws it before any of our code runs, so
+everything in it is a literal that has to agree with something elsewhere —
+`LaunchScreenTests` holds it to the palette, the catalog and the generator.
+
+- **A storyboard, not the `UILaunchScreen` plist dictionary.** Apple documents nothing
+  about how the dictionary scales its image, and developer reports since iOS 14 have it
+  drawn at its own size on a first install and stretched to fill the screen afterwards,
+  with the storyboard the only fix anyone confirmed. Constraints state the size and centre.
+- **Dark whatever the system appearance is.** A launch screen cannot know the app's own
+  theme, and that theme defaults to dark; following the system would flash white in front
+  of the default look.
+- **The mark comes out of `GenerateIcon.swift`**, the same drawing as the icon, written to
+  `LaunchMark.imageset` as gitignored PNGs by the same pre-build step. Its bars are rounded
+  to whole pixels for 126 pt, and the storyboard's image view must stay 126.
+- **To see it: `xcrun simctl launch --wait-for-debugger <dev> com.artscribe.Artscribe`**
+  holds the process before `main`, so the launch screen stays up to be screenshotted.
+  **`simctl uninstall` first** — the system caches a rendered snapshot of the launch screen
+  and a reinstall over the top keeps showing the old one.
+- **A simulator's launch screen shows the mark's colours wrong**: sRGB numbers read as
+  Display P3, amber `F4B271` drawn as `FFAE64`, while the icon and the app's own screens
+  are exact. No asset variant changes it. Not verified on a device.
+
 ## Test media
 
 Integration tests read `$ARTSCRIBE_TEST_MEDIA_DIR` and **skip cleanly when unset**, so CI is
