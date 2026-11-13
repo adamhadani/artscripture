@@ -43,7 +43,6 @@ public enum AudioFileDecoder {
                 StreamFormat(
                     duration: described.duration, sampleRate: $0.sampleRate, channels: $0.channels)
             } ?? described
-        let reader = try makeReader(asset: asset, track: track, format: format)
 
         let estimatedFrames =
             initialCapacityHint
@@ -51,9 +50,10 @@ public enum AudioFileDecoder {
         let storage = AudioStorage(
             channels: format.channels, capacityFrames: max(estimatedFrames, 1))
 
-        let written = try await readAllSamples(
-            using: reader, into: storage, format: format,
-            estimatedFrames: estimatedFrames, progress: progress)
+        let written = try await readOffThePool(
+            ReadRequest(
+                asset: asset, track: track, format: format, storage: storage,
+                estimatedFrames: estimatedFrames, progress: progress))
 
         guard written > 0 else { throw DecodeError.unsupportedFormat("Decoded zero frames.") }
         progress?(1.0)
@@ -64,7 +64,7 @@ public enum AudioFileDecoder {
 
     // MARK: - Setup
 
-    private struct StreamFormat {
+    struct StreamFormat: Sendable {
         let duration: CMTime
         let sampleRate: Double
         let channels: Int
@@ -145,44 +145,17 @@ public enum AudioFileDecoder {
             ?? CMAudioFormatDescriptionGetStreamBasicDescription(description)?.pointee
     }
 
-    private static func makeReader(
-        asset: AVURLAsset, track: AVAssetTrack, format: StreamFormat
-    ) throws -> (reader: AVAssetReader, output: AVAssetReaderTrackOutput) {
-        let settings: [String: Any] = [
-            AVFormatIDKey: kAudioFormatLinearPCM,
-            AVLinearPCMBitDepthKey: 32,
-            AVLinearPCMIsFloatKey: true,
-            AVLinearPCMIsBigEndianKey: false,
-            AVLinearPCMIsNonInterleaved: false
-        ]
-
-        let reader: AVAssetReader
-        do { reader = try AVAssetReader(asset: asset) } catch {
-            throw DecodeError.unreadable(error.localizedDescription)
-        }
-
-        let output = AVAssetReaderTrackOutput(track: track, outputSettings: settings)
-        output.alwaysCopiesSampleData = false
-        guard reader.canAdd(output) else {
-            throw DecodeError.unsupportedFormat("Reader rejected Float32 output.")
-        }
-        reader.add(output)
-        guard reader.startReading() else {
-            throw DecodeError.unreadable(
-                reader.error?.localizedDescription ?? "Reader failed to start.")
-        }
-        return (reader, output)
-    }
-
     // MARK: - Reading
 
-    private static func readAllSamples(
+    /// The read loop. Blocks for the whole decode, so it runs only on the queue
+    /// `readOffThePool` gives it — never on the concurrency pool.
+    static func readAllSamples(
         using reader: (reader: AVAssetReader, output: AVAssetReaderTrackOutput),
-        into storage: AudioStorage,
-        format: StreamFormat,
-        estimatedFrames: Int,
-        progress: (@Sendable (Double) -> Void)?
-    ) async throws -> Int {
+        for request: ReadRequest,
+        cancellation: CancellationFlag
+    ) throws -> Int {
+        let (format, storage) = (request.format, request.storage)
+        let (estimatedFrames, progress) = (request.estimatedFrames, request.progress)
         let channels = format.channels
         var written = 0
         var emptyBufferCount = 0
@@ -233,7 +206,7 @@ public enum AudioFileDecoder {
             if let progress, estimatedFrames > 0 {
                 progress(min(1.0, Double(written) / Double(estimatedFrames)))
             }
-            if Task.isCancelled {
+            if cancellation.isRaised {
                 reader.reader.cancelReading()
                 throw DecodeError.cancelled
             }

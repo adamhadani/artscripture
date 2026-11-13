@@ -70,7 +70,8 @@ extension ViewerModel {
         // Detached, not a plain `Task`: a detached task never inherits the main
         // actor, so the decode and the pyramid build are guaranteed to run off
         // it no matter how nonisolated-async inheritance is configured. The
-        // decoder polls `Task.isCancelled`, so cancelling this stops it early.
+        // decoder carries this task's cancellation to its read loop and checks
+        // it between buffers, so cancelling this stops it early.
         loadTask = Task.detached(priority: .userInitiated) { [weak self] in
             do {
                 let loaded = try await TrackLoader.load(
