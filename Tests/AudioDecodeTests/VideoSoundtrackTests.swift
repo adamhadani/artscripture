@@ -12,14 +12,6 @@ import Testing
 // the portable bundle), which is the point: the file picker offers these three
 // containers on every platform, so every platform has to prove it decodes them.
 
-private func fixture(_ name: String) -> URL {
-    URL(fileURLWithPath: #filePath)
-        .deletingLastPathComponent()  // AudioDecodeTests
-        .deletingLastPathComponent()  // Tests
-        .appendingPathComponent("Fixtures")
-        .appendingPathComponent(name)
-}
-
 /// The dominant frequency of channel 0, from zero crossings over the middle of
 /// the file — away from the encoder's priming and the fade at the end, either of
 /// which would add crossings that are not the tone.

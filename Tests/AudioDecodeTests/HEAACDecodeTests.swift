@@ -21,14 +21,6 @@ import Testing
 // the pitch is measured *at the labelled rate*, which is exactly how playback
 // will hear it.
 
-private func fixture(_ name: String) -> URL {
-    URL(fileURLWithPath: #filePath)
-        .deletingLastPathComponent()  // AudioDecodeTests
-        .deletingLastPathComponent()  // Tests
-        .appendingPathComponent("Fixtures")
-        .appendingPathComponent(name)
-}
-
 /// Dominant frequency of channel `channel`, from zero crossings over the middle
 /// half of the file, counted against the *labelled* sample rate — so a track
 /// labelled at half its real rate reads an octave low, as it would sound.
