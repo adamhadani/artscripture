@@ -1,6 +1,7 @@
 #!/bin/sh
-# Regenerates App/Artscripture.icns from App/GenerateIcon.swift when it is missing
-# or out of date. The .icns itself is gitignored — the Swift file is the source.
+# Regenerates App/Artscripture.icns, the iOS icon and the launch screen's mark from
+# App/GenerateIcon.swift when any is missing or out of date. The outputs are
+# gitignored — the Swift file is the source.
 set -eu
 
 here=$(cd "$(dirname "$0")" && pwd)
@@ -12,9 +13,18 @@ source_file="$here/GenerateIcon.swift"
 # would have skipped the regeneration that creates the PNG, and the iPad target
 # would build with no icon and no error.
 ios_icon="$here/iOS/Assets.xcassets/AppIcon.appiconset/icon-1024.png"
+# The launch screen's mark, for the same reason: a missing one is not a build
+# error. The storyboard names an image the catalog does not have, and the app
+# launches to a bare field.
+launch_mark="$here/iOS/Assets.xcassets/LaunchMark.imageset"
 
-if [ -f "$icns" ] && [ "$icns" -nt "$source_file" ] \
-   && [ -f "$ios_icon" ] && [ "$ios_icon" -nt "$source_file" ]; then
+fresh=yes
+for output in "$icns" "$ios_icon" "$launch_mark/LaunchMark@2x.png" "$launch_mark/LaunchMark@3x.png"; do
+    if [ ! -f "$output" ] || [ ! "$output" -nt "$source_file" ]; then
+        fresh=no
+    fi
+done
+if [ "$fresh" = yes ]; then
     exit 0
 fi
 

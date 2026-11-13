@@ -1,4 +1,5 @@
-// Draws `App/Artscripture.icns` from code.
+// Draws `App/Artscripture.icns`, the iOS icon and the launch screen's mark from
+// code.
 //
 // A generator rather than a committed binary: an `.icns` with every required
 // size is a few hundred kilobytes of opaque blob, and the repository's
@@ -112,6 +113,23 @@ func draw(size: Int, style: IconStyle = .macOS) -> CGImage? {
     // The safe area. Well inside the corner radius, so nothing is ever clipped
     // by the curve — the defect this replaced.
     let safe = rect.insetBy(dx: rect.width * 0.14, dy: rect.height * 0.14)
+    drawBars(in: context, safe: safe)
+
+    context.restoreGState()
+    return context.makeImage()
+}
+
+/// The nine bars, filling `safe`. The one drawing of the mark: the icon puts it
+/// on a plate, the launch screen puts it on nothing.
+///
+/// `wholePixels` is for the launch screen, where the mark is drawn once at a
+/// known size and looked at on its own. The icon's bars are 0.52 of a slot
+/// wide, which lands between pixels at almost every size in its ladder and
+/// does not matter there — the system resamples an icon anyway. A launch image
+/// is shown pixel for pixel, so there each bar is rounded to a whole number of
+/// pixels with equal margins, and its edges are sharp rather than a grey
+/// fringe one side.
+func drawBars(in context: CGContext, safe: CGRect, wholePixels: Bool = false) {
     let slot = safe.width / Double(bars.count)
     // Rounded ends, which is what keeps a bar from reading as a hard rectangle
     // once it is only a few pixels wide.
@@ -121,18 +139,68 @@ func draw(size: Int, style: IconStyle = .macOS) -> CGImage? {
         let amplitude = height * safe.height * 0.44
         let colour = index >= bars.count - emphasised ? emphasis : waveform
         context.setFillColor(CGColor(red: colour.r, green: colour.g, blue: colour.b, alpha: 1))
-        let bar = CGRect(
+        var bar = CGRect(
             x: safe.minX + Double(index) * slot + slot * 0.24, y: safe.midY - amplitude,
             width: slot * 0.52, height: amplitude * 2)
+        if wholePixels {
+            // The width takes the slot's parity, so what is left over splits
+            // into two equal whole margins.
+            var width = (slot * 0.52).rounded()
+            if Int(width) % 2 != Int(slot) % 2 { width -= 1 }
+            let half = amplitude.rounded()
+            bar = CGRect(
+                x: safe.minX + Double(index) * slot + (slot - width) / 2, y: safe.midY - half,
+                width: width, height: half * 2)
+        }
         context.addPath(
             CGPath(
                 roundedRect: bar, cornerWidth: cornerRadius, cornerHeight: cornerRadius,
                 transform: nil))
         context.fillPath()
     }
+}
 
-    context.restoreGState()
+/// The launch screen's mark: the bars alone, on transparency, because
+/// `LaunchScreen.storyboard` supplies the field behind them.
+///
+/// **The side is 9 × an even number of points** — one slot per bar — so a slot
+/// is a whole, even number of pixels at @2x and @3x alike and `wholePixels`
+/// has something exact to round against. 126 pt is 14 pt a slot, and the
+/// storyboard's image view is the same 126 (`LaunchScreenTests` compares them):
+/// at any other size the view would resample the mark and undo the rounding.
+///
+/// **Do not judge its colours from a simulator's launch screen.** Measured on
+/// iOS 27: the amber is stored as `F4B271`, the Home Screen icon beside it and
+/// the app's own screens draw their colours exactly, and the launch screen
+/// drew `FFAE64` — to the digit, `F4B271` with its sRGB numbers read as
+/// Display P3. The system's cached launch snapshot carries no colour profile
+/// (`Library/SplashBoard/Snapshots/*.ktx`). Giving the catalog a P3 variant
+/// changes nothing, since the snapshot is rendered from the sRGB one, and
+/// writing P3 numbers under an sRGB label would be a bet on devices doing what
+/// the simulator does — which the many apps that hand a launch logo over to an
+/// identical in-app one say they do not.
+let launchMarkPoints = 126
+
+func drawLaunchMark(scale: Int) -> CGImage? {
+    let side = launchMarkPoints * scale
+    guard
+        let context = CGContext(
+            data: nil, width: side, height: side, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedFirst.rawValue)
+    else { return nil }
+    drawBars(
+        in: context, safe: CGRect(x: 0, y: 0, width: side, height: side), wholePixels: true)
     return context.makeImage()
+}
+
+func writePNG(_ image: CGImage, to url: URL) -> Bool {
+    guard
+        let destination = CGImageDestinationCreateWithURL(
+            url as CFURL, "public.png" as CFString, 1, nil)
+    else { return false }
+    CGImageDestinationAddImage(destination, image, nil)
+    return CGImageDestinationFinalize(destination)
 }
 
 let root = URL(fileURLWithPath: CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "App")
@@ -208,6 +276,20 @@ if FileManager.default.fileExists(atPath: iosIconSet.path) {
         exit(1)
     }
     print("wrote \(iosURL.path)")
+}
+
+// The launch screen's mark, beside the icon in the same catalog. @2x and @3x
+// only: nothing that runs this app has a @1x display.
+let launchMarkSet = root.appendingPathComponent("iOS/Assets.xcassets/LaunchMark.imageset")
+if FileManager.default.fileExists(atPath: launchMarkSet.path) {
+    for scale in [2, 3] {
+        let url = launchMarkSet.appendingPathComponent("LaunchMark@\(scale)x.png")
+        guard let image = drawLaunchMark(scale: scale), writePNG(image, to: url) else {
+            FileHandle.standardError.write(Data("could not write \(url.path)\n".utf8))
+            exit(1)
+        }
+        print("wrote \(url.path)")
+    }
 }
 
 let iconutil = Process()

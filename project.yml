@@ -195,6 +195,8 @@ targets:
           "$SRCROOT/App/generate-icon.sh"
         outputFiles:
           - $(SRCROOT)/App/iOS/Assets.xcassets/AppIcon.appiconset/icon-1024.png
+          - $(SRCROOT)/App/iOS/Assets.xcassets/LaunchMark.imageset/LaunchMark@2x.png
+          - $(SRCROOT)/App/iOS/Assets.xcassets/LaunchMark.imageset/LaunchMark@3x.png
         basedOnDependencyAnalysis: false
 
   # The portable suites, run on an iOS simulator.
