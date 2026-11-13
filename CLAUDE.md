@@ -130,6 +130,17 @@ did, so it notifies every time. `transport.poll(…)` on the display link theref
 just as often, and the Output Device submenu never survived long enough for AppKit's submenu-open
 delay to elapse. Poll a copy; write it back only if it moved.
 
+**A blocking call never runs on the Swift concurrency pool.** `AudioFileDecoder` ran its
+`copyNextSampleBuffer()` loop inside an `async` function, so each decode held a pool thread
+blocked for its whole length. With as many decodes as the pool has threads (12 on a 12-core
+Mac) every one waited forever at 0% CPU; eleven finished in 0.15 s. That was the parallel
+`make check` hang. The loop now runs on a queue of its own and the task waits on a continuation
+(`AudioFileDecoder+Reader.swift`); `Video` always worked that way. Off the pool,
+`Task.isCancelled` is always false, so cancellation has to cross as a flag.
+If the loop goes back on the pool, `DecodeConcurrencyTests` deadlocks even under
+`--no-parallel`, and its watchdog ends the run after 60 s with a fatal error naming the
+cause. The watchdog is a plain thread: a GCD timer never fired inside the deadlocked process.
+
 **An automated run must never make a sound.** Agents launch this app to check their own
 work, on a machine that is usually in a room with a person in it; turning the system volume
 down does not help, because the run happens whether or not anyone remembered. So it is
@@ -739,6 +750,14 @@ GitHub runner that deadlocked outright: 886 tests started, 506 finished, and eve
 `--no-parallel` when a run hangs or when you need the log to name a culprit, because under
 parallelism the blocked test is invisible among hundreds of others that merely never got a
 turn. Both workflows pass it, and the suite is *faster* serially anyway (14.9 s).
+
+**The 2026-11 parallel hang had a different cause, and `--no-parallel` was not its cure.** See
+*A blocking call never runs on the Swift concurrency pool* above: its signature is the decode
+suites, not `@MainActor` tests, parked at 0% CPU in `copyNextSampleBuffer`. The two may be one
+bug. A standard GitHub macOS runner has three cores, three concurrent decodes fill a pool that
+wide, and every test queued behind them never gets a turn, `@MainActor` ones included. Nobody
+sampled the July hang, so that is a hypothesis. `--no-parallel` is still the diagnostic for
+naming a culprit; it is no longer what makes the suite finish, and `make check` stays parallel.
 
 ## Testing conventions
 
