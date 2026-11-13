@@ -6,7 +6,7 @@ import os
 
 public enum AudioFileDecoder {
 
-    private static let logger = Logger(subsystem: "com.artscribe.AudioDecode", category: "decode")
+    static let logger = Logger(subsystem: "com.artscribe.AudioDecode", category: "decode")
 
     /// Decodes an entire file to planar Float32.
     ///
@@ -46,20 +46,33 @@ public enum AudioFileDecoder {
 
         let estimatedFrames =
             initialCapacityHint
-            ?? (Int(format.duration.seconds * format.sampleRate) + Int(format.sampleRate))
-        let storage = AudioStorage(
-            channels: format.channels, capacityFrames: max(estimatedFrames, 1))
+            ?? initialCapacityFrames(duration: format.duration, sampleRate: format.sampleRate)
 
-        let written = try await readOffThePool(
+        let (storage, written) = try await readOffThePool(
             ReadRequest(
-                asset: asset, track: track, format: format, storage: storage,
-                estimatedFrames: estimatedFrames, progress: progress))
+                asset: asset, format: format, estimatedFrames: estimatedFrames,
+                progress: progress),
+            track: track)
 
         guard written > 0 else { throw DecodeError.unsupportedFormat("Decoded zero frames.") }
         progress?(1.0)
         return DecodedAudio(
             channels: format.channels, sampleRate: format.sampleRate,
             frameCount: FrameIndex(written), storage: storage)
+    }
+
+    /// The decode's first allocation: the container's duration plus a second.
+    ///
+    /// A duration that is not a finite number — `.indefinite`, `.invalid` — gets
+    /// a minute's worth instead. `Int(_:)` traps on NaN and infinity, which would
+    /// crash the app on open, and the read loop grows the storage whenever a
+    /// file outruns its estimate, so a guess costs only a reallocation.
+    static func initialCapacityFrames(duration: CMTime, sampleRate: Double) -> Int {
+        let seconds = duration.seconds
+        guard duration.isNumeric, seconds.isFinite, seconds >= 0 else {
+            return Int(sampleRate * 60)
+        }
+        return Int(seconds * sampleRate) + Int(sampleRate)
     }
 
     // MARK: - Setup
@@ -145,83 +158,7 @@ public enum AudioFileDecoder {
             ?? CMAudioFormatDescriptionGetStreamBasicDescription(description)?.pointee
     }
 
-    // MARK: - Reading
-
-    /// The read loop. Blocks for the whole decode, so it runs only on the queue
-    /// `readOffThePool` gives it — never on the concurrency pool.
-    static func readAllSamples(
-        using reader: (reader: AVAssetReader, output: AVAssetReaderTrackOutput),
-        for request: ReadRequest,
-        cancellation: CancellationFlag
-    ) throws -> Int {
-        let (format, storage) = (request.format, request.storage)
-        let (estimatedFrames, progress) = (request.estimatedFrames, request.progress)
-        let channels = format.channels
-        var written = 0
-        var emptyBufferCount = 0
-        let scratch = SampleScratch()
-        let frameSize = MemoryLayout<Float>.size * channels
-
-        while let sample = reader.output.copyNextSampleBuffer() {
-            defer { CMSampleBufferInvalidate(sample) }
-            guard let block = CMSampleBufferGetDataBuffer(sample) else {
-                // A `CMSampleBuffer` with no data buffer carries no audio payload at
-                // all -- some containers emit these as markers around a mid-stream
-                // format-description change. There is nothing to lose by skipping
-                // one, but a *run* of them would be a symptom of something else
-                // going wrong, so this is counted and logged rather than silently
-                // discarded.
-                emptyBufferCount += 1
-                continue
-            }
-
-            let decoded = CMSampleBufferGetFormatDescription(sample).flatMap {
-                CMAudioFormatDescriptionGetStreamBasicDescription($0)?.pointee
-            }
-            if let decoded {
-                try verifyDecodedLayout(decoded, sampleRate: format.sampleRate, channels: channels)
-            }
-
-            let byteCount = try copyBytes(from: block, into: scratch)
-            guard byteCount > 0 else {
-                // A genuinely zero-length block buffer: same reasoning as above,
-                // no payload existed to lose.
-                emptyBufferCount += 1
-                continue
-            }
-            // LPCM sample buffers from AVFoundation are always frame-aligned; a
-            // partial frame here would mean real decoded bytes exist that don't
-            // fit our layout assumptions. Never silently drop them -- throw
-            // instead of truncating via integer division.
-            let frames = try frameCount(inByteCount: byteCount, frameSize: frameSize)
-
-            // Never silently truncate: if the file turns out longer than the
-            // duration-based estimate predicted, grow rather than stop early.
-            if written + frames > storage.capacityFrames {
-                storage.grow(toAtLeast: written + frames, preserving: written)
-            }
-            deinterleave(scratch, frames: frames, channels: channels, into: storage, at: written)
-            written += frames
-
-            if let progress, estimatedFrames > 0 {
-                progress(min(1.0, Double(written) / Double(estimatedFrames)))
-            }
-            if cancellation.isRaised {
-                reader.reader.cancelReading()
-                throw DecodeError.cancelled
-            }
-        }
-
-        if reader.reader.status == .failed {
-            throw DecodeError.unreadable(
-                reader.reader.error?.localizedDescription ?? "Decode failed.")
-        }
-        if emptyBufferCount > 0 {
-            logger.notice(
-                "Skipped \(emptyBufferCount) empty sample buffer(s) with no audio payload.")
-        }
-        return written
-    }
+    // MARK: - Reading helpers
 
     /// Refuses a decoded buffer whose rate or channel count disagrees with the
     /// label the samples are about to be stored under.
@@ -268,7 +205,7 @@ public enum AudioFileDecoder {
     /// favour of an ILP64 interface; a plain loop avoids that churn entirely,
     /// and `-O` can vectorise this since `dst`/`floats` are raw, unchecked
     /// pointers.)
-    private static func deinterleave(
+    static func deinterleave(
         _ scratch: SampleScratch, frames: Int, channels: Int, into storage: AudioStorage,
         at written: Int
     ) {
