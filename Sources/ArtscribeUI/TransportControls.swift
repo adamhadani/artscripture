@@ -192,9 +192,9 @@ public enum TransportControl: String, CaseIterable, Sendable, Hashable {
         self == .loop ? [.loopClear] : []
     }
 
-    /// Whether the button should draw as engaged. Only the loop has one: play and
-    /// pause are one button whose glyph already says which it is, and the rest are
-    /// momentary.
+    /// Whether the button should draw as engaged. The three toggles have one —
+    /// loop, preroll and video; play and pause are one button whose glyph already
+    /// says which it is, and the rest are momentary.
     public func isOn(in state: TransportState) -> Bool {
         switch self {
         case .loop: return state.loopIsEnabled
