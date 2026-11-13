@@ -5,14 +5,6 @@ import Testing
 
 @testable import AudioDecode
 
-private func fixture(_ name: String) -> URL {
-    URL(fileURLWithPath: #filePath)
-        .deletingLastPathComponent()  // AudioDecodeTests
-        .deletingLastPathComponent()  // Tests
-        .appendingPathComponent("Fixtures")
-        .appendingPathComponent(name)
-}
-
 @Test func decodesWavToFloat32() async throws {
     let audio = try await AudioFileDecoder.decode(url: fixture("sine.wav"))
     #expect(audio.channels == 2)

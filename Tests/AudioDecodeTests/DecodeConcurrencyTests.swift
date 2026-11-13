@@ -5,14 +5,6 @@ import Testing
 
 @testable import AudioDecode
 
-private func fixture(_ name: String) -> URL {
-    URL(fileURLWithPath: #filePath)
-        .deletingLastPathComponent()  // AudioDecodeTests
-        .deletingLastPathComponent()  // Tests
-        .appendingPathComponent("Fixtures")
-        .appendingPathComponent(name)
-}
-
 /// Ends the process, by name, unless disarmed in time.
 ///
 /// A deadlocked concurrency pool cannot run Swift Testing's own `.timeLimit` —
