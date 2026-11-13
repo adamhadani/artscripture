@@ -19,8 +19,8 @@ asks for — with a deadline, because a stalled upload otherwise looks exactly l
 slow one.
 
 Credentials are the same three the Makefile's App Store targets use, read from the
-environment and never printed: ARTSCRIBE_ASC_ISSUER_ID, ARTSCRIBE_ASC_KEY_ID and
-ARTSCRIBE_ASC_KEY_PATH (a Team key with the Admin role; see README).
+environment and never printed: ARTSCRIPTURE_ASC_ISSUER_ID, ARTSCRIPTURE_ASC_KEY_ID and
+ARTSCRIPTURE_ASC_KEY_PATH (a Team key with the Admin role; see README).
 
 Standard library only. The ES256 token is signed with `openssl`, because PyJWT is not
 installed here and nothing else needs it; openssl emits a DER signature, and JWS wants
@@ -41,7 +41,7 @@ import urllib.request
 
 API = "https://api.appstoreconnect.apple.com"
 # Permanent once published — see project.yml. Overridable for a fork.
-BUNDLE_ID = os.environ.get("ARTSCRIBE_BUNDLE_ID", "com.artscribe.Artscribe")
+BUNDLE_ID = os.environ.get("ARTSCRIPTURE_BUNDLE_ID", "com.artscribe.Artscribe")
 PLATFORM = "IOS"  # The App Store build is the iPhone/iPad app; the Mac ships directly.
 
 
@@ -73,9 +73,9 @@ def _der_to_raw(der: bytes) -> bytes:
 
 def _token() -> str:
     try:
-        issuer = os.environ["ARTSCRIBE_ASC_ISSUER_ID"]
-        key_id = os.environ["ARTSCRIBE_ASC_KEY_ID"]
-        key_path = os.environ["ARTSCRIBE_ASC_KEY_PATH"]
+        issuer = os.environ["ARTSCRIPTURE_ASC_ISSUER_ID"]
+        key_id = os.environ["ARTSCRIPTURE_ASC_KEY_ID"]
+        key_path = os.environ["ARTSCRIPTURE_ASC_KEY_PATH"]
     except KeyError as missing:
         raise AscError(f"{missing.args[0]} is not set — see README, The App Store") from None
     now = int(time.time())
@@ -89,7 +89,7 @@ def _token() -> str:
         capture_output=True,
     )
     if signed.returncode != 0:
-        raise AscError("openssl could not sign with the key at ARTSCRIBE_ASC_KEY_PATH")
+        raise AscError("openssl could not sign with the key at ARTSCRIPTURE_ASC_KEY_PATH")
     return f"{header}.{payload}.{_b64url(_der_to_raw(signed.stdout))}"
 
 

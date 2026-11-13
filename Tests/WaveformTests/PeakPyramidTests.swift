@@ -144,9 +144,9 @@ private func makeRamp(frames: Int) -> DecodedAudio {
 /// Not a fixture: points at real, copyrighted 24-bit/44.1 FLAC material that is
 /// never committed to the repo. Skips cleanly when the environment variable is
 /// unset, matching the pattern used in AudioDecodeTests.
-@Test(.enabled(if: ProcessInfo.processInfo.environment["ARTSCRIBE_TEST_MEDIA_DIR"] != nil))
+@Test(.enabled(if: ProcessInfo.processInfo.environment["ARTSCRIPTURE_TEST_MEDIA_DIR"] != nil))
 func buildsPyramidForRealTrackWithinBudget() async throws {
-    let dirPath = try #require(ProcessInfo.processInfo.environment["ARTSCRIBE_TEST_MEDIA_DIR"])
+    let dirPath = try #require(ProcessInfo.processInfo.environment["ARTSCRIPTURE_TEST_MEDIA_DIR"])
     let dir = URL(fileURLWithPath: dirPath)
     let flacFiles =
         try FileManager.default

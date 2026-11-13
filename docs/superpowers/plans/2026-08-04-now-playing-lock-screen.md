@@ -912,7 +912,7 @@ xcodebuild build -scheme ArtscribeiPad -destination "platform=iOS Simulator,id=$
   -derivedDataPath .build/nowplaying-dd -quiet
 APP=$(find .build/nowplaying-dd -name "Artscripture.app" -path "*iphonesimulator*" | head -1)
 xcrun simctl install "$DEV" "$APP"
-SIMCTL_CHILD_ARTSCRIBE_SILENT=1 xcrun simctl launch "$DEV" com.artscribe.Artscribe
+SIMCTL_CHILD_ARTSCRIPTURE_SILENT=1 xcrun simctl launch "$DEV" com.artscribe.Artscribe
 ```
 
 Expected: the app launches and behaves as before. A simulator cannot show a lock screen, so this proves only that the wiring did not break anything.

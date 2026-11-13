@@ -17,7 +17,7 @@ enum AcceptanceRun {
 
     /// Set to `1` to actually *hear* an acceptance run. Audible is the explicit
     /// choice; silence is what you get by not choosing.
-    static let audibleEnvironmentKey = "ARTSCRIBE_ACCEPTANCE_AUDIBLE"
+    static let audibleEnvironmentKey = "ARTSCRIPTURE_ACCEPTANCE_AUDIBLE"
 
     /// An automated run makes no sound.
     ///

@@ -14,8 +14,8 @@ struct DeveloperMenuTests {
     @Test("absent, empty or whitespace leaves it closed")
     func closedByDefault() {
         #expect(!DeveloperMenu.isEnabled(in: [:]))
-        #expect(!DeveloperMenu.isEnabled(in: ["ARTSCRIBE_DEV_MENU": ""]))
-        #expect(!DeveloperMenu.isEnabled(in: ["ARTSCRIBE_DEV_MENU": "   "]))
+        #expect(!DeveloperMenu.isEnabled(in: ["ARTSCRIPTURE_DEV_MENU": ""]))
+        #expect(!DeveloperMenu.isEnabled(in: ["ARTSCRIPTURE_DEV_MENU": "   "]))
         #expect(!DeveloperMenu.isEnabled(in: ["SOMETHING_ELSE": "1"]))
     }
 
@@ -24,7 +24,7 @@ struct DeveloperMenuTests {
     /// semitone — in front of every user.
     @Test("only the documented off-values are off", arguments: ["0", "false", "no", "NO", "False"])
     func explicitlyOff(value: String) {
-        #expect(!DeveloperMenu.isEnabled(in: ["ARTSCRIBE_DEV_MENU": value]))
+        #expect(!DeveloperMenu.isEnabled(in: ["ARTSCRIPTURE_DEV_MENU": value]))
     }
 
     /// Anything else means yes. Someone who typed `=yes` meant yes, and the cost
@@ -32,7 +32,7 @@ struct DeveloperMenuTests {
     /// menu — not a user who does.
     @Test("anything else opens it", arguments: ["1", "yes", "true", "on", "please"])
     func explicitlyOn(value: String) {
-        #expect(DeveloperMenu.isEnabled(in: ["ARTSCRIBE_DEV_MENU": value]))
+        #expect(DeveloperMenu.isEnabled(in: ["ARTSCRIPTURE_DEV_MENU": value]))
     }
 
     /// The key is part of the contract — it is in `README.md` and in the class
@@ -40,6 +40,6 @@ struct DeveloperMenuTests {
     /// invocation from working.
     @Test("the environment key is the documented one")
     func key() {
-        #expect(DeveloperMenu.environmentKey == "ARTSCRIBE_DEV_MENU")
+        #expect(DeveloperMenu.environmentKey == "ARTSCRIPTURE_DEV_MENU")
     }
 }

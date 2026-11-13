@@ -58,7 +58,7 @@ settings:
     # along a branch, and needing nobody to remember to bump it. `make ipad` and
     # `make archive` export it; the `:default=1` is for a bare `xcodebuild` or a
     # build from Xcode's UI, where an ordinary local build does not care.
-    CURRENT_PROJECT_VERSION: "$(ARTSCRIBE_BUILD_NUMBER:default=1)"
+    CURRENT_PROJECT_VERSION: "$(ARTSCRIPTURE_BUILD_NUMBER:default=1)"
     # Signing is taken from the environment so that turning on a real Developer
     # ID needs no edit to a tracked file — `make app` exports these, defaulting
     # to ad-hoc. See README ▸ Signing for the four things to set once you have
@@ -66,13 +66,13 @@ settings:
     #
     # Ad-hoc ("-") is enough for the machine that built it and for anyone
     # willing to right-click ▸ Open once. It is not enough for a download.
-    CODE_SIGN_IDENTITY: "$(ARTSCRIBE_SIGN_IDENTITY)"
+    CODE_SIGN_IDENTITY: "$(ARTSCRIPTURE_SIGN_IDENTITY)"
     CODE_SIGN_STYLE: Manual
-    DEVELOPMENT_TEAM: "$(ARTSCRIBE_TEAM_ID)"
+    DEVELOPMENT_TEAM: "$(ARTSCRIPTURE_TEAM_ID)"
     # Notarisation requires the hardened runtime, and the hardened runtime
     # requires the library-validation exception already in the entitlements
     # file before it will load the embedded Homebrew dylibs.
-    ENABLE_HARDENED_RUNTIME: "$(ARTSCRIBE_HARDENED_RUNTIME)"
+    ENABLE_HARDENED_RUNTIME: "$(ARTSCRIPTURE_HARDENED_RUNTIME)"
     DEAD_CODE_STRIPPING: YES
 
 targets:
@@ -186,7 +186,7 @@ targets:
         # notarisation step on iOS for this to interfere with.
         CODE_SIGN_STYLE: Automatic
         CODE_SIGN_IDENTITY: "Apple Development"
-        DEVELOPMENT_TEAM: "$(ARTSCRIBE_TEAM_ID)"
+        DEVELOPMENT_TEAM: "$(ARTSCRIPTURE_TEAM_ID)"
         # No Homebrew search paths, and that is the point — if this target ever
         # needs them, something macOS-only has crept below `ArtscribeUI`.
     preBuildScripts:

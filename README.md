@@ -139,7 +139,7 @@ Artscripture has two time-stretching backends, and which one is running is **not
 choice. It is one for whoever is working on the audio:
 
 ```sh
-ARTSCRIBE_DEV_MENU=1 swift run -c release ArtscribeApp
+ARTSCRIPTURE_DEV_MENU=1 swift run -c release ArtscribeApp
 ```
 
 That adds **Playback ▸ Developer ▸ Stretch Engine**: Rubber Band R3 (Studio), Rubber Band R2
@@ -209,7 +209,7 @@ The one behavioural difference is decoding: [Ogg Vorbis does not open on iPadOS]
 **Once, on the iPad:** Settings ▸ Privacy & Security ▸ **Developer Mode** ▸ on, then restart.
 (iOS 17 or newer; `devicectl` does not support older devices.)
 
-**Once, on the Mac:** export `ARTSCRIBE_TEAM_ID` — the same one signing already uses. Device
+**Once, on the Mac:** export `ARTSCRIPTURE_TEAM_ID` — the same one signing already uses. Device
 builds are signed automatically with an *Apple Development* certificate, which Xcode mints
 from your account; this is not the Developer ID path the Mac release uses.
 
@@ -233,7 +233,7 @@ xcodebuild build -scheme ArtscribeiPad -destination 'id=<identifier>' \
 xcrun devicectl device install app --device <identifier> \
     .build/xcode-ipad/Build/Products/Debug-iphoneos/Artscripture.app
 
-xcrun devicectl device process launch --device <identifier> com.artscribe.Artscripture
+xcrun devicectl device process launch --device <identifier> com.artscribe.Artscribe
 ```
 
 To iterate without a device, build for a simulator instead — no signing, no team:
@@ -299,7 +299,7 @@ verifies cleanly and is still rejected on the recipient's Mac:
   Manage Certificates ▸ **+** simply will not list it. Only the Account Holder
   can create one, and you get five.
 - **The bracketed name in an `Apple Development` certificate is not the team
-  ID.** It is a per-person identifier, so copying it into `ARTSCRIBE_TEAM_ID`
+  ID.** It is a per-person identifier, so copying it into `ARTSCRIPTURE_TEAM_ID`
   silently disagrees with what the signature actually carries. Read the real one
   off a built bundle:
 
@@ -314,9 +314,9 @@ open the app.
 Export those and build. The Makefile defaults to ad-hoc, so these are the whole change:
 
 ```sh
-export ARTSCRIBE_SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)"
-export ARTSCRIBE_TEAM_ID=TEAMID
-export ARTSCRIBE_HARDENED_RUNTIME=YES
+export ARTSCRIPTURE_SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)"
+export ARTSCRIPTURE_TEAM_ID=TEAMID
+export ARTSCRIPTURE_HARDENED_RUNTIME=YES
 
 make dist        # signs with the real identity, hardened runtime on
 ```
@@ -499,9 +499,9 @@ mkdir -p ~/.private_keys && chmod 600 ~/.private_keys/AuthKey_XXXXXXXXXX.p8
 Then in your `.envrc`, alongside the Developer ID variables:
 
 ```sh
-export ARTSCRIBE_ASC_ISSUER_ID="…"   # the UUID at the top of the Integrations page
-export ARTSCRIBE_ASC_KEY_ID="…"      # the 10-character key ID
-export ARTSCRIBE_ASC_KEY_PATH="$HOME/.private_keys/AuthKey_XXXXXXXXXX.p8"
+export ARTSCRIPTURE_ASC_ISSUER_ID="…"   # the UUID at the top of the Integrations page
+export ARTSCRIPTURE_ASC_KEY_ID="…"      # the 10-character key ID
+export ARTSCRIPTURE_ASC_KEY_PATH="$HOME/.private_keys/AuthKey_XXXXXXXXXX.p8"
 ```
 
 #### The commands
@@ -750,17 +750,17 @@ use when.
 
 ### Tests against real media
 
-Integration tests read `$ARTSCRIBE_TEST_MEDIA_DIR` and **skip cleanly when it is unset**,
+Integration tests read `$ARTSCRIPTURE_TEST_MEDIA_DIR` and **skip cleanly when it is unset**,
 so CI stays green without it. Point it at a directory of real music to exercise the
 decode, waveform and playback paths at full scale:
 
 ```sh
-ARTSCRIBE_TEST_MEDIA_DIR=~/Music/SomeAlbum swift test -c release
+ARTSCRIPTURE_TEST_MEDIA_DIR=~/Music/SomeAlbum swift test -c release
 ```
 
 Measure performance in **release**. A debug build is roughly 4× slower and will mislead you.
 
-> Known issue: the full suite hangs when `$ARTSCRIBE_TEST_MEDIA_DIR` is set. `make check`
+> Known issue: the full suite hangs when `$ARTSCRIPTURE_TEST_MEDIA_DIR` is set. `make check`
 > is unaffected. Being tracked.
 
 ### The acceptance harness
@@ -781,7 +781,7 @@ anything says so in its summary and exits 2 rather than 0, because a partial acc
 is not an acceptance pass.
 
 The harness never makes a sound: it closes a process-wide audibility gate in the audio graph
-itself, before any output can exist. `ARTSCRIBE_ACCEPTANCE_AUDIBLE=1` is the deliberate
+itself, before any output can exist. `ARTSCRIPTURE_ACCEPTANCE_AUDIBLE=1` is the deliberate
 override.
 
 ## Architecture

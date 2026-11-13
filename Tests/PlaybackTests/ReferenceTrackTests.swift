@@ -18,9 +18,9 @@ import TimeStretch
 /// mixer → 48 kHz conversion. Only the DAC is missing.
 ///
 /// The reference album is copyrighted and ~1.1 GB, so it is never committed;
-/// these skip unless `$ARTSCRIBE_TEST_MEDIA_DIR` points at it.
+/// these skip unless `$ARTSCRIPTURE_TEST_MEDIA_DIR` points at it.
 private let referenceTrack: URL? = {
-    guard let directory = ProcessInfo.processInfo.environment["ARTSCRIBE_TEST_MEDIA_DIR"] else {
+    guard let directory = ProcessInfo.processInfo.environment["ARTSCRIPTURE_TEST_MEDIA_DIR"] else {
         return nil
     }
     let url = URL(fileURLWithPath: directory)

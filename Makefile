@@ -17,11 +17,11 @@ VERSION := $(shell awk -F'"' '/MARKETING_VERSION/ {print $$2; exit}' project.yml
 # both, and is derivable from any checkout rather than tracked in a file two
 # branches would then conflict over.
 #
-# `project.yml` reads it as `$(ARTSCRIBE_BUILD_NUMBER:default=1)`, so a bare
+# `project.yml` reads it as `$(ARTSCRIPTURE_BUILD_NUMBER:default=1)`, so a bare
 # `xcodebuild` or a build from Xcode's UI still works; only builds that leave
 # this machine need it to be real.
-ARTSCRIBE_BUILD_NUMBER := $(shell git rev-list --count HEAD 2>/dev/null || echo 1)
-export ARTSCRIBE_BUILD_NUMBER
+ARTSCRIPTURE_BUILD_NUMBER := $(shell git rev-list --count HEAD 2>/dev/null || echo 1)
+export ARTSCRIPTURE_BUILD_NUMBER
 
 # Signing. Ad-hoc unless you say otherwise, so a clean checkout builds a
 # runnable app with no account, no certificate and no configuration.
@@ -29,17 +29,17 @@ export ARTSCRIBE_BUILD_NUMBER
 # With an Apple Developer account, set these in your shell (or CI) and change
 # nothing in the repository:
 #
-#   ARTSCRIBE_SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)"
-#   ARTSCRIBE_TEAM_ID=TEAMID
-#   ARTSCRIBE_HARDENED_RUNTIME=YES
+#   ARTSCRIPTURE_SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)"
+#   ARTSCRIPTURE_TEAM_ID=TEAMID
+#   ARTSCRIPTURE_HARDENED_RUNTIME=YES
 #
 # `make notarize` then submits the zip and staples the ticket.
-ARTSCRIBE_SIGN_IDENTITY ?= -
-ARTSCRIBE_TEAM_ID ?=
-ARTSCRIBE_HARDENED_RUNTIME ?= NO
-export ARTSCRIBE_SIGN_IDENTITY
-export ARTSCRIBE_TEAM_ID
-export ARTSCRIBE_HARDENED_RUNTIME
+ARTSCRIPTURE_SIGN_IDENTITY ?= -
+ARTSCRIPTURE_TEAM_ID ?=
+ARTSCRIPTURE_HARDENED_RUNTIME ?= NO
+export ARTSCRIPTURE_SIGN_IDENTITY
+export ARTSCRIPTURE_TEAM_ID
+export ARTSCRIPTURE_HARDENED_RUNTIME
 
 bootstrap:
 	brew list rubberband >/dev/null 2>&1 || brew install rubberband
@@ -155,7 +155,7 @@ acceptance:
 # Ctrl-C detaches the console; it does not kill the app.
 #
 # Requires Developer Mode on the iPad (Settings > Privacy & Security) and a
-# signing team configured once in Xcode. `direnv exec` supplies ARTSCRIBE_TEAM_ID
+# signing team configured once in Xcode. `direnv exec` supplies ARTSCRIPTURE_TEAM_ID
 # without it appearing in any command line or log.
 IPAD_NAME ?= iPad
 DEV ?=
@@ -181,7 +181,7 @@ ipad-install: ipad-build
 
 ipad: ipad-install
 	xcrun devicectl device process launch --console \
-	    $(if $(DEV),--environment-variables '{"ARTSCRIBE_DEV_MENU":"1"}',) \
+	    $(if $(DEV),--environment-variables '{"ARTSCRIPTURE_DEV_MENU":"1"}',) \
 	    --device $(IPAD_ID) com.artscribe.Artscribe
 
 # Everything the app has written into its container — the `.artscripture` sidecars
@@ -216,16 +216,16 @@ app:
 	@# With a real Developer ID the timestamp is required (notarisation rejects
 	@# an untrusted-timestamp signature) and the hardened runtime has to be
 	@# asked for here too, because this re-sign supersedes Xcode's.
-	@if [ "$(ARTSCRIBE_SIGN_IDENTITY)" = "-" ]; then \
+	@if [ "$(ARTSCRIPTURE_SIGN_IDENTITY)" = "-" ]; then \
 		codesign --force --sign - --timestamp=none "$(APP)"; \
 	else \
-		codesign --force --sign "$(ARTSCRIBE_SIGN_IDENTITY)" --timestamp \
+		codesign --force --sign "$(ARTSCRIPTURE_SIGN_IDENTITY)" --timestamp \
 			--options runtime --entitlements App/Artscribe.entitlements "$(APP)"; \
 	fi
 	codesign --verify --strict --verbose=2 "$(APP)"
 	@# Says plainly which kind of signature came out, because "it built" and
 	@# "it will open on somebody else's Mac" are different facts.
-	@if [ "$(ARTSCRIBE_SIGN_IDENTITY)" = "-" ]; then \
+	@if [ "$(ARTSCRIPTURE_SIGN_IDENTITY)" = "-" ]; then \
 		echo "signed AD-HOC — fine locally, rejected by Gatekeeper on download"; \
 	else \
 		echo "signed with a real identity — run 'make notarize' next"; \
@@ -268,8 +268,8 @@ dist: app
 NOTARY_PROFILE ?= artscribe-notary
 
 notarize: dist
-	@test "$(ARTSCRIBE_SIGN_IDENTITY)" != "-" || { \
-		echo "notarisation needs a Developer ID; set ARTSCRIBE_SIGN_IDENTITY"; exit 1; }
+	@test "$(ARTSCRIPTURE_SIGN_IDENTITY)" != "-" || { \
+		echo "notarisation needs a Developer ID; set ARTSCRIPTURE_SIGN_IDENTITY"; exit 1; }
 	@# `notarytool submit --wait` exits 0 even when the verdict is Invalid, so
 	@# the status has to be read rather than inferred from the exit code. Without
 	@# this the recipe walked on to `stapler`, which failed with a "Record not
@@ -316,9 +316,9 @@ clean:
 # edit metadata; only Account Holder or Admin may mint a *distribution*
 # certificate, which is what automatic signing needs.
 #
-#   ARTSCRIBE_ASC_ISSUER_ID   the UUID at the top of the Integrations page
-#   ARTSCRIBE_ASC_KEY_ID      the 10-character key ID
-#   ARTSCRIBE_ASC_KEY_PATH    absolute path to AuthKey_<keyid>.p8
+#   ARTSCRIPTURE_ASC_ISSUER_ID   the UUID at the top of the Integrations page
+#   ARTSCRIPTURE_ASC_KEY_ID      the 10-character key ID
+#   ARTSCRIPTURE_ASC_KEY_PATH    absolute path to AuthKey_<keyid>.p8
 #
 # An *individual* key cannot do this: Apple excludes them from the provisioning
 # endpoints, which is exactly what `-allowProvisioningUpdates` uses to mint the
@@ -330,21 +330,21 @@ EXPORT := .build/export
 # The three flags every App Store xcodebuild invocation needs. Kept in one
 # variable so the two recipes cannot drift, and referenced rather than echoed —
 # `make` prints the recipe otherwise, and these identify the account.
-ASC_AUTH = -authenticationKeyPath "$(ARTSCRIBE_ASC_KEY_PATH)" \
-	   -authenticationKeyID "$(ARTSCRIBE_ASC_KEY_ID)" \
-	   -authenticationKeyIssuerID "$(ARTSCRIBE_ASC_ISSUER_ID)"
+ASC_AUTH = -authenticationKeyPath "$(ARTSCRIPTURE_ASC_KEY_PATH)" \
+	   -authenticationKeyID "$(ARTSCRIPTURE_ASC_KEY_ID)" \
+	   -authenticationKeyIssuerID "$(ARTSCRIPTURE_ASC_ISSUER_ID)"
 
 .PHONY: archive upload asc-check asc-status asc-wait asc-prepare
 
 # Fails early and by name rather than letting xcodebuild report something
 # oblique forty seconds in.
 asc-check:
-	@for v in ARTSCRIBE_ASC_ISSUER_ID ARTSCRIBE_ASC_KEY_ID ARTSCRIBE_ASC_KEY_PATH; do \
+	@for v in ARTSCRIPTURE_ASC_ISSUER_ID ARTSCRIPTURE_ASC_KEY_ID ARTSCRIPTURE_ASC_KEY_PATH; do \
 	  eval "val=\$$$$v"; \
 	  test -n "$$val" || { echo "$$v is not set — see README ▸ Signing"; exit 2; }; \
 	done
-	@test -f "$(ARTSCRIBE_ASC_KEY_PATH)" || { \
-	  echo "no key file at ARTSCRIBE_ASC_KEY_PATH"; exit 2; }
+	@test -f "$(ARTSCRIPTURE_ASC_KEY_PATH)" || { \
+	  echo "no key file at ARTSCRIPTURE_ASC_KEY_PATH"; exit 2; }
 
 # The rest of the way to a reviewable version, after `make upload` — and not one
 # step past it: nothing here submits for review or releases. See
@@ -363,24 +363,24 @@ asc-status: asc-check
 	@python3 App/app-store-connect.py status
 
 asc-wait: asc-check
-	@python3 App/app-store-connect.py wait-build $(ARTSCRIBE_BUILD_NUMBER)
+	@python3 App/app-store-connect.py wait-build $(ARTSCRIPTURE_BUILD_NUMBER)
 
 asc-prepare: asc-check
 	@test -f "$(NOTES)" || { echo "no release notes at $(NOTES) — write them first"; exit 2; }
-	@python3 App/app-store-connect.py prepare-version $(VERSION) $(ARTSCRIBE_BUILD_NUMBER) \
+	@python3 App/app-store-connect.py prepare-version $(VERSION) $(ARTSCRIPTURE_BUILD_NUMBER) \
 	    --whats-new "$(NOTES)"
 
 archive: asc-check
 	xcodegen generate
 	@rm -rf "$(ARCHIVE)"
-	@ARTSCRIBE_BUILD_NUMBER=$(ARTSCRIBE_BUILD_NUMBER) xcodebuild archive \
+	@ARTSCRIPTURE_BUILD_NUMBER=$(ARTSCRIPTURE_BUILD_NUMBER) xcodebuild archive \
 	    -project Artscribe.xcodeproj -scheme ArtscribeiPad \
 	    -destination 'generic/platform=iOS' \
 	    -archivePath "$(ARCHIVE)" \
 	    -allowProvisioningUpdates $(ASC_AUTH) \
 	    | grep -E '^(error|warning|\*\*)' || true
 	@test -d "$(ARCHIVE)" || { echo "no archive was produced"; exit 1; }
-	@echo "archived $(ARCHIVE) (build $(ARTSCRIBE_BUILD_NUMBER))"
+	@echo "archived $(ARCHIVE) (build $(ARTSCRIPTURE_BUILD_NUMBER))"
 
 # Exports a signed .ipa and uploads it.
 #
@@ -403,7 +403,7 @@ upload: archive
 	  '<plist version="1.0"><dict>' \
 	  '<key>method</key><string>app-store-connect</string>' \
 	  '<key>destination</key><string>export</string>' \
-	  '<key>teamID</key><string>$(ARTSCRIBE_TEAM_ID)</string>' \
+	  '<key>teamID</key><string>$(ARTSCRIPTURE_TEAM_ID)</string>' \
 	  '<key>signingStyle</key><string>automatic</string>' \
 	  '<key>uploadSymbols</key><true/>' \
 	  '<key>manageAppVersionAndBuildNumber</key><false/>' \
@@ -416,5 +416,5 @@ upload: archive
 	@ls "$(EXPORT)"/*.ipa >/dev/null 2>&1 || { echo "no .ipa was exported"; exit 1; }
 	@echo "exported $$(ls "$(EXPORT)"/*.ipa)"
 	@xcrun altool --upload-app -f "$$(ls "$(EXPORT)"/*.ipa)" -t ios \
-	    --apiKey "$(ARTSCRIBE_ASC_KEY_ID)" --apiIssuer "$(ARTSCRIBE_ASC_ISSUER_ID)"
+	    --apiKey "$(ARTSCRIPTURE_ASC_KEY_ID)" --apiIssuer "$(ARTSCRIPTURE_ASC_ISSUER_ID)"
 	@echo "uploaded. It appears in App Store Connect ▸ TestFlight after processing."

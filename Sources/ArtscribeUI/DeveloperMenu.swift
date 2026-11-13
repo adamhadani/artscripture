@@ -14,11 +14,11 @@ import Foundation
 ///
 /// So the gate has to survive `-c release`, and an environment variable does.
 /// It also matches how everything else in this project is switched off for a
-/// run — `ARTSCRIBE_SILENT`, `ARTSCRIBE_ACCEPTANCE_AUDIBLE` — rather than
+/// run — `ARTSCRIPTURE_SILENT`, `ARTSCRIPTURE_ACCEPTANCE_AUDIBLE` — rather than
 /// inventing a second mechanism.
 ///
 /// ```sh
-/// ARTSCRIBE_DEV_MENU=1 swift run -c release ArtscribeApp
+/// ARTSCRIPTURE_DEV_MENU=1 swift run -c release ArtscribeApp
 /// ```
 ///
 /// The cost is that a bundle launched from Finder never shows it, since it
@@ -34,7 +34,7 @@ import Foundation
 /// a value invalidated 62 times a second kept the Output Device submenu from
 /// ever staying open long enough for AppKit's submenu delay to elapse.
 public enum DeveloperMenu {
-    public static let environmentKey = "ARTSCRIBE_DEV_MENU"
+    public static let environmentKey = "ARTSCRIPTURE_DEV_MENU"
 
     public static let isEnabled: Bool = isEnabled(in: ProcessInfo.processInfo.environment)
 
@@ -43,7 +43,7 @@ public enum DeveloperMenu {
     /// two tests running concurrently would fight over.
     ///
     /// Anything other than unset, empty, `0`, `false` or `no` turns it on. The
-    /// bias is deliberate: someone who typed `ARTSCRIBE_DEV_MENU=yes` meant yes,
+    /// bias is deliberate: someone who typed `ARTSCRIPTURE_DEV_MENU=yes` meant yes,
     /// and the failure mode of guessing wrong here is a menu that does not
     /// appear for a developer rather than one that appears for a user.
     public static func isEnabled(in environment: [String: String]) -> Bool {

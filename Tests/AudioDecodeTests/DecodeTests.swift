@@ -322,9 +322,9 @@ private func makeBlockBuffer(bytes: [UInt8]) throws -> CMBlockBuffer {
 /// never committed to the repo. Skips cleanly (via `.enabled(if:)`, not a failure)
 /// when the environment variable is unset, which is the default everywhere except
 /// a developer's machine that has opted in.
-@Test(.enabled(if: ProcessInfo.processInfo.environment["ARTSCRIBE_TEST_MEDIA_DIR"] != nil))
+@Test(.enabled(if: ProcessInfo.processInfo.environment["ARTSCRIPTURE_TEST_MEDIA_DIR"] != nil))
 func decodesRealWorldTrackWithoutTruncation() async throws {
-    let dirPath = try #require(ProcessInfo.processInfo.environment["ARTSCRIBE_TEST_MEDIA_DIR"])
+    let dirPath = try #require(ProcessInfo.processInfo.environment["ARTSCRIPTURE_TEST_MEDIA_DIR"])
     let dir = URL(fileURLWithPath: dirPath)
     let flacFiles =
         try FileManager.default
