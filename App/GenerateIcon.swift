@@ -179,9 +179,18 @@ func drawBars(in context: CGContext, safe: CGRect, wholePixels: Bool = false) {
 /// writing P3 numbers under an sRGB label would be a bet on devices doing what
 /// the simulator does — which the many apps that hand a launch logo over to an
 /// identical in-app one say they do not.
+///
+/// **These are the icon's inks as the icon ships them, not the constants at the
+/// top of this file.** Both are drawn in a device-RGB context, and ImageIO
+/// converts that to sRGB on the way to disk: the slate `7A889A` is stored as
+/// `8C9AAA`, the amber `F0A35E` as `F4B271`. That is how every released icon
+/// has looked, and the mark an icon opens into has to be the same mark.
 let launchMarkPoints = 126
 
 func drawLaunchMark(scale: Int) -> CGImage? {
+    // Nine slots, each an even number of points. Anything else leaves a slot
+    // between pixels and `wholePixels` rounding against nothing.
+    guard launchMarkPoints % (bars.count * 2) == 0 else { return nil }
     let side = launchMarkPoints * scale
     guard
         let context = CGContext(
@@ -263,16 +272,8 @@ if FileManager.default.fileExists(atPath: iosIconSet.path) {
         exit(1)
     }
     let iosURL = iosIconSet.appendingPathComponent("icon-1024.png")
-    guard
-        let destination = CGImageDestinationCreateWithURL(
-            iosURL as CFURL, "public.png" as CFString, 1, nil)
-    else {
+    guard writePNG(flattened, to: iosURL) else {
         FileHandle.standardError.write(Data("could not write \(iosURL.path)\n".utf8))
-        exit(1)
-    }
-    CGImageDestinationAddImage(destination, flattened, nil)
-    guard CGImageDestinationFinalize(destination) else {
-        FileHandle.standardError.write(Data("could not finalise \(iosURL.path)\n".utf8))
         exit(1)
     }
     print("wrote \(iosURL.path)")
@@ -280,8 +281,18 @@ if FileManager.default.fileExists(atPath: iosIconSet.path) {
 
 // The launch screen's mark, beside the icon in the same catalog. @2x and @3x
 // only: nothing that runs this app has a @1x display.
+//
+// Only where the iOS catalog exists at all, as with the icon above. Inside it,
+// a missing image set is an error rather than something to skip: the storyboard
+// names it, `generate-icon.sh` waits for its files, and skipping would mean a
+// generator that reports success, re-runs on every build, and an app that
+// launches to a bare field.
 let launchMarkSet = root.appendingPathComponent("iOS/Assets.xcassets/LaunchMark.imageset")
-if FileManager.default.fileExists(atPath: launchMarkSet.path) {
+if FileManager.default.fileExists(atPath: iosIconSet.path) {
+    guard FileManager.default.fileExists(atPath: launchMarkSet.path) else {
+        FileHandle.standardError.write(Data("no image set at \(launchMarkSet.path)\n".utf8))
+        exit(1)
+    }
     for scale in [2, 3] {
         let url = launchMarkSet.appendingPathComponent("LaunchMark@\(scale)x.png")
         guard let image = drawLaunchMark(scale: scale), writePNG(image, to: url) else {

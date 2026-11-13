@@ -33,6 +33,18 @@ import Testing
         return try XMLDocument(contentsOf: file("App/iOS/\(name).storyboard"))
     }
 
+    /// Whether a directory holds an entry of exactly this name.
+    ///
+    /// **Compared against the listing, never by opening the path.** The bundle
+    /// and the asset catalog look names up case-sensitively on a device, and
+    /// this Mac's filesystem does not: `Launchmark.imageset` and
+    /// `launchScreen.storyboard` both open here for names iOS would not find.
+    /// The first version of these tests opened the path, and a deliberate
+    /// wrong-case image name passed.
+    private static func directory(_ relativePath: String, holds name: String) throws -> Bool {
+        try FileManager.default.contentsOfDirectory(atPath: file(relativePath).path).contains(name)
+    }
+
     /// The root view of the one scene, which is the whole launch screen.
     private static func rootView(of document: XMLDocument) throws -> XMLElement {
         let views = try document.nodes(forXPath: "//viewController/view[@key='view']")
@@ -51,7 +63,8 @@ import Testing
         let plist = try Self.infoPlist()
         let name = try #require(plist["UILaunchStoryboardName"] as? String)
         #expect(
-            FileManager.default.fileExists(atPath: Self.file("App/iOS/\(name).storyboard").path))
+            try Self.directory("App/iOS", holds: "\(name).storyboard"),
+            "there is no storyboard named exactly \(name)")
         #expect(plist["UILaunchScreen"] == nil, "two launch screens are declared")
         #expect(plist["UILaunchScreens"] == nil, "two launch screens are declared")
     }
@@ -81,13 +94,10 @@ import Testing
 
     /// Every image the storyboard draws is in the catalog, at both scales a
     /// device can ask for. The PNGs themselves are generated and gitignored, so
-    /// what is checked is the declaration that says where they go.
-    ///
-    /// **The name is compared against the directory listing, not opened.** The
-    /// catalog's lookup is case-sensitive and this Mac's filesystem is not, so
-    /// `Launchmark.imageset/Contents.json` opens here perfectly well for a name
-    /// iOS would not find. The first version of this test did that, and a
-    /// deliberate wrong-case name passed it.
+    /// what is checked is the declaration that says where they go — including
+    /// the file names, which `GenerateIcon.swift` writes as `<name>@2x.png` and
+    /// `<name>@3x.png`. A catalog that names a file nobody writes is a warning
+    /// from the asset compiler and a bare field on the phone.
     @Test func everyImageIsInTheCatalog() throws {
         let document = try Self.storyboard()
         let imageViews = try document.nodes(forXPath: "//imageView").compactMap {
@@ -95,19 +105,23 @@ import Testing
         }
         #expect(!imageViews.isEmpty, "the launch screen draws no mark")
 
-        let catalog = Self.file("App/iOS/Assets.xcassets")
-        let entries = try FileManager.default.contentsOfDirectory(atPath: catalog.path)
+        let catalog = "App/iOS/Assets.xcassets"
         for imageView in imageViews {
             let name = try #require(imageView.attribute(forName: "image")?.stringValue)
             try #require(
-                entries.contains("\(name).imageset"), "the catalog has no image named \(name)")
-            let contents = catalog.appendingPathComponent("\(name).imageset/Contents.json")
+                try Self.directory(catalog, holds: "\(name).imageset"),
+                "the catalog has no image named exactly \(name)")
+            let contents = Self.file("\(catalog)/\(name).imageset/Contents.json")
             let json = try JSONSerialization.jsonObject(with: Data(contentsOf: contents))
             let images = (json as? [String: Any])?["images"] as? [[String: Any]] ?? []
-            let filed = images.filter { $0["filename"] is String }.compactMap {
-                $0["scale"] as? String
-            }
-            #expect(Set(filed) == ["2x", "3x"], "\(name) has files for \(filed.sorted())")
+            let filed = Dictionary(
+                images.compactMap { image -> (String, String)? in
+                    guard let scale = image["scale"] as? String,
+                        let filename = image["filename"] as? String
+                    else { return nil }
+                    return (scale, filename)
+                }, uniquingKeysWith: { first, _ in first })
+            #expect(filed == ["2x": "\(name)@2x.png", "3x": "\(name)@3x.png"])
         }
     }
 
@@ -121,6 +135,11 @@ import Testing
         let generator = try String(contentsOf: Self.file("App/GenerateIcon.swift"), encoding: .utf8)
         let match = try #require(generator.firstMatch(of: /let launchMarkPoints = (\d+)/))
         let generated = try #require(Double(match.1))
+        // One slot per bar, and a slot has to be a whole, even number of pixels
+        // at @2x and @3x for the rounding to mean anything: 9 bars × 2.
+        #expect(
+            generated.truncatingRemainder(dividingBy: 18) == 0,
+            "\(generated) pt does not divide into nine even slots")
 
         let document = try Self.storyboard()
         for dimension in ["width", "height"] {
@@ -142,13 +161,24 @@ import Testing
         let mark = try #require(try document.nodes(forXPath: "//imageView").first as? XMLElement)
         let markID = try #require(mark.attribute(forName: "id")?.stringValue)
 
+        // Either way round: Interface Builder writes `mark.centre = view.centre`
+        // or the reverse as it pleases, and they are the same constraint.
+        let pairs = [(markID, viewID), (viewID, markID)]
         for centre in ["centerX", "centerY"] {
             let path =
-                "constraints/constraint[@firstItem='\(markID)' and @firstAttribute='\(centre)'"
-                + " and @secondItem='\(viewID)' and @secondAttribute='\(centre)']"
-            let found = try view.nodes(forXPath: path).compactMap { $0 as? XMLElement }
+                "constraints/constraint[@firstAttribute='\(centre)'"
+                + " and @secondAttribute='\(centre)']"
+            let candidates = try view.nodes(forXPath: path).compactMap { $0 as? XMLElement }
+            let found = candidates.filter { constraint in
+                let first = constraint.attribute(forName: "firstItem")?.stringValue
+                let second = constraint.attribute(forName: "secondItem")?.stringValue
+                return pairs.contains { $0.0 == first && $0.1 == second }
+            }
             #expect(found.count == 1, "the mark is not pinned to the screen's \(centre)")
-            #expect(found.allSatisfy { Self.number($0, "constant") == nil }, "\(centre) is offset")
+            for constraint in found {
+                #expect(Self.number(constraint, "constant") == nil, "\(centre) is offset")
+                #expect(Self.number(constraint, "multiplier") == nil, "\(centre) is scaled")
+            }
         }
     }
 
