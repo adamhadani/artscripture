@@ -7,9 +7,15 @@ loop it, slow it down without changing pitch.
 App Store name was taken, so the rename (2026-08-01) changed only what a user, a reviewer or
 Apple sees: `PRODUCT_NAME`, the bundle display name, the header wordmark, menus, docs, the
 site. The Swift modules (`ArtscribeKit`, `ArtscribeUI`, …), the Xcode targets and schemes,
-`artscribe-cli`, the `ARTSCRIBE_*` environment variables and the bundle identifier
-`com.artscribe.Artscribe` were left alone — none is observable, renaming them churns ~200
-files, and the bundle identifier is permanent once published.
+`artscribe-cli` and the bundle identifier `com.artscribe.Artscribe` were left alone — none
+is observable, renaming them churns ~200 files, and the bundle identifier is permanent once
+published.
+
+The environment variables did follow, on 2026-11-13: every one is `ARTSCRIPTURE_*` now
+(`ARTSCRIPTURE_SILENT`, `ARTSCRIPTURE_DEV_MENU`, `ARTSCRIPTURE_TEAM_ID`, …). **The old
+`ARTSCRIBE_*` names are not read as a fallback**, so an old name in a shell, an `.envrc` or
+a branch cut before that date is ignored without a word — and for `ARTSCRIPTURE_SILENT`
+"ignored" means the app makes sound.
 
 **iPhone is landscape-only**, and that is a product decision rather than an oversight: a
 waveform is a horizontal instrument, and portrait on a phone gives a 390 pt timeline under a
@@ -36,7 +42,7 @@ swift test --filter <TargetName>    # one module while iterating
 swift run -c release ArtscribeApp   # the app
 
 # The app with the developer menu: Playback ▸ Developer ▸ Stretch Engine.
-ARTSCRIBE_DEV_MENU=1 swift run -c release ArtscribeApp
+ARTSCRIPTURE_DEV_MENU=1 swift run -c release ArtscribeApp
 
 # Headless A/B between backends, with the degradation counters a menu cannot show.
 swift run -c release artscribe-cli --engine signalsmith <audio> 0.5 10 14
@@ -46,7 +52,7 @@ swift run -c release artscribe-cli --engine signalsmith <audio> 0.5 10 14
 make acceptance AUDIO=<audio> [ARGS='--only loop']
 
 # The App Store path (iPadOS). Needs an App Store Connect **Team** API key with
-# the **Admin** role in .envrc — ARTSCRIBE_ASC_{ISSUER_ID,KEY_ID,KEY_PATH}.
+# the **Admin** role in .envrc — ARTSCRIPTURE_ASC_{ISSUER_ID,KEY_ID,KEY_PATH}.
 # App Manager is NOT enough: the archive succeeds and then `-exportArchive`
 # fails with FORBIDDEN_ERROR, "You haven't been given access to cloud-managed
 # distribution certificates" — only Account Holder or Admin may mint one.
@@ -153,9 +159,9 @@ is untouched, so the volume checks still read back the value the user's control 
 - `ArtscribeAcceptance` closes the gate itself, twice — in `AcceptanceMain.init` and again
   in `AcceptanceRun.runIfRequested` — and the run asserts `OutputAudibility.shared.isSilenced`
   as its first check. **Do not make this an opt-in flag.**
-- To hear an acceptance run on purpose: `ARTSCRIBE_ACCEPTANCE_AUDIBLE=1`.
+- To hear an acceptance run on purpose: `ARTSCRIPTURE_ACCEPTANCE_AUDIBLE=1`.
 - To silence any other Artscripture binary — `ArtscribeApp`, `artscribe-cli` — export
-  `ARTSCRIBE_SILENT=1`. **Launch the app this way when verifying a change.** Do *not*
+  `ARTSCRIPTURE_SILENT=1`. **Launch the app this way when verifying a change.** Do *not*
   export it for `swift test`: the gate is process-wide, so it silences the deliberately
   audible control in `aSilencedGraphEmitsExactlyZero` and three tests fail. The suite
   renders offline and never reaches a device, so it needs no gate.
@@ -163,7 +169,7 @@ is untouched, so the volume checks still read back the value the user's control 
   asserts every sample is exactly 0 against a control that is not.
 
 **Engine choice is developer-only, and the gate is an environment variable rather than
-`#if DEBUG`.** `ARTSCRIBE_DEV_MENU=1` adds **Playback ▸ Developer ▸ Stretch Engine** — the four
+`#if DEBUG`.** `ARTSCRIPTURE_DEV_MENU=1` adds **Playback ▸ Developer ▸ Stretch Engine** — the four
 `StretchEngine` cases as a radio group. `#if DEBUG` would have been the obvious choice and is
 the wrong one: the menu exists to judge stretchers *by ear*, a debug build decodes roughly 4×
 slower, and comparing two engines on a build that stalls under both measures nothing. The gate
@@ -207,12 +213,12 @@ alone would have made it do nothing:
   `UserDefaults` key gates a migration, `nil` is the case that migration exists
   for**, not the case to skip.
 
-`ARTSCRIBE_INSTALL_ENV=testFlight|appStore|development` now forces the answer, so
+`ARTSCRIPTURE_INSTALL_ENV=testFlight|appStore|development` now forces the answer, so
 the branch is reachable on a Mac and on a simulator. It exists because an upload
 is a twelve-minute round trip that cannot be stepped through, and the reset
 shipped twice without its only meaningful branch ever having run. Drive it with
-`SIMCTL_CHILD_ARTSCRIBE_INSTALL_ENV=…` and prove an update for real by building
-twice with different `ARTSCRIBE_BUILD_NUMBER` values and installing the second
+`SIMCTL_CHILD_ARTSCRIPTURE_INSTALL_ENV=…` and prove an update for real by building
+twice with different `ARTSCRIPTURE_BUILD_NUMBER` values and installing the second
 *over* the first — `simctl install` keeps the data container, exactly as
 TestFlight does.
 
@@ -416,10 +422,10 @@ recipient actually gets, stamp a copy with `com.apple.quarantine` and assess tha
 what Xcode issues from a free Apple ID and signs for your own machines; only the second is
 accepted from a download, and it needs an *active paid* membership. Worse, the bracketed
 name in an Apple Development certificate is a **per-person identifier, not the team ID** —
-copying it into `ARTSCRIBE_TEAM_ID` disagrees silently with what the signature carries. Read
+copying it into `ARTSCRIPTURE_TEAM_ID` disagrees silently with what the signature carries. Read
 the real one with `codesign -dv --verbose=4 <app> 2>&1 | grep TeamIdentifier`.
 
-**Never echo the signing identity.** `make app` used to print `$(ARTSCRIBE_SIGN_IDENTITY)`,
+**Never echo the signing identity.** `make app` used to print `$(ARTSCRIPTURE_SIGN_IDENTITY)`,
 which puts a developer's name and team into every build log — including one pasted into a
 chat. It prints the certificate *kind* now, read back off the bundle.
 
@@ -734,7 +740,7 @@ everything in it is a literal that has to agree with something elsewhere —
 
 ## Test media
 
-Integration tests read `$ARTSCRIBE_TEST_MEDIA_DIR` and **skip cleanly when unset**, so CI is
+Integration tests read `$ARTSCRIPTURE_TEST_MEDIA_DIR` and **skip cleanly when unset**, so CI is
 green without it. Never commit audio over 100 KB — pre-commit enforces this.
 
 That hang is **fixed**, and it was never about the media: Swift Testing runs tests

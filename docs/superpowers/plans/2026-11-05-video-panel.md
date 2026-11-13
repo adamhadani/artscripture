@@ -24,7 +24,7 @@ two actions, a transport button, settings, and (macOS) a non-activating floating
 - Fixtures are produced by `Tests/Fixtures/generate.sh` and stay under 100 KB each.
 - `make check` green before every commit, with explicit `git add` paths (never `-A`).
   Branch: `feat/video-panel`. Check `git branch --show-current` before each commit.
-- Launch the app with `ARTSCRIBE_SILENT=1` when verifying by eye.
+- Launch the app with `ARTSCRIPTURE_SILENT=1` when verifying by eye.
 - Audio-only files: no panel, no transport button, both actions disabled.
 - Copy: menu titles **"Video"** and **"Picture in Picture"**; settings **"Video position"**
   (Right / Top) and **"Float video when switching apps"**; undecodable picture:
@@ -312,7 +312,7 @@ key, as `InteractionSettings` does.
   `aSavedPlacementLoads`, `restoringADefaultRemovesTheKey`.
 - [ ] **Step 2–4:** Run → FAIL, implement, run → PASS.
 - [ ] **Step 5: Look at the pixels.** `make app` or `swift run -c release ArtscribeApp` with
-  `ARTSCRIBE_SILENT=1`, open a real 16:9 clip and a 9:16 clip, and `screencapture -o -x -l <id>` at
+  `ARTSCRIPTURE_SILENT=1`, open a real 16:9 clip and a 9:16 clip, and `screencapture -o -x -l <id>` at
   both placements and after a divider drag. Check: an audio file looks exactly as before.
 - [ ] **Step 6:** `make check`, `make ios-check`. **Commit** `Video panel: movable split, settings`.
 
@@ -386,7 +386,7 @@ showing, the main panel shows "Playing in the mini player" instead of the pictur
   `theControllerTheAppBuildsDrivesTheModel` (`playPause()` on a controller built around a model
   with no session sets the "no audio output" notice, which proves it reached `play()`).
 - [ ] **Step 2–4:** Run → FAIL, implement, run → PASS.
-- [ ] **Step 5: Verify for real.** Launch with `ARTSCRIBE_SILENT=1` and a clip, play, activate
+- [ ] **Step 5: Verify for real.** Launch with `ARTSCRIPTURE_SILENT=1` and a clip, play, activate
   Finder (`osascript -e 'tell application "Finder" to activate'`): the window appears, the
   frames advance, play/pause works without Artscripture coming forward (check `NSApp.isActive`
   stays false via the log), and reactivating the app hides it. Screenshot it.

@@ -27,7 +27,7 @@ repos:
         exclude: '^Sources/CSignalsmithStretch/vendor/'
       # Enforces the project rule that test fixtures stay small. Real audio
       # (the reference album) must never be committed — it lives behind
-      # $ARTSCRIBE_TEST_MEDIA_DIR instead.
+      # $ARTSCRIPTURE_TEST_MEDIA_DIR instead.
       # Excludes exactly one path, and no wildcard: the bundled sample track.
       # A demo track is the App Store's guideline 2.1 answer — a reviewer opens
       # the app with no audio on the device and must still have something to

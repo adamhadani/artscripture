@@ -141,7 +141,7 @@ public enum MenuPlan {
         .action(.volumeMute),
         .separator,
         .dynamicSubmenu(.outputDevice),
-        // Renders to nothing unless `ARTSCRIBE_DEV_MENU` is set. Listed here
+        // Renders to nothing unless `ARTSCRIPTURE_DEV_MENU` is set. Listed here
         // unconditionally so this plan stays the same shape in every run — see
         // `DeveloperEngineMenu`.
         .dynamicSubmenu(.developer)

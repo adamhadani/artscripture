@@ -20,7 +20,7 @@ This plan implements §§ 3–5, 9, 10 of `docs/superpowers/specs/2026-07-27-art
 - Sample positions are `Int64` frames (`FrameIndex`), never seconds, anywhere correctness matters.
 - Inside a render block: no allocation, no locks, no `async`/`await`, no actor access, no Swift retain/release, no Foundation collections.
 - Prerequisite: `brew install rubberband`. Verified present at 4.0.0.
-- Real integration media lives at `$ARTSCRIBE_TEST_MEDIA_DIR`; tests **skip cleanly** when unset. Never commit audio over 100 KB.
+- Real integration media lives at `$ARTSCRIPTURE_TEST_MEDIA_DIR`; tests **skip cleanly** when unset. Never commit audio over 100 KB.
 - **Every task ends with `make check` passing** (swift-format lint, SwiftLint, tests). Warnings are errors. Task 0 establishes these gates.
 - Reuse `sharedSwiftSettings` from `Package.swift` on every target added.
 
@@ -256,7 +256,7 @@ jobs:
         run: swift test
 ```
 
-Note: integration tests that read `$ARTSCRIBE_TEST_MEDIA_DIR` skip automatically in
+Note: integration tests that read `$ARTSCRIPTURE_TEST_MEDIA_DIR` skip automatically in
 CI because the variable is unset. That is intended — CI must stay green without the
 copyrighted reference album.
 
@@ -444,7 +444,7 @@ Never `reset()` the stretcher at a loop boundary — feed continuously across it
 Resetting flushes the overlap state and clicks on every repetition.
 
 ## Test media
-Integration tests read `$ARTSCRIBE_TEST_MEDIA_DIR` and skip when unset. Never
+Integration tests read `$ARTSCRIPTURE_TEST_MEDIA_DIR` and skip when unset. Never
 commit audio files over 100 KB.
 ```
 
@@ -2725,7 +2725,7 @@ Expected: PASS, all targets.
 
 ```bash
 swift build -c release
-TRACK="$ARTSCRIBE_TEST_MEDIA_DIR/03. Wynton Marsalis - Delfeayo's Dilemma.flac"
+TRACK="$ARTSCRIPTURE_TEST_MEDIA_DIR/03. Wynton Marsalis - Delfeayo's Dilemma.flac"
 .build/release/artscribe-cli "$TRACK" 1.0            # full speed, sanity
 .build/release/artscribe-cli "$TRACK" 0.5            # half speed, pitch unchanged
 .build/release/artscribe-cli "$TRACK" 0.5 30 34      # 4-second loop at half speed

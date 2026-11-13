@@ -280,7 +280,7 @@ is a fresh resume from wherever the playhead now is.
 | `speed.down` / `speed.up` | `Q` / `W` | ∓5% |
 | `speed.down.fine` / `speed.up.fine` | `⇧Q` / `⇧W` | ∓1% |
 | `speed.preset.100/75/50/33` | `1` / `2` / `3` / `4` | Speed presets |
-| ~~`speed.engineToggle`~~ | ~~`⌥E`~~ | **Removed.** Choosing between Rubber Band R3 and R2 was never a user's decision to make — R2 drifts pitch by up to 26 cents at half speed and 108 at the extremes, and it means nothing on iOS, where Rubber Band cannot be linked. Engine selection is developer-only now: Playback ▸ Developer ▸ Stretch Engine, present only under `ARTSCRIBE_DEV_MENU`, and `artscribe-cli --engine`. |
+| ~~`speed.engineToggle`~~ | ~~`⌥E`~~ | **Removed.** Choosing between Rubber Band R3 and R2 was never a user's decision to make — R2 drifts pitch by up to 26 cents at half speed and 108 at the extremes, and it means nothing on iOS, where Rubber Band cannot be linked. Engine selection is developer-only now: Playback ▸ Developer ▸ Stretch Engine, present only under `ARTSCRIPTURE_DEV_MENU`, and `artscribe-cli --engine`. |
 | `zoom.out` / `zoom.in` | `E` / `R` | Zoom, playhead-anchored. `⌘−` / `⌘=` were listed here and never built; they are **not** bound, and the catalog rather than this table is now the record of what is |
 | `zoom.fit` | `⌘0` | Fit whole file |
 | `zoom.toLoop` | `⌘9` | Zoom to the loop (was `zoom.toSelection`) |
@@ -547,7 +547,7 @@ hardware and no Xcode.
    a display name, so the help sheet can never render a blank row.
 
 **Integration tests** against real material use the album at
-`$ARTSCRIBE_TEST_MEDIA_DIR` (locally: the 24-bit/44.1 Wynton Marsalis *Black Codes* FLACs,
+`$ARTSCRIPTURE_TEST_MEDIA_DIR` (locally: the 24-bit/44.1 Wynton Marsalis *Black Codes* FLACs,
 ~9–11 min each). These are copyrighted and ~1.1 GB, so they are **never** committed; the
 tests skip cleanly when the variable is unset, and CI stays green without them.
 

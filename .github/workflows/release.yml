@@ -129,9 +129,9 @@ jobs:
 
       - name: Build the app
         env:
-          ARTSCRIBE_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY || '-' }}
-          ARTSCRIBE_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
-          ARTSCRIBE_HARDENED_RUNTIME: ${{ secrets.MACOS_SIGN_IDENTITY != '' && 'YES' || 'NO' }}
+          ARTSCRIPTURE_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY || '-' }}
+          ARTSCRIPTURE_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
+          ARTSCRIPTURE_HARDENED_RUNTIME: ${{ secrets.MACOS_SIGN_IDENTITY != '' && 'YES' || 'NO' }}
         run: make dist
 
       - name: Notarise and staple

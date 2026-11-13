@@ -90,12 +90,12 @@ public enum InstallEnvironment: String, CaseIterable, Sendable {
     /// This exists because the alternative is what happened: the reset shipped
     /// twice without the only branch that matters ever having run. An upload is
     /// a twelve-minute round trip and cannot be stepped through, so the branch
-    /// has to be reachable somewhere cheaper. `ARTSCRIBE_DEV_MENU` is the same
+    /// has to be reachable somewhere cheaper. `ARTSCRIPTURE_DEV_MENU` is the same
     /// idea for the engine picker.
     ///
     /// Harmless in a shipped app: a sandboxed iOS app inherits no shell
     /// environment, so a build launched from the Home screen can never see it.
-    static let overrideKey = "ARTSCRIBE_INSTALL_ENV"
+    static let overrideKey = "ARTSCRIPTURE_INSTALL_ENV"
 
     /// The override, if one is set and names a real case. A typo is `nil`
     /// rather than a default, so a misspelling behaves as no override at all

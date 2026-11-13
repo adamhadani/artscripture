@@ -93,13 +93,13 @@ extension AcceptanceRun {
         await refresh(menu)
         log.check("Stop is disabled again when stopped", item(menu, "Stop")?.isEnabled == false)
 
-        // **The developer menu must not be here.** `ARTSCRIBE_DEV_MENU` is unset
+        // **The developer menu must not be here.** `ARTSCRIPTURE_DEV_MENU` is unset
         // for an acceptance run, so Playback ▸ Developer — and with it the
         // engine picker, including Rubber Band R2, which drifts pitch by up to a
         // semitone — must be absent. A gate that failed open would put it in
         // front of every user, and nothing else in the suite would notice.
         log.check(
-            "the Developer submenu is absent without ARTSCRIBE_DEV_MENU",
+            "the Developer submenu is absent without ARTSCRIPTURE_DEV_MENU",
             menu.items.allSatisfy { $0.title != "Developer" })
         log.note("playback menu items", menu.items.map(\.title).joined(separator: " | "))
 

@@ -37,7 +37,7 @@ Package.resolved
 /[0-9][0-9]-*.png
 /[0-9][0-9][a-z]-*.png
 
-# Local test media (large, copyrighted — see ARTSCRIBE_TEST_MEDIA_DIR).
+# Local test media (large, copyrighted — see ARTSCRIPTURE_TEST_MEDIA_DIR).
 Tests/Media/
 
 # Audio anywhere else, because "never commit audio over 100 KB" is a rule the
