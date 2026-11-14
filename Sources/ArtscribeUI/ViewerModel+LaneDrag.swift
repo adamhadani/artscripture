@@ -238,9 +238,16 @@ extension ViewerModel {
     public func scrollLeft() { scroll(byPoints: -panStep) }
     public func scrollRight() { scroll(byPoints: panStep) }
 
+    /// Scrolls a copy and writes it back only if it moved. `Viewport.scroll`
+    /// is `mutating`, and a mutating call on observed state notifies whether
+    /// or not anything changed (CLAUDE.md): a pan held against either end of
+    /// the file redrew the lanes, ruler and overview on every event.
     public func scroll(byPoints points: Int) {
         guard hasTrack, points != 0 else { return }
-        viewport.scroll(byPixels: points)
+        var next = viewport
+        next.scroll(byPixels: points)
+        guard next != viewport else { return }
+        viewport = next
         refresh()
     }
 

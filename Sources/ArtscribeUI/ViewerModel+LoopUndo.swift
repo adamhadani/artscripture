@@ -39,9 +39,10 @@ final class LoopUndo {
     var run: (edit: LoopEdit, time: Double)?
 
     /// How long a key can rest and still be part of the same run. Long enough
-    /// for a held key's repeat and a few quick deliberate presses; short
-    /// enough that presses with a pause between them are separate steps.
-    static let coalescingWindow = 1.0
+    /// for macOS's longest *Delay until repeat* (1.8 s) before a held key's
+    /// first repeat, so a held key is one step at every setting; short enough
+    /// that presses with a real pause between them are separate steps.
+    static let coalescingWindow = 2.0
 }
 
 /// What an undo step is called, as the Edit menu shows it after "Undo ".
@@ -83,8 +84,13 @@ extension ViewerModel {
 
     /// The window's undo manager, from `DocumentView`. A new one — another
     /// window, or the first — starts with nothing of ours on it.
+    ///
+    /// A `nil` is ignored rather than taken as "no manager": SwiftUI may pass
+    /// one in passing, and clearing the live manager's history on it would
+    /// empty Undo without a word. The reference is weak, so a window that
+    /// really goes away takes its manager with it.
     public func attachUndoManager(_ manager: UndoManager?) {
-        guard manager !== loopUndo.manager else { return }
+        guard let manager, manager !== loopUndo.manager else { return }
         forgetLoopHistory()
         loopUndo.manager = manager
     }
@@ -94,7 +100,10 @@ extension ViewerModel {
     func recordingLoopEdit(
         _ edit: LoopEdit, coalescing: Bool = false, _ change: () -> Void
     ) {
-        let before = loop
+        // A range only drawn so far never reached the engine, so it is not
+        // the state to come back to: the loop before that drag is (PR #101
+        // review — Esc mid-drag, then Undo, brought back a half-drawn range).
+        let before = loopIsStaged ? (loopBeforeLaneDrag ?? loop) : loop
         change()
         recordLoopEdit(edit, from: before, coalescing: coalescing)
     }
@@ -123,7 +132,8 @@ extension ViewerModel {
     /// of the next gesture for one whose end never came.
     func recordLaneDragEdit(_ mode: LaneDragMode?, from before: LoopRegion?) {
         guard let before, let edit = LoopEdit(laneDrag: mode) else { return }
-        recordLoopEdit(edit, from: before)
+        // A ⇧-drag with no loop made one: it is a new loop, not an extension.
+        recordLoopEdit(edit == .extend && before.range.isEmpty ? .newLoop : edit, from: before)
     }
 
     /// Empties the history: a different track, or no track.
@@ -148,6 +158,10 @@ extension ViewerModel {
             stopRamp()
         } else if snapshot.range != current.range {
             enterLoopIfOutside()
+            // Shown, as a key's move is (`reveal`): an undo that happens off
+            // screen looks like one that did nothing. The edge that moved.
+            let start = snapshot.range.start != current.range.start
+            reveal(start ? snapshot.range.start : snapshot.range.end)
         }
     }
 

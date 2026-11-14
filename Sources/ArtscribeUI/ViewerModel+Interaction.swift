@@ -20,7 +20,7 @@ extension ViewerModel {
     /// §6.2), and moving the playhead brings the view with it anyway.
     static let panFraction = 0.12
     static let doubleClickSeconds = 0.4
-    static let clickSlopPoints = 3.0
+    nonisolated static let clickSlopPoints = 3.0
 
     public func zoomIn() { zoom(by: Self.zoomStep) }
     public func zoomOut() { zoom(by: 1 / Self.zoomStep) }
@@ -183,7 +183,7 @@ extension ViewerModel {
                 if prefs.seeksOnSelectionPress { seek(to: pressed) }
             }
         }
-        guard abs(currentPixel - startPixel) >= Self.clickSlopPoints, let anchor = rangeAnchor
+        guard abs(currentPixel - startPixel) >= prefs.tapSlop, let anchor = rangeAnchor
         else { return }
         let head = PixelMapping.frame(atPixel: currentPixel, in: viewport)
         // Deep in, a few points can still be less than a frame; an empty range
@@ -236,7 +236,7 @@ extension ViewerModel {
         guard hasTrack else { return }
         // A range that was drawn is the range you get, even if the pointer
         // wandered back inside the slop before letting go.
-        guard abs(endPixel - startPixel) < Self.clickSlopPoints, !loopIsStaged else {
+        guard abs(endPixel - startPixel) < prefs.tapSlop, !loopIsStaged else {
             lastClick = nil
             commitStagedLoop()
             return
@@ -261,6 +261,6 @@ extension ViewerModel {
     private func isSecondClick(at pixel: Double, now: Double) -> Bool {
         guard let previous = lastClick else { return false }
         return now - previous.time < Self.doubleClickSeconds
-            && abs(previous.pixel - pixel) < Self.clickSlopPoints
+            && abs(previous.pixel - pixel) < prefs.tapSlop
     }
 }

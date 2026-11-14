@@ -40,7 +40,7 @@ extension ViewerModel {
         var pan = pan
         if !pan.hasMoved {
             let travel = hypot(current.x - start.x, current.y - start.y)
-            guard travel >= prefs.panSlop else { return }
+            guard travel >= prefs.tapSlop else { return }
             pan.hasMoved = true
             // Written once per gesture, on this transition: the mode is
             // observed (the cursor reads it), so not on every event.

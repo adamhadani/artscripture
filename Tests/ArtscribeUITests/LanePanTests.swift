@@ -1,6 +1,7 @@
 import ArtscribeKit
 import AudioDecode
 import CoreGraphics
+import Observation
 import Testing
 import Waveform
 
@@ -39,7 +40,7 @@ struct LanePanTests {
         model.prefs.handleReach = ControlMetrics.handleReach(on: surface)
         model.prefs.seeksOnSelectionPress = LaneDragPolicy.seeksOnPress(on: surface)
         model.prefs.edgeTapIsAClick = LaneDragPolicy.edgeTapIsAClick(on: surface)
-        model.prefs.panSlop = LaneDragPolicy.panSlop(on: surface)
+        model.prefs.tapSlop = LaneDragPolicy.tapSlop(on: surface)
         // Four times in, so there is file on both sides to pan to: 500 frames
         // a point, and the view starts at frame 750 000.
         model.zoom(by: 4, anchorFrame: 1_000_000)
@@ -273,11 +274,51 @@ struct LanePanTests {
                 == .edge(.loopBody))
     }
 
-    @Test("a finger may wander further than a pointer before a tap becomes a pan")
+    @Test("a finger may wander further than a pointer before a tap becomes a drag")
     func theSlop() {
-        #expect(LaneDragPolicy.panSlop(on: .desktop) == ViewerModel.clickSlopPoints)
-        #expect(LaneDragPolicy.panSlop(on: .phone) == 10)
-        #expect(LaneDragPolicy.panSlop(on: .tabletWithDrop) == 10)
+        #expect(LaneDragPolicy.tapSlop(on: .desktop) == ViewerModel.clickSlopPoints)
+        #expect(LaneDragPolicy.tapSlop(on: .phone) == 10)
+        #expect(LaneDragPolicy.tapSlop(on: .tabletWithDrop) == 10)
+    }
+
+    /// The other half of the wobbly tap (PR #101 review): with no loop, a
+    /// finger's tap that crossed the old 3 pt slop drew a sliver of a loop,
+    /// and every drag after it panned instead of replacing it.
+    @Test("with no loop, a finger's wobbly tap is a tap, not a sliver of a loop")
+    func aWobblyTapWithNoLoopDrawsNothing() {
+        let model = makeModel(on: .phone, withLoop: false)
+        press(model, at: 200)
+        move(model, from: 200, to: point(206))
+        model.laneDragEnded(start: point(200), end: point(206), now: 0)
+        #expect(model.loop.range.isEmpty)
+        #expect(model.playhead == frame(atPoint: 206, in: model))
+    }
+
+    @Test("a finger's double tap still counts when the taps land a few points apart")
+    func aWobblyDoubleTapPlays() {
+        let model = makeModel(on: .phone)
+        tap(model, at: 200, now: 0)
+        tap(model, at: 206, now: 0.1)
+        #expect(model.playbackNotice != nil)
+    }
+
+    /// `Viewport.scroll` is mutating, and a mutating call on observed state
+    /// notifies whether or not anything changed (CLAUDE.md).
+    @Test("a pan held against the start of the file does not redraw the view")
+    func aPinnedPanIsSilent() {
+        let model = makeModel()
+        model.scroll(byPoints: -100_000)
+        press(model, at: 300)
+        move(model, from: 300, to: point(400))
+        final class Flag: @unchecked Sendable { var raised = false }
+        let notified = Flag()
+        withObservationTracking {
+            _ = model.viewport
+        } onChange: {
+            notified.raised = true
+        }
+        move(model, from: 300, to: point(450))
+        #expect(!notified.raised)
     }
 
     /// The cursor and the gesture must agree: no crosshair promising a new

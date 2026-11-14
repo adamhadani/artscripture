@@ -301,8 +301,9 @@ public final class ViewerModel {
     ///
     /// Observed, unlike its companion above, because the pointer cursor follows
     /// it: an ⌥-drag that outlives the ⌥ that started it has to keep saying
-    /// "zoom". Written exactly twice per gesture — mouse-down and mouse-up —
-    /// not once per event, so it costs two body evaluations, not sixty a second.
+    /// "zoom". Written at mouse-down and mouse-up, and once more by a pan as it
+    /// passes the tap slop (`LanePan.hasMoved`) — never once per event, so a
+    /// gesture costs two or three body evaluations, not sixty a second.
     var laneDragMode: LaneDragMode?
 
     /// Snapshots for undoing a lane drag that turns out to be the first finger of

@@ -42,7 +42,7 @@ struct LoopUndoTests {
         model.prefs.handleReach = ControlMetrics.handleReach(on: surface)
         model.prefs.seeksOnSelectionPress = LaneDragPolicy.seeksOnPress(on: surface)
         model.prefs.edgeTapIsAClick = LaneDragPolicy.edgeTapIsAClick(on: surface)
-        model.prefs.panSlop = LaneDragPolicy.panSlop(on: surface)
+        model.prefs.tapSlop = LaneDragPolicy.tapSlop(on: surface)
         if withLoop { model.applyLoop(Self.loop) }
         let manager = UndoManager()
         manager.groupsByEvent = false
@@ -270,9 +270,91 @@ struct LoopUndoTests {
 
     @Test("with no undo manager attached, edits still work")
     func noManagerNoProblem() {
-        let (model, _) = makeModel()
-        model.attachUndoManager(nil)
+        let storage = AudioStorage(channels: 1, capacityFrames: Int(Self.totalFrames))
+        let audio = DecodedAudio(
+            channels: 1, sampleRate: 44100, frameCount: Self.totalFrames, storage: storage)
+        let model = ViewerModel()
+        model.loadForTesting(audio: audio, pyramid: PeakPyramid.build(audio), widthPixels: 1000)
+        model.applyLoop(Self.loop)
         model.clearLoop()
         #expect(model.loop.range.isEmpty)
+    }
+
+    /// SwiftUI may hand the environment's manager over as `nil` in passing.
+    @Test("a nil undo manager in passing keeps the history")
+    func aPassingNilKeepsTheHistory() {
+        let (model, manager) = makeModel()
+        model.clearLoop()
+        model.attachUndoManager(nil)
+        model.attachUndoManager(manager)
+        #expect(manager.undoActionName == "Clear Loop")
+    }
+
+    // MARK: - The review's findings (PR #101)
+
+    /// Control Centre or a call cuts the drag short. Its step is recorded
+    /// then, so an edit made before the next touch sits above it, in order.
+    @Test("a drag the system cuts short is its undo step at once, in order")
+    func aSystemCancelledDragIsRecordedInOrder() {
+        let (model, manager) = makeModel()
+        model.laneDragChanged(start: point(550), current: point(550), option: false, shift: false)
+        model.laneDragChanged(start: point(550), current: point(600), option: false, shift: false)
+        model.laneGestureCancelled(start: point(550))
+        #expect(model.laneDragMode == nil)
+        #expect(manager.undoActionName == "Move Loop End")
+        let dragged = model.loop
+        model.toggleLoop()
+        manager.undo()
+        #expect(model.loop == dragged, "only the toggle came off")
+        manager.undo()
+        #expect(model.loop == Self.loop)
+    }
+
+    @Test("a range the system cuts short reaches the engine, as a New Loop")
+    func aSystemCancelledRangeIsANewLoop() {
+        let (model, manager) = makeModel(withLoop: false)
+        model.laneDragChanged(start: point(100), current: point(100), option: false, shift: false)
+        model.laneDragChanged(start: point(100), current: point(300), option: false, shift: false)
+        model.laneGestureCancelled(start: point(100))
+        #expect(!model.loopIsStaged)
+        #expect(manager.undoActionName == "New Loop")
+    }
+
+    /// A range only drawn has not reached the engine: not a state to restore.
+    @Test("Clear Loop in the middle of drawing a first loop records nothing")
+    func clearingAHalfDrawnRangeIsNoStep() {
+        let (model, manager) = makeModel(withLoop: false)
+        model.laneDragChanged(start: point(100), current: point(100), option: false, shift: false)
+        model.laneDragChanged(start: point(100), current: point(300), option: false, shift: false)
+        model.clearLoop()
+        model.laneDragChanged(start: point(100), current: point(350), option: false, shift: false)
+        model.laneDragEnded(start: point(100), end: point(350), now: 0)
+        #expect(model.loop.range.isEmpty)
+        #expect(!manager.canUndo)
+    }
+
+    @Test("a Shift-drag with no loop makes a New Loop, not an extension")
+    func aShiftDragFromNothingIsANewLoop() {
+        let (model, manager) = makeModel(withLoop: false)
+        model.laneDragChanged(start: point(100), current: point(100), option: false, shift: true)
+        model.laneDragChanged(start: point(100), current: point(300), option: false, shift: true)
+        model.laneDragEnded(start: point(100), end: point(300), now: 0)
+        #expect(manager.undoActionName == "New Loop")
+    }
+
+    /// An undo off screen looks like one that did nothing.
+    @Test("an undo brings the loop it put back on screen")
+    func undoRevealsTheLoop() {
+        let (model, manager) = makeModel()
+        model.zoom(by: 8, anchorFrame: 1_050_000)
+        drag(model, from: 500, to: 700)  // the loop's inside, at this zoom
+        model.scroll(byPoints: 5000)
+        let restored = Self.loop.range
+        #expect(restored.end < model.viewport.startFrame, "scrolled well past it")
+        manager.undo()
+        #expect(model.loop.range == restored)
+        #expect(
+            restored.start >= model.viewport.startFrame && restored.start <= model.viewport.endFrame
+        )
     }
 }

@@ -39,9 +39,10 @@ public final class Preferences {
     public internal(set) var prerollSeconds = Preroll.defaultSeconds
     public internal(set) var prerollEnabled = true
 
-    /// Whether pressing down in the lanes moves the playhead before the gesture
-    /// has said whether it is a click or a selection. True with a pointer, false
-    /// under a finger — the rule and the reasons are `LaneDragPolicy`'s.
+    /// Whether pressing down in open lane with no loop moves the playhead before
+    /// the gesture has said whether it is a click or a new loop. True with a
+    /// pointer, false under a finger — the rule and the reasons are
+    /// `LaneDragPolicy`'s. Beside a loop or inside one, a click seeks on release.
     ///
     /// Here rather than on `ViewerModel` for the reason the rest of this type
     /// exists: it is an *applied* interaction value, seeded once at launch. It
@@ -50,9 +51,9 @@ public final class Preferences {
     /// checkable from a Mac.
     public var seeksOnSelectionPress = LaneDragPolicy.seeksOnPress(on: EmptyStatePrompt.current)
 
-    /// How far a press in open lane travels before it pans rather than taps,
-    /// with a loop on the track — wider for a finger (`LaneDragPolicy.panSlop`).
-    public var panSlop = LaneDragPolicy.panSlop(on: EmptyStatePrompt.current)
+    /// How far a press in the lanes travels and is still a tap — before it
+    /// pans or draws a loop — wider for a finger (`LaneDragPolicy.tapSlop`).
+    public var tapSlop = LaneDragPolicy.tapSlop(on: EmptyStatePrompt.current)
 
     /// How far from a loop handle a press still takes it — wider for a finger.
     public var handleReach = ControlMetrics.handleReach(on: EmptyStatePrompt.current)
