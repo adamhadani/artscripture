@@ -74,15 +74,17 @@ extension AcceptanceRun {
                 + "(\(loopOnly) vs \(loopStart))",
             loopOnly == loopStart)
 
-        // 3. A drag while looping: it replaces the loop, and looping stays on
-        //    (design 2026-11-03), so the new range's start is the aim.
+        // 3. A new loop marked in its place: cleared first, since a drag
+        //    outside a loop pans rather than replacing it (2026-11-14). It
+        //    loops on its own, so the new range's start is the aim.
+        model.clearLoop()
         model.dragChanged(startPixel: 300, currentPixel: 300, extending: false)
         model.dragChanged(startPixel: 300, currentPixel: 520, extending: false)
         model.dragEnded(
             startPixel: 300, endPixel: 520, now: ProcessInfo.processInfo.systemUptime)
         let rangeStart = model.loop.range.start
         log.check(
-            "a drag while looping replaces the loop and keeps it looping "
+            "a loop marked after Clear Loop replaces it and loops "
                 + "(\(rangeStart) vs the old \(loopStart))",
             model.loop.isActive && rangeStart != loopStart)
         let replaced = await aimOfShiftSpace()

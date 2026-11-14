@@ -322,16 +322,9 @@ public final class ViewerModel {
     @ObservationIgnored var playheadBeforeLaneDrag: FrameIndex?
     @ObservationIgnored var laneDragCancelled = false
 
-    /// Each `E`/`R` press changes zoom by this factor. A half-octave keeps the
-    /// key-repeat sweep readable instead of jumping past the detail you want.
-    static let zoomStep = 1.4142135623730951
-    /// A keyboard pan moves by this fraction of the visible width, so panning
-    /// speed follows zoom instead of crawling when zoomed in. Left on the View
-    /// menu's Scroll items and the trackpad; `Z`/`X` are the nudge keys (spec
-    /// §6.2), and moving the playhead brings the view with it anyway.
-    static let panFraction = 0.12
-    static let doubleClickSeconds = 0.4
-    static let clickSlopPoints = 3.0
+    /// Undo and redo for the loop (`ViewerModel+LoopUndo`): the window's undo
+    /// manager, once the view hands it over, and what a key-repeat run merges.
+    @ObservationIgnored let loopUndo = LoopUndo()
 
     /// Counts deliberate jumps of the playhead. Bumped by `seek(to:)` and by
     /// nothing else — emphatically **not** by the display-link poll, which is

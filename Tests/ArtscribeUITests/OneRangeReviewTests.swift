@@ -93,13 +93,18 @@ struct OneRangeReviewTests {
 
     // MARK: - Important 1: a new passage while looping is the one you hear
 
-    @Test("a range dragged out while looping brings the playhead into it")
-    func aNewLoopIsWhereThePlayheadGoes() {
+    /// Until 2026-11-14 a drag here drew a new loop and took the playhead to
+    /// it. It pans now (`LanePan`): the loop you are hearing stays the one you
+    /// hear, and so does the place in it.
+    @Test("a drag outside a playing loop on touch leaves the loop and the playhead alone")
+    func aDragOutsideAPlayingLoopMovesNeither() {
         let model = makeModel(touch: true)
-        model.applyLoop(LoopRegion(range: range(500, 600), isEnabled: true))
+        let loop = LoopRegion(range: range(500, 600), isEnabled: true)
+        model.applyLoop(loop)
         model.seek(to: frame(550))
         drag(model, from: 100, to: 300)
-        #expect(model.playhead == frame(100))
+        #expect(model.loop == loop)
+        #expect(model.playhead == frame(550))
     }
 
     /// Until 2026-11 this was the opposite test: with looping off, a new range
@@ -117,7 +122,6 @@ struct OneRangeReviewTests {
     @Test("a playhead already inside the new loop stays where it is")
     func aPlayheadInsideTheNewLoopStays() {
         let model = makeModel(touch: true)
-        model.applyLoop(LoopRegion(range: range(500, 600), isEnabled: true))
         model.seek(to: frame(200))
         drag(model, from: 100, to: 300)
         #expect(model.playhead == frame(200))
@@ -156,11 +160,12 @@ struct OneRangeReviewTests {
 
     // MARK: - Important 3: a pinch never replaces the loop
 
+    /// With no loop, the one case where an open-lane drag still stages a range
+    /// (a drag outside a loop pans: `LanePanTests` covers its pinch).
     @Test("changes that keep arriving after a pinch cancelled the drag change nothing")
     func aCancelledDragStaysCancelled() {
         let model = makeModel()
-        let loop = LoopRegion(range: range(500, 600), isEnabled: true)
-        model.applyLoop(loop)
+        let loop = model.loop
         model.laneDragChanged(start: point(100), current: point(100), option: false, shift: false)
         model.laneDragChanged(start: point(100), current: point(200), option: false, shift: false)
         model.cancelLaneDrag()

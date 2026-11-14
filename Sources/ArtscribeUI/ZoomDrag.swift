@@ -122,10 +122,11 @@ struct ZoomDrag: Equatable, Sendable {
 /// range drag into a zoom or the other way about — you would be mid-gesture,
 /// watching the wrong thing happen, with no way to undo it.
 enum LaneDragMode: Equatable, Sendable {
-    /// The core gesture, and not negotiable: a plain left-drag outside the
-    /// loop marks a passage — the range, which is the loop (2026-11); inside
-    /// it, the drag moves the loop instead (`TimelineHandles`). `extending` is
-    /// ⇧-drag, which keeps the far edge and moves the near one, from anywhere.
+    /// A plain left-drag in open lane **with no loop** marks a passage — the
+    /// range, which is the loop (2026-11). Once there is a loop, open lane
+    /// pans instead (`pan`) and inside the loop the drag moves it
+    /// (`TimelineHandles`). `extending` is ⇧-drag, which keeps the far edge
+    /// and moves the near one, from anywhere: an edit, not a replacement.
     case range(extending: Bool)
     /// ⌥-drag. ⌥ because it collides with neither ⇧-drag (extend) nor ⌘-drag,
     /// and because Melodyne sets the precedent for a modifier-drag zoom inside
@@ -139,6 +140,11 @@ enum LaneDragMode: Equatable, Sendable {
     /// The playhead's grip taken hold of: a scrub (`PlayheadScrub`). The
     /// grip sits halfway down the lanes, in line with the loop's grips.
     case scrub
+    /// A plain drag in open lane **while there is a loop**: it carries the
+    /// view, and a tap still moves the playhead (`LanePan`). It used to draw a
+    /// new range and throw the loop away, and on a phone that is what a tap
+    /// that wobbled, or a reach to pan, did to a loop set with care (2026-11-14).
+    case pan(LanePan)
 
     /// The lanes' precedence rule, in one place. See `TimelineHandles` for the
     /// whole of it and for why it is ordered this way:
@@ -149,13 +155,16 @@ enum LaneDragMode: Equatable, Sendable {
     ///    edge is not as near (`PlayheadScrub.grabbed` settles that), so it
     ///    beats the loop's body and open lane, never an edge.
     /// 4. A handle under the pointer → drag it.
-    /// 5. Otherwise → a new range, replacing the old one.
+    /// 5. A loop on the track → pan (`panning` is that pan, or `nil` when there
+    ///    is no loop to keep).
+    /// 6. Otherwise → a new range: the first loop.
     ///
     /// ⌥ beating ⇧ when both are held is unchanged: holding both is a typo
     /// rather than a third gesture, and the same precedence already governs the
     /// nudge tiers.
     init(
-        option: Bool, shift: Bool, handle: TimelineHandle? = nil, onPlayheadGrip: Bool = false
+        option: Bool, shift: Bool, handle: TimelineHandle? = nil, onPlayheadGrip: Bool = false,
+        panning: LanePan? = nil
     ) {
         if option {
             self = .zoom
@@ -165,8 +174,16 @@ enum LaneDragMode: Equatable, Sendable {
             self = .scrub
         } else if let handle {
             self = .edge(handle)
+        } else if let panning {
+            self = .pan(panning)
         } else {
             self = .range(extending: false)
         }
+    }
+
+    /// The pan in flight, if this is one.
+    var pan: LanePan? {
+        if case .pan(let pan) = self { return pan }
+        return nil
     }
 }

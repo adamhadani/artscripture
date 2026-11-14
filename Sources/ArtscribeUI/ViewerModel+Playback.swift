@@ -329,20 +329,6 @@ extension ViewerModel {
 
     // MARK: - Loop
 
-    public func setLoopIn() {
-        guard hasTrack else { return }
-        let creates = loop.range.isEmpty
-        applyLoop(LoopEditing.settingIn(at: playhead, in: loop, totalFrames: totalFrames))
-        if creates { enterLoopIfOutside() }
-    }
-
-    public func setLoopOut() {
-        guard hasTrack else { return }
-        let creates = loop.range.isEmpty
-        applyLoop(LoopEditing.settingOut(at: playhead, in: loop, totalFrames: totalFrames))
-        if creates { enterLoopIfOutside() }
-    }
-
     /// Mirrors the menu's `.trackLoopToggle` enablement, which a key handled by
     /// `onKeyPress` never consults: with no range and looping off there is
     /// nothing to switch on, and switching it on would make the next drag
@@ -351,7 +337,7 @@ extension ViewerModel {
         guard hasTrack, !(loop.range.isEmpty && !loop.isEnabled) else { return }
         var next = loop
         next.isEnabled.toggle()
-        applyLoop(next)
+        recordingLoopEdit(next.isEnabled ? .loopingOn : .loopingOff) { applyLoop(next) }
     }
 
     /// `F`. Jumps to the loop's in point without changing whether it is enabled,
@@ -375,7 +361,7 @@ extension ViewerModel {
         // which an edge dragged across its partner passes through at zero
         // length mid-gesture — that is not the user putting the loop away.
         stopRamp()
-        applyLoop(LoopRegion())
+        recordingLoopEdit(.clear) { applyLoop(LoopRegion()) }
     }
 
     /// The app's one and only `PlaybackCommand.setLoop` path. Internal rather

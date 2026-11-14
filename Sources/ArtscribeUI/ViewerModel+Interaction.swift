@@ -9,6 +9,19 @@ import CoreGraphics
 /// bar can invoke them at any time.
 extension ViewerModel {
 
+    // In an extension, like any static: `ViewerModel.swift` is at the project's
+    // 400-line limit, and these are the interaction's tuning, not its state.
+    /// Each `E`/`R` press changes zoom by this factor. A half-octave keeps the
+    /// key-repeat sweep readable instead of jumping past the detail you want.
+    static let zoomStep = 1.4142135623730951
+    /// A keyboard pan moves by this fraction of the visible width, so panning
+    /// speed follows zoom instead of crawling when zoomed in. Left on the View
+    /// menu's Scroll items and the trackpad; `Z`/`X` are the nudge keys (spec
+    /// §6.2), and moving the playhead brings the view with it anyway.
+    static let panFraction = 0.12
+    static let doubleClickSeconds = 0.4
+    static let clickSlopPoints = 3.0
+
     public func zoomIn() { zoom(by: Self.zoomStep) }
     public func zoomOut() { zoom(by: 1 / Self.zoomStep) }
 
@@ -228,13 +241,20 @@ extension ViewerModel {
             commitStagedLoop()
             return
         }
+        click(atPixel: endPixel, now: now)
+    }
+
+    /// A press in the lanes that went nowhere: the playhead goes there, and a
+    /// second in quick succession plays from it. Shared by every gesture whose
+    /// unmoved release is a click — a range drag, the loop's inside, a pan.
+    func click(atPixel pixel: Double, now: Double) {
         // Cleared, not advanced: consuming it is what stops a third click from
         // chaining into another double-click.
-        let isDouble = isSecondClick(at: endPixel, now: now)
-        lastClick = isDouble ? nil : (endPixel, now)
+        let isDouble = isSecondClick(at: pixel, now: now)
+        lastClick = isDouble ? nil : (pixel, now)
         // The range is kept: a tap is about the playhead, and a loop set on
         // purpose is not a tap's to clear (design 2026-11-03, decision 3).
-        seek(to: PixelMapping.frame(atPixel: endPixel, in: viewport))
+        seek(to: PixelMapping.frame(atPixel: pixel, in: viewport))
         if isDouble { play() }
     }
 

@@ -43,6 +43,24 @@ public enum LaneDragPolicy {
         }
     }
 
+    /// How far a press in open lane may travel and still be a **tap** when it
+    /// would otherwise pan (`LanePan`), in points.
+    ///
+    /// **With a pointer, 3** — the click slop (`ViewerModel.clickSlopPoints`),
+    /// what a click has always been allowed here.
+    ///
+    /// **With a finger, 10.** A fingertip's contact point wanders by more than
+    /// 3 pt in an ordinary tap, and a tap that crossed the slop used to draw a
+    /// sliver of a loop over the one that was there — half of what made the
+    /// old open-lane drag destructive (2026-11-14). Ten is under a quarter of
+    /// the 44 pt touch target, so a deliberate pan still starts at once.
+    public static func panSlop(on surface: EmptyStatePrompt.Surface) -> Double {
+        switch surface {
+        case .desktop: return 3
+        case .tabletWithDrop, .phone: return 10
+        }
+    }
+
     public static func seeksOnPress(on surface: EmptyStatePrompt.Surface) -> Bool {
         switch surface {
         case .desktop: return true

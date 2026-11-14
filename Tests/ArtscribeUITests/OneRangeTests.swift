@@ -66,13 +66,15 @@ struct OneRangeTests {
 
     /// Switching looping off is for *this* loop. The next one marked is a new
     /// loop, and loops — otherwise one "off" would quietly bring back the
-    /// opt-in behaviour this replaced.
+    /// opt-in behaviour this replaced. Marking it takes a Clear Loop first
+    /// since 2026-11-14: a drag outside a loop pans (`LanePan`).
     @Test("with looping switched off, a newly marked passage still loops")
     func aNewPassageLoopsEvenAfterLoopingWasSwitchedOff() {
         let model = makeModel()
         drag(model, from: 100, to: 300)
         model.toggleLoop()
         #expect(!model.loop.isEnabled)
+        model.clearLoop()
         drag(model, from: 500, to: 700)
         #expect(model.loop.range == range(500, 700))
         #expect(model.loop.isEnabled)
@@ -93,13 +95,20 @@ struct OneRangeTests {
         #expect(!model.loop.isEnabled)
     }
 
-    @Test("a drag while looping replaces the loop, and the new passage keeps looping")
-    func aDragWhileLoopingReplacesTheLoopAndKeepsLooping() {
+    /// Until 2026-11-14 this was the opposite test: a drag outside a playing
+    /// loop replaced it, and on a phone that is what a wobbly tap or a reach
+    /// to pan did to a loop set with care. It pans now (`LanePan`), and the
+    /// engine is not told anything.
+    @Test("a drag outside a playing loop leaves it where it was, still looping")
+    func aDragOutsideAPlayingLoopLeavesIt() {
         let model = makeModel()
-        model.applyLoop(LoopRegion(range: range(500, 600), isEnabled: true))
+        let loop = LoopRegion(range: range(500, 600), isEnabled: true)
+        model.applyLoop(loop)
+        let pushes = model.loopPushes
         drag(model, from: 100, to: 300)
-        #expect(model.loop.range == range(100, 300))
-        #expect(model.loop.isEnabled)
+        #expect(model.loop == loop)
+        #expect(!model.loopIsStaged)
+        #expect(model.loopPushes == pushes)
     }
 
     @Test("a dragged-out range reaches the engine when the finger lifts, not on every event")
@@ -139,11 +148,12 @@ struct OneRangeTests {
         #expect(model.loop == loop)
     }
 
-    @Test("cancelling a drag puts the previous loop back")
+    /// With no loop, since only then does an open-lane drag draw one.
+    @Test("cancelling a drag takes back the loop it was drawing")
     func cancelledDragRestoresTheLoop() {
         let model = makeModel()
-        let loop = LoopRegion(range: range(500, 600), isEnabled: true)
-        model.applyLoop(loop)
+        let loop = model.loop
+        #expect(loop.range.isEmpty)
         let start = CGPoint(x: 100, y: Self.midLane)
         model.laneDragChanged(start: start, current: start, option: false, shift: false)
         model.laneDragChanged(

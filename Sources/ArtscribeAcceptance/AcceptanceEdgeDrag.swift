@@ -16,25 +16,27 @@ import Foundation
 extension AcceptanceRun {
 
     /// Every check name this can run, for the skip path.
-    private static let edgeDragChecks = [
-        "hovering a loop edge changes the cursor",
-        "and the cursor goes back to the crosshair over open lane",
-        "hovering the loop's bar offers a different cursor again",
-        "hovering inside the loop offers the bar's move cursor too",
-        "a real drag on the loop's in point moves it",
-        "and leaves the out point exactly where it was",
-        "a loop edge drag does not move the playhead",
-        "dragging the out point past the in point swaps rather than collapsing",
-        "a real drag on the loop's top bar moves the whole loop",
-        "and preserves its length exactly",
-        "a real drag from the middle of the loop moves the whole loop",
-        "and preserves its length exactly, from the middle too",
-        "a real click inside the loop places the playhead",
-        "and leaves the loop exactly where it was",
-        "a real drag dragged out a range, and its edge then moves",
-        "a plain drag outside a playing loop replaces it",
-        "and it keeps looping"
-    ]
+    private static let edgeDragChecks =
+        [
+            "hovering a loop edge changes the cursor",
+            "and over open lane beside the loop it is the arrow, where a drag pans",
+            "hovering the loop's bar offers a different cursor again",
+            "hovering inside the loop offers the bar's move cursor too",
+            "a real drag on the loop's in point moves it",
+            "and leaves the out point exactly where it was",
+            "a loop edge drag does not move the playhead",
+            "dragging the out point past the in point swaps rather than collapsing",
+            "a real drag on the loop's top bar moves the whole loop",
+            "and preserves its length exactly",
+            "a real drag from the middle of the loop moves the whole loop",
+            "and preserves its length exactly, from the middle too",
+            "a real click inside the loop places the playhead",
+            "and leaves the loop exactly where it was",
+            "a real drag dragged out a range, and its edge then moves",
+            "a plain drag outside a playing loop leaves it where it was",
+            "and it keeps looping",
+            "and the drag pans the view, the frame under the press following it"
+        ] + loopUndoChecks
 
     @MainActor
     static func checkEdgeDrag(
@@ -58,6 +60,7 @@ extension AcceptanceRun {
         await checkLoopBodyDrag(model: model, lanes: lanes, log: &log)
         await checkNewRangeEdgeDrag(model: model, lanes: lanes, log: &log)
         await checkPlainDragSurvives(model: model, lanes: lanes, log: &log)
+        await checkLoopUndo(model: model, lanes: lanes, log: &log)
         await captureTreatment(
             model: model, theme: theme, lanes: lanes, outputDirectory: outputDirectory)
 
@@ -104,6 +107,7 @@ extension AcceptanceRun {
     ) async {
         setLoop(model, fromPoint: 300, toPoint: 700)
         let crosshair = signature(NSCursor.crosshair)
+        let arrow = signature(NSCursor.arrow)
         let restoreTo = NSEvent.mouseLocation
 
         func read(_ x: Double, _ y: Double) async -> String? {
@@ -134,11 +138,17 @@ extension AcceptanceRun {
         // that matched it would mean the edge announced nothing at all.
         log.check(
             "hovering a loop edge changes the cursor",
-            overEdge != nil && overEdge != crosshair && overEdge != signature(NSCursor.arrow),
+            overEdge != nil && overEdge != crosshair && overEdge != arrow,
             unless: overEdge == nil ? unread : nil)
+        // The arrow, not the crosshair: with a loop on the track a drag in open
+        // lane pans rather than drawing one (2026-11-14, `LanePan`), and the
+        // open hand is the loop's own. The arrow is also what a cursor that
+        // never changes reads, so the edge has to have read differently or
+        // this would pass on a machine where no cursor reaches the screen.
         log.check(
-            "and the cursor goes back to the crosshair over open lane",
-            backOverOpenLane == crosshair && overOpenLane == crosshair,
+            "and over open lane beside the loop it is the arrow, where a drag pans",
+            backOverOpenLane == arrow && overOpenLane == arrow
+                && overEdge != nil && overEdge != arrow,
             unless: backOverOpenLane == nil || overOpenLane == nil ? unread : nil)
         log.check(
             "hovering the loop's bar offers a different cursor again",
@@ -270,24 +280,36 @@ extension AcceptanceRun {
     // MARK: - The regression that would be instantly visible
 
     /// The handles must not have eaten the first gesture. A plain drag that
-    /// starts outside the loop still drags out a passage — inside it is the
-    /// loop's body since 2026-11, and moves it — and since the one-range change
-    /// that passage *replaces* the loop, which keeps looping.
+    /// starts outside the loop pans the view since 2026-11-14 (`LanePan`):
+    /// before that it drew a new passage over the loop, and on a phone a tap
+    /// that wobbled or a reach to pan threw away a loop set with care.
+    ///
+    /// Zoomed in around the middle first. The fitted view has nowhere to pan
+    /// to, and a pan that cannot move would pass the "loop kept" half alone.
     @MainActor
     private static func checkPlainDragSurvives(
         model: ViewerModel, lanes: CGRect, log: inout Logger
     ) async {
+        model.seek(to: model.totalFrames / 2)
+        model.zoom(by: 4)
         setLoop(model, fromPoint: 200, toPoint: 450)
         if !model.loop.isEnabled { press(.d) }
-        let expected = PixelMapping.range(fromPixel: 600, toPixel: 800, in: model.viewport)
+        let loop = model.loop
+        let underThePress = frame(model, atLanePoint: 600)
+        let viewBefore = model.viewport.startFrame
         await pointerDrag(
             from: CGPoint(x: lanes.minX + 600, y: lanes.midY),
             to: CGPoint(x: lanes.minX + 800, y: lanes.midY))
         log.check(
-            "a plain drag outside a playing loop replaces it "
+            "a plain drag outside a playing loop leaves it where it was "
                 + "(\(model.loop.range.start)…\(model.loop.range.end))",
-            model.loop.range == expected)
+            model.loop.range == loop.range)
         log.check("and it keeps looping", model.loop.isEnabled)
+        log.check(
+            "and the drag pans the view, the frame under the press following it "
+                + "(start \(viewBefore) -> \(model.viewport.startFrame))",
+            model.viewport.startFrame < viewBefore && within(model, underThePress, ofPoint: 800))
+        model.fitWholeFile()
     }
 
     // MARK: - What it looks like

@@ -64,14 +64,20 @@ extension ViewerModel {
     /// call, an app switch, another recogniser. If it was a scrub it lands
     /// where it was left, without playing, and the lanes let go of it: left
     /// latched on `.scrub`, page-following stayed off and the Mac kept the
-    /// sideways cursor until the next lane gesture (review finding).
+    /// sideways cursor until the next lane gesture (review finding). A pan is
+    /// let go of for the same two reasons, and has nothing to land: the view
+    /// stays where the finger left it.
     ///
     /// A no-op after a normal end, which has already cleared the gesture, and
     /// for any other gesture: the notice arrives a beat late, and must never
     /// land a newer drag mid-flight.
     public func laneGestureCancelled(start: CGPoint) {
-        guard laneDragStart == start, laneDragMode == .scrub else { return }
-        landScrub(resuming: false)
+        guard laneDragStart == start, let mode = laneDragMode else { return }
+        switch mode {
+        case .scrub: landScrub(resuming: false)
+        case .pan: break
+        case .range, .zoom, .edge: return
+        }
         laneDragStart = nil
         laneDragMode = nil
         loopBeforeLaneDrag = nil

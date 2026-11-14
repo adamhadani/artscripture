@@ -50,6 +50,10 @@ public final class Preferences {
     /// checkable from a Mac.
     public var seeksOnSelectionPress = LaneDragPolicy.seeksOnPress(on: EmptyStatePrompt.current)
 
+    /// How far a press in open lane travels before it pans rather than taps,
+    /// with a loop on the track — wider for a finger (`LaneDragPolicy.panSlop`).
+    public var panSlop = LaneDragPolicy.panSlop(on: EmptyStatePrompt.current)
+
     /// How far from a loop handle a press still takes it — wider for a finger.
     public var handleReach = ControlMetrics.handleReach(on: EmptyStatePrompt.current)
 
