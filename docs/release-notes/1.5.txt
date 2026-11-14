@@ -1,0 +1,7 @@
+Your loops are safer. Once a loop is set, dragging beside it moves the waveform instead of replacing the loop, so you can look around a track, or pinch to zoom, without losing the passage you marked. Drag inside the loop to move it, drag its edges to resize it, and clear it when you want a new one: touch and hold the loop button on iPhone and iPad, or press Esc on a Mac.
+
+Changed your mind? Changes to a loop can now be undone and redone: shake your iPhone, swipe left with three fingers, or press Command-Z with a keyboard. Moving a loop, resizing it, clearing it and switching looping on or off are each one step.
+
+Taps are more forgiving: a tap that wanders a little on the screen now just moves the playhead, as you meant it to.
+
+On iPhone and iPad, Artscripture now opens on a launch screen with the icon's mark on a dark background, instead of a blank one.
