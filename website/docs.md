@@ -113,23 +113,36 @@ music run on past it is never what was meant. Press <kbd>D</kbd> or the **Loop**
 button to stop it repeating, and again to bring it back.
 
 **Drag inside the loop to move it**, keeping its length — if it is looping, playback
-stays inside it. A drag that starts *outside* the loop marks a new passage
-in its place. Drag a loop edge — its grip tab marks it — to adjust it; on iPhone
-and iPad an edge takes hold from a fingertip's width away. Shift-drag extends the
-passage. A click places the
-playhead and leaves the passage alone; a double-click places it and plays from
-there.
+stays inside it. Once there is a loop, **a drag that starts outside it pans the
+waveform** and leaves the loop exactly where it is, so you can look around a track,
+or pinch to zoom, without losing a passage you set with care. To mark a different
+passage, clear the loop first. Drag a loop edge — its grip tab marks it — to adjust
+it; on iPhone and iPad an edge takes hold from a fingertip's width away. Shift-drag
+extends the passage. A click places the playhead and leaves the passage alone; a
+double-click places it and plays from there. On iPhone and iPad a tap that wanders a
+little is still a tap.
 
 | Key | Action |
 |---|---|
 | <kbd>⌘A</kbd> | The whole file becomes the passage |
 | <kbd>Esc</kbd> | Clear the loop |
 | <kbd>⇧←</kbd> <kbd>⇧→</kbd> | Extend the passage left / right — or start one at the playhead |
+| <kbd>⌘Z</kbd> <kbd>⇧⌘Z</kbd> | Undo / redo a change to the loop |
 | <kbd>C</kbd> <kbd>V</kbd> | Move the whole loop left / right (250 ms); <kbd>⇧C</kbd> <kbd>⇧V</kbd> too |
 | <kbd>⌥C</kbd> <kbd>⌥V</kbd> | Move it further (2 s) |
 
 Both move amounts are configurable in Settings. On iPhone and iPad, **Clear Loop**
 is in the <kbd>⋯</kbd> menu and on a long press of the Loop button.
+
+### Undo
+
+**Every change to the loop can be undone**, and redone — moving it, resizing it,
+setting its edges, clearing it, switching looping on or off. On a Mac it is
+<kbd>⌘Z</kbd> and <kbd>⇧⌘Z</kbd>, or **Edit ▸ Undo**, which names what it will
+undo; on iPhone and iPad, shake the device or swipe left with three fingers (right
+to redo), or use <kbd>⌘Z</kbd> on a keyboard. A drag is one step however long it
+took, and a held key is one step for the whole run. Speed, pitch, the playhead and
+the zoom are not part of it: they are one key from where they were.
 
 ## Looping
 
@@ -236,7 +249,8 @@ routing belongs to the system, via Control Centre.
 
 All three nudge amounts are configurable in **Settings ▸ Playback**.
 
-With the pointer: pinch to zoom, two-finger scroll to pan, and drag the overview
+With the pointer: pinch to zoom, two-finger scroll to pan — or, with a loop set,
+drag in the waveform beside it — and drag the overview
 strip to move the visible window — or click (or tap) it to move the playhead there. **Drag down on the time ruler** — or ⌥-drag in
 the waveform — to zoom in smoothly. **Settings ▸ Playback ▸ Invert zoom
 direction** reverses that and the scroll wheel together.
@@ -386,7 +400,8 @@ from, so it cannot fall out of step with what the keys actually do.
 
 Sixty-five actions. Every shortcut also appears beside its item in the menus —
 Select All in **Edit**, looping in **Loop**, transport, speed, pitch, volume and
-output device in **Playback**.
+output device in **Playback**. **Edit ▸ Undo** and **Redo** (<kbd>⌘Z</kbd>
+<kbd>⇧⌘Z</kbd>) step back and forward through changes to the loop.
 
 <div class="table-scroll" markdown="1">
 
