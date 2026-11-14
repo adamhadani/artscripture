@@ -629,6 +629,7 @@ beside the loop, both of which show the current state.
 | `⌥C` / `⌥V` | Move it further (2 s, configurable) |
 | `⌘0` / `⌘9` | Fit the whole file / zoom to the loop |
 | `Esc` | Clear the loop |
+| `⌘Z` / `⇧⌘Z` | Undo / redo a change to the loop — on iPhone, shake or swipe three fingers |
 | `⇧A` `⇧S` / `⇧D` `⇧F` | Move the loop's in / out point (add `⌥` for the bigger step) |
 | `⌘S` / `⇧⌘S` | Save the session sidecar / save it elsewhere |
 | `⌘P` | Show or hide Practice — the ramping loop. The **Practice** button in the header opens it too |
@@ -636,10 +637,12 @@ beside the loop, both of which show the current state.
 | `⌘/` | Show or hide the keyboard shortcut window |
 | `⌘,` | Settings — preroll, nudge and move amounts, zoom direction, theme. A window on macOS, a sheet on iPad and iPhone, where the header's **⋯** menu is the route without a keyboard |
 
-Drag in the lanes to mark a passage — that passage *is* the loop, and `D` or the Loop button
-repeats it; a drag while looping replaces the loop and keeps it looping. Drag a loop edge (its
-grip tab marks it) to adjust it, shift-drag to extend, click to place the playhead, double-click
-to place it and play from there (`⌘A` is still Select All). On iPhone and iPad, Clear Loop is in
+Drag in the lanes to mark a passage — that passage *is* the loop, and it loops straight away
+(`D` or the Loop button switches looping off and on). Once there is a loop, a drag beside it
+**pans** the view and leaves the loop alone: drag inside it to move it, drag an edge (its grip
+tab marks it) to adjust it, and clear it to draw a new one. Shift-drag to extend, click to place
+the playhead, double-click to place it and play from there (`⌘A` loops the whole file). Every
+change to the loop can be undone. On iPhone and iPad, Clear Loop is in
 the ⋯ menu and on a long press of the Loop button. Pinch to zoom, two-finger scroll
 to pan. Dragging the overview strip
 moves the visible window; tapping it moves the playhead there. **Drag down** on the time ruler — or ⌥-drag in the waveform — to

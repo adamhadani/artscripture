@@ -1,9 +1,11 @@
 /// Whether pressing down in the waveform lanes should move the playhead before
 /// anyone knows what the gesture is going to be.
 ///
-/// **With a pointer, yes.** A mouse-down *is* a click until it turns out to be a
-/// drag, the playhead following it is instant feedback, and it has behaved that
-/// way since the first version.
+/// **With a pointer, yes — where the press may draw a loop.** A mouse-down *is*
+/// a click until it turns out to be a drag, the playhead following it is
+/// instant feedback, and it has behaved that way since the first version. Not
+/// on the loop's inside, nor beside a loop, where the press may move the loop
+/// or pan the view (`LanePan`): there the click seeks on release.
 ///
 /// **With a finger, no.** A press is the opening of a gesture whose meaning is
 /// not yet decided — and the most common thing it opens is a selection, since
@@ -40,6 +42,26 @@ public enum LaneDragPolicy {
         switch surface {
         case .desktop: return false
         case .tabletWithDrop, .phone: return true
+        }
+    }
+
+    /// How far a press in the lanes may travel and still be a **tap**, in
+    /// points — before it pans (`LanePan`), before it draws a loop, and between
+    /// the two taps of a double tap.
+    ///
+    /// **With a pointer, the click slop** (`ViewerModel.clickSlopPoints`, 3),
+    /// what a click has always been allowed here.
+    ///
+    /// **With a finger, 10.** A fingertip's contact point wanders by more than
+    /// 3 pt in an ordinary tap, and a tap that crossed the slop drew a sliver
+    /// of a loop — over the one that was there, until 2026-11-14, and since
+    /// then where there was none, which a drag could no longer replace. Ten is
+    /// under a quarter of the 44 pt touch target, so a deliberate drag still
+    /// starts at once.
+    public static func tapSlop(on surface: EmptyStatePrompt.Surface) -> Double {
+        switch surface {
+        case .desktop: return ViewerModel.clickSlopPoints
+        case .tabletWithDrop, .phone: return 10
         }
     }
 

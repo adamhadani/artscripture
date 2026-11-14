@@ -35,6 +35,19 @@ selected"*, loop edges that are *"easier to catch"*, and bookmark-style markers 
 > switching it off holds until the next new loop. `D` and the Loop button are now how you
 > opt out. See `ViewerModel.enterLoopIfOutside`.
 
+> **Changed 2026-11-14: a drag outside a loop pans; it no longer replaces it.** Decision 2 is
+> withdrawn. The user, from using the app: *"having a tap anywhere outside a loop completely
+> destroy the loop … is very destructive and frustrating — user might try to tap outside loop
+> wanting to drag or pinch around and not realize it will destroy their loop they worked
+> carefully to set."* The click slop is 3 pt, so on a phone a tap that wobbled was enough. With
+> a loop on the track a plain drag in open lane now **pans the view** — the frame under the
+> press stays under the finger — and a press that does not travel the tap slop (3 pt with a
+> pointer, **10 pt with a finger**) is still a tap. With no loop a drag draws one, as before.
+> A loop changes only by being taken hold of (its edges; its inside, which moves it), by
+> `A`/`S`/`C`/`V`/`⇧`-extend, or by being cleared (`Esc`, a long press on Loop). All platforms,
+> by the user's choice; on the Mac open lane beside a loop shows the arrow, and the closed
+> hand while panning. See `LanePan`.
+
 ## The model
 
 The range *is* `LoopRegion` — `range` plus `isEnabled` — which already exists, is already
@@ -56,7 +69,7 @@ The precedence rule (`TimelineHandles`), latched at touch-down as today:
 | 2 | ⇧ held | Extend the range: the far edge stays put, the near edge follows |
 | 3 | Within the grab radius of a loop edge | Drag that edge (live, as today) |
 | 4 | On the loop's top/bottom bar, inside its span | Move the whole loop (unchanged) |
-| 5 | Anything else, moved past the click slop | **A new range**, replacing the old; looping state unchanged |
+| 5 | Anything else, moved past the click slop | ~~**A new range**, replacing the old~~ — since 2026-11-14 a pan when there is a loop, a new range only when there is none |
 | — | Tap / click | Place the playhead. **The range is kept** |
 | — | Double tap / click | Place the playhead and play (unchanged) |
 

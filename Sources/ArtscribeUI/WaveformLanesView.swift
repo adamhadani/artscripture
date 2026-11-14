@@ -116,17 +116,18 @@ struct WaveformLanesView: View {
             TimelineEdgeOverlay(model: model, hovering: hovering)
         }
         .contentShape(.rect)
-        // The lanes carry four drag behaviours and, until Task 17, advertised
-        // none of them. The crosshair says a passage can be dragged out; ⌥
-        // turns it into a magnifier, and back, with the pointer standing still;
-        // and over a loop or selection edge it becomes the frame-resize arrow.
+        // The lanes carry five drag behaviours and, until Task 17, advertised
+        // none of them. The crosshair says a passage can be dragged out — with
+        // no loop; beside one a drag pans, and the arrow says so; ⌥ turns it
+        // into a magnifier, and back, with the pointer standing still; and over
+        // a loop edge it becomes the frame-resize arrow.
         // The scheme and its reasons are in `PointerAffordance`.
         #if os(macOS)
         .pointerStyle(
             PointerAffordance.over(
                 .waveformLanes, optionHeld: optionHeld, shiftHeld: shiftHeld,
                 laneDrag: model.laneDragMode, hovering: hovering,
-                onPlayheadGrip: overPlayheadGrip
+                onPlayheadGrip: overPlayheadGrip, loopIsSet: !model.loop.range.isEmpty
             ).pointerStyle
         )
         // Not `NSEvent.modifierFlags` polled from the gesture: that is only

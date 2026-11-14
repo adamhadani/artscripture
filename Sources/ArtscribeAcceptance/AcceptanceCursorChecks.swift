@@ -73,6 +73,10 @@ extension AcceptanceRun {
         // cursor (`PlayheadScrub`), so park the playhead well clear of the
         // lanes' middle before reading theirs.
         model.seek(to: 0)
+        // And no loop: beside one, open lane offers the arrow, because a drag
+        // there pans (`LanePan`). The crosshair read below is the lanes with
+        // nothing marked; the edge-drag group reads the arrow.
+        model.clearLoop()
 
         readings.outside = await read(
             "nothing (the window's title bar)", x: ruler.midX, y: -12, into: &readings)

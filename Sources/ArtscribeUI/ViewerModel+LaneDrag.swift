@@ -13,14 +13,14 @@ extension ViewerModel {
 
     // MARK: - The lane drag, and what it was decided to mean
 
-    /// A left-drag in the waveform lanes: a loop handle, a new range, or an
-    /// ⌥-modified zoom.
+    /// A left-drag in the waveform lanes: a loop handle, a pan, a new range, or
+    /// an ⌥-modified zoom.
     ///
     /// **The precedence is `LaneDragMode`'s and it is written down there and in
     /// `TimelineHandles`.** In one line: ⌥ zooms and ⇧ extends wherever the
     /// pointer is; otherwise a loop edge within its grab zone is taken hold of,
-    /// then the loop's body — anywhere inside it; otherwise the drag draws a new
-    /// range exactly as it always has.
+    /// then the loop's body — anywhere inside it; otherwise open lane pans
+    /// while there is a loop (`LanePan`), and draws one when there is not.
     ///
     /// **The mode is latched at mouse-down.** `option` and `shift` are read
     /// live from `NSEvent.modifierFlags` by the view, so they change the moment
@@ -47,18 +47,27 @@ extension ViewerModel {
             // gesture) is still the range on screen: it reaches the engine now,
             // before anything else happens, rather than lingering half-applied.
             // A scrub whose end never arrived lands too — with its seek, and
-            // never by starting playback from this unrelated press.
+            // never by starting playback from this unrelated press. Either
+            // way, what it did to the loop is one undo step, recorded now.
+            let unfinished = (mode: laneDragMode, before: loopBeforeLaneDrag)
             landScrub(resuming: false)
             commitStagedLoop()
+            recordLaneDragEdit(unfinished.mode, from: unfinished.before)
             let grip = playheadGrip(at: start)
             mode = LaneDragMode(
                 option: option, shift: shift, handle: timelineHandle(at: start),
-                onPlayheadGrip: grip != nil)
+                onPlayheadGrip: grip != nil,
+                panning: loop.range.isEmpty
+                    ? nil
+                    : LanePan(anchorFrame: PixelMapping.frame(atPixel: start.x, in: viewport)))
             scrub = mode == .scrub ? grip : nil
             laneDragStart = start
             laneDragMode = mode
-            loopBeforeLaneDrag = loop
-            playheadBeforeLaneDrag = playhead
+            // A pan changes neither, so a pinch that takes it back has nothing
+            // to restore — and must not seek: a playing track has moved on
+            // since the press, and seeking back would replay it.
+            loopBeforeLaneDrag = mode.pan == nil ? loop : nil
+            playheadBeforeLaneDrag = mode.pan == nil ? playhead : nil
             laneDragCancelled = false
             // A new gesture never continues the previous one's zoom or handle
             // drag, even when the two began at the same point.
@@ -74,6 +83,8 @@ extension ViewerModel {
             edgeDragChanged(handle: handle, startPixel: start.x, currentPixel: current.x)
         case .scrub:
             scrubChanged(start: start, current: current)
+        case .pan(let pan):
+            panChanged(pan, start: start, current: current)
         }
     }
 
@@ -157,10 +168,13 @@ extension ViewerModel {
             return
         }
         let mode = laneDragMode
+        let loopBefore = loopBeforeLaneDrag
         laneDragStart = nil
         laneDragMode = nil
         loopBeforeLaneDrag = nil
         playheadBeforeLaneDrag = nil
+        // However many events it took, the gesture is one undo step.
+        defer { recordLaneDragEdit(mode, from: loopBefore) }
         switch mode {
         case .zoom:
             zoomDragEnded()
@@ -186,6 +200,8 @@ extension ViewerModel {
             }
         case .scrub:
             scrubEnded(start: start, end: end, now: now)
+        case .pan(let pan):
+            panEnded(pan, end: end, now: now)
         case .range, nil:
             dragEnded(startPixel: start.x, endPixel: end.x, now: now)
         }
@@ -222,9 +238,16 @@ extension ViewerModel {
     public func scrollLeft() { scroll(byPoints: -panStep) }
     public func scrollRight() { scroll(byPoints: panStep) }
 
+    /// Scrolls a copy and writes it back only if it moved. `Viewport.scroll`
+    /// is `mutating`, and a mutating call on observed state notifies whether
+    /// or not anything changed (CLAUDE.md): a pan held against either end of
+    /// the file redrew the lanes, ruler and overview on every event.
     public func scroll(byPoints points: Int) {
         guard hasTrack, points != 0 else { return }
-        viewport.scroll(byPixels: points)
+        var next = viewport
+        next.scroll(byPixels: points)
+        guard next != viewport else { return }
+        viewport = next
         refresh()
     }
 

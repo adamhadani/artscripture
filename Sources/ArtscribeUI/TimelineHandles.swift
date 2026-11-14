@@ -54,9 +54,12 @@ public enum TimelineEdgeSide: Equatable, Sendable {
 ///    tested first, so a short loop is still resizable from either end. A
 ///    press that never moves is a click, not a grab: it places the playhead,
 ///    and two play, exactly as they do outside the loop (`laneDragEnded`).
-/// 5. **Outside the loop → a new range**, replacing the loop — looping stays
-///    as it was, so a passage dragged out while looping loops at once. A click
-///    and a double-click arrive through here too, and leave the range alone.
+/// 5. **Outside the loop → a pan** (`LanePan`): the view follows the finger
+///    and the loop is left exactly where it is. Until 2026-11-14 this drew a
+///    new range over the loop, and on a phone a tap that wobbled or a reach to
+///    pan threw away a loop set with care. A click and a double-click arrive
+///    through here too, as a pan that never moved.
+/// 6. **No loop at all → a new range**, which loops (`enterLoopIfOutside`).
 ///
 /// ## Why the whole inside of the loop moves it (2026-11)
 ///

@@ -288,6 +288,7 @@ public struct DocumentView: View {
         .onChange(of: appearance, initial: true) { _, appearance in
             model.setAppearance(appearance)
         }
+        .modifier(LoopUndoAttachment(model: model))
         .focusable()
         .focusEffectDisabled()
         .focused($hasKeyboardFocus)

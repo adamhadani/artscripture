@@ -61,6 +61,15 @@ enum PointerAffordance: Equatable, Sendable {
     case movingRegion
     /// Over the playhead's grip in the lanes, or scrubbing from it: sideways.
     case scrubPlayhead
+    /// Open lane while there is a loop, where a click moves the playhead and
+    /// a drag pans (`LanePan`). The plain arrow, deliberately **not** the open
+    /// hand: that one already says "this loop moves with you" over the loop's
+    /// inside, and two open hands a pixel apart would hide which thing a drag
+    /// takes hold of. The crosshair would promise a new loop, which since
+    /// 2026-11-14 a drag there does not draw.
+    case panView
+    /// Panning: the closed hand, which is what a dragged view looks like on a Mac.
+    case panningView
 
     /// The scheme, in one function.
     ///
@@ -83,13 +92,16 @@ enum PointerAffordance: Equatable, Sendable {
     ///     scrubs (`PlayheadScrub`). Ranked where the gesture ranks it: below
     ///     the modifiers, above a handle — it is only ever true where no loop
     ///     edge is as near.
+    ///   - loopIsSet: there is a loop, so open lane pans rather than drawing
+    ///     one (`LanePan`). Ranked last, exactly as the gesture ranks it.
     static func over(
         _ region: PointerRegion,
         optionHeld: Bool,
         shiftHeld: Bool = false,
         laneDrag: LaneDragMode?,
         hovering: TimelineHandle? = nil,
-        onPlayheadGrip: Bool = false
+        onPlayheadGrip: Bool = false,
+        loopIsSet: Bool = false
     ) -> PointerAffordance {
         switch region {
         case .timeRuler:
@@ -102,27 +114,30 @@ enum PointerAffordance: Equatable, Sendable {
             guard let laneDrag else {
                 return overLanesAtRest(
                     optionHeld: optionHeld, shiftHeld: shiftHeld, hovering: hovering,
-                    onPlayheadGrip: onPlayheadGrip)
+                    onPlayheadGrip: onPlayheadGrip, loopIsSet: loopIsSet)
             }
             switch laneDrag {
             case .zoom: return .zoom
             case .range: return .selectRange
             case .edge(let handle): return forHandle(handle, dragging: true)
             case .scrub: return .scrubPlayhead
+            // Before it has moved it may still be a click, which the arrow says.
+            case .pan(let pan): return pan.hasMoved ? .panningView : .panView
             }
         }
     }
 
     /// The lanes with no drag in flight: the modifiers, then the playhead's
-    /// grip, then a loop handle — `LaneDragMode`'s order.
+    /// grip, then a loop handle, then open lane — `LaneDragMode`'s order.
     private static func overLanesAtRest(
-        optionHeld: Bool, shiftHeld: Bool, hovering: TimelineHandle?, onPlayheadGrip: Bool
+        optionHeld: Bool, shiftHeld: Bool, hovering: TimelineHandle?, onPlayheadGrip: Bool,
+        loopIsSet: Bool
     ) -> PointerAffordance {
         if optionHeld { return .zoom }
         if shiftHeld { return .selectRange }
         if onPlayheadGrip { return .scrubPlayhead }
-        guard let hovering else { return .selectRange }
-        return forHandle(hovering, dragging: false)
+        if let hovering { return forHandle(hovering, dragging: false) }
+        return loopIsSet ? .panView : .selectRange
     }
 
     private static func forHandle(
@@ -155,6 +170,8 @@ enum PointerAffordance: Equatable, Sendable {
         case .moveRegion: return .grabIdle
         case .movingRegion: return .grabActive
         case .scrubPlayhead: return .columnResize
+        case .panView: return .default
+        case .panningView: return .grabActive
         }
     }
     #endif

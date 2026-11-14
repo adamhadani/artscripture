@@ -145,6 +145,7 @@ extension ViewerModel {
     /// the selection do not — their frames mean nothing without a recording.
     public func closeTrack() {
         teardownSession()
+        forgetLoopHistory()
         // Putting the track away must not leave it on the lock screen: the
         // window stays open (there is no exit on a phone — see the comment
         // above), so nothing else marks this moment. See `NowPlayingController`.
@@ -185,6 +186,8 @@ extension ViewerModel {
         releaseSecurityScope()
         scopedURL = incoming
         teardownSession()
+        // The old track's loop steps mean nothing in this one.
+        forgetLoopHistory()
         audio = loaded.audio
         pyramid = loaded.pyramid
         adoptPicture(loaded.picture)
@@ -259,6 +262,7 @@ extension ViewerModel {
     func loadForTesting(audio: DecodedAudio, pyramid: PeakPyramid, widthPixels: Int = 1000) {
         self.audio = audio
         self.pyramid = pyramid
+        forgetLoopHistory()
         fileName = "test-track"
         generation += 1
         resetLaneGesture()

@@ -182,13 +182,16 @@ struct ViewerModelEdgeDragTests {
         #expect(!model.loopIsStaged)
     }
 
-    @Test("a plain drag that starts outside the loop still replaces it")
-    func plainDragOutsideTheLoopStillDrawsANewOne() {
+    /// It used to draw a new loop over this one; it pans since 2026-11-14
+    /// (`LanePan`).
+    @Test("a plain drag that starts outside the loop leaves it alone")
+    func plainDragOutsideTheLoopLeavesIt() {
         let model = makeModel()
         withLoop(model)
+        let loop = model.loop
         drag(model, from: CGPoint(x: 700, y: midLane), toX: 900)
-        #expect(model.loop.range == FrameRange(start: frame(700), count: frame(200)))
-        #expect(model.loop.isEnabled)
+        #expect(model.loop == loop)
+        #expect(!model.loopIsStaged)
     }
 
     /// The Mac seeks on mouse-down in open lane, for instant feedback. Inside

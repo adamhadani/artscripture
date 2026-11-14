@@ -11,12 +11,33 @@ extension ViewerModel {
 
     // MARK: - Marking the range
 
+    public func setLoopIn() {
+        guard hasTrack else { return }
+        let creates = loop.range.isEmpty
+        recordingLoopEdit(.setStart) {
+            applyLoop(LoopEditing.settingIn(at: playhead, in: loop, totalFrames: totalFrames))
+        }
+        if creates { enterLoopIfOutside() }
+    }
+
+    public func setLoopOut() {
+        guard hasTrack else { return }
+        let creates = loop.range.isEmpty
+        recordingLoopEdit(.setEnd) {
+            applyLoop(LoopEditing.settingOut(at: playhead, in: loop, totalFrames: totalFrames))
+        }
+        if creates { enterLoopIfOutside() }
+    }
+
     /// `⌘A`: the whole file becomes the loop, and like every new loop it
     /// loops (see `enterLoopIfOutside` for the rule and its one exception).
     public func loopWholeFile() {
         guard hasTrack else { return }
         rangeAnchor = nil
-        applyLoop(LoopRegion(range: FrameRange(start: 0, count: totalFrames), isEnabled: true))
+        recordingLoopEdit(.wholeFile) {
+            applyLoop(
+                LoopRegion(range: FrameRange(start: 0, count: totalFrames), isEnabled: true))
+        }
         enterLoopIfOutside()
     }
 
@@ -96,7 +117,14 @@ extension ViewerModel {
             loop, target: target, bySeconds: prefs.selectionMoveAmounts[tier] * direction.sign,
             sampleRate: sampleRate, totalFrames: totalFrames)
         guard moved != loop else { return }
-        applyLoop(moved)
+        // A held key is one undo step for the whole run (`LoopUndo`).
+        let edit: LoopEdit
+        switch target {
+        case .inPoint: edit = .moveStart
+        case .outPoint: edit = .moveEnd
+        case .whole: edit = .move
+        }
+        recordingLoopEdit(edit, coalescing: true) { applyLoop(moved) }
         // Follow the edge that moved, so a loop nudged off the visible page is
         // not nudged blind. Page-flip, like everything else that moves the view
         // (spec §6.1).
@@ -147,10 +175,12 @@ extension ViewerModel {
             sampleRate: sampleRate, totalFrames: totalFrames)
         let low = Swift.min(anchor, moved)
         rangeAnchor = anchor
-        applyLoop(
-            LoopRegion(
-                range: FrameRange(start: low, count: Swift.max(anchor, moved) - low),
-                isEnabled: creates || loop.isEnabled))
+        recordingLoopEdit(.extend, coalescing: true) {
+            applyLoop(
+                LoopRegion(
+                    range: FrameRange(start: low, count: Swift.max(anchor, moved) - low),
+                    isEnabled: creates || loop.isEnabled))
+        }
         if creates { enterLoopIfOutside() }
         reveal(moved)
     }
